@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   description: 'Communication hub for the GNW praise & worship team.',
   applicationName: 'GNW Worship Hub',
   manifest: '/manifest.webmanifest',
-  // black-translucent lets the app background + grain fill behind the status bar
-  // (true edge-to-edge); content stays clear of it via safe-area padding.
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'GNW Hub' },
+  // `default` status bar (tinted to match via theme-color) keeps the layout inside
+  // the safe area so the bottom nav sits flush — matches the proven GNW Roll Call setup.
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GNW Hub' },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -41,9 +41,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  // Required for env(safe-area-inset-*) to return real values on notched iPhones
-  // in standalone (installed) mode — without it content slams under the notch.
-  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FAF7F2' },
     { media: '(prefers-color-scheme: dark)', color: '#161410' },

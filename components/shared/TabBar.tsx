@@ -23,9 +23,9 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
   return (
     <nav
       className="no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
-      // Reserve exactly the home-indicator safe area; the bar's background still
-      // fills to the screen bottom via the 100vh shell.
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      // Floor the bottom padding to 1.75rem (env is 0 without viewport-fit=cover);
+      // the bar then sits flush at the safe-area bottom — same as GNW Roll Call.
+      style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
     >
       <ul className="flex items-stretch justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon, exact }) => {

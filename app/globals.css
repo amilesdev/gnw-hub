@@ -25,14 +25,12 @@ body {
 }
 
 /* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
-/* Height uses 100vh — on iOS standalone this is the LARGE viewport: the full
-   physical screen including the bottom home-indicator zone. (100dvh / `bottom: 0`
-   stop short of it, leaving page background visible below the nav.) The nav's
-   own safe-area padding then keeps its icons above the home indicator. */
+/* Anchored top+bottom to the visible viewport (no `viewport-fit=cover`), so the
+   layout stays inside the safe area and the bottom nav sits flush — same proven
+   approach as GNW Roll Call. */
 .app-shell {
-  position: fixed; top: 0; left: 50%;
+  position: fixed; top: 0; bottom: 0; left: 50%;
   transform: translateX(-50%); width: 100%; max-width: 430px;
-  height: 100vh;
   display: flex; flex-direction: column;
 }
 
