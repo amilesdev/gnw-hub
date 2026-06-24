@@ -25,9 +25,13 @@ body {
 }
 
 /* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
+/* Height is pinned to the dynamic viewport (full physical screen in standalone)
+   rather than `bottom: 0`, which iOS insets above the home indicator — that
+   inset is then counted exactly once by the TabBar's safe-area padding. */
 .app-shell {
-  position: fixed; top: 0; bottom: 0; left: 50%;
+  position: fixed; top: 0; left: 50%;
   transform: translateX(-50%); width: 100%; max-width: 430px;
+  height: 100vh; height: 100dvh;
   display: flex; flex-direction: column;
 }
 
