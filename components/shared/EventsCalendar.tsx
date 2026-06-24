@@ -11,9 +11,9 @@ import { cn } from '@/lib/utils';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-/** Local day-of-month key for grouping (events are stored at local midnight). */
+/** Day-of-month key for grouping (events are stored at UTC midnight). */
 function dayOf(iso: string): number {
-  return new Date(iso).getDate();
+  return new Date(iso).getUTCDate();
 }
 
 export function EventsCalendar({
@@ -142,11 +142,11 @@ export function EventsCalendar({
         <p className="text-center text-sm text-ink-faint">Pick a day to see its events.</p>
       ) : selectedEvents.length === 0 ? (
         <p className="text-center text-sm text-ink-faint">
-          Nothing on {formatEventDate(new Date(year, month - 1, selectedDay))}.
+          Nothing on {formatEventDate(new Date(Date.UTC(year, month - 1, selectedDay)))}.
         </p>
       ) : (
         <div className="space-y-3">
-          <h3 className="eyebrow">{formatEventDate(new Date(year, month - 1, selectedDay))}</h3>
+          <h3 className="eyebrow">{formatEventDate(new Date(Date.UTC(year, month - 1, selectedDay)))}</h3>
           {selectedEvents.map((event) => (
             <div key={event.id} className="space-y-2">
               <EventCard event={event} onClick={() => onOpen(event)} />

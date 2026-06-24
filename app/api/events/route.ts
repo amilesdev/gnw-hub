@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { eventSchema } from '@/lib/validation';
 import { serializeEvent } from '@/lib/serialize';
-import { generateOccurrences, startOfToday, upcomingWindowEnd } from '@/lib/dates';
+import { generateOccurrences, parseCalendarDate, startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { ensureRecurringWindow } from '@/lib/recurrence';
 import { randomToken } from '@/lib/utils';
 
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     where = { date: { gte: startOfToday(), lte: upcomingWindowEnd() } };
   } else if (scope === 'month' && month) {
     const [y, m] = month.split('-').map(Number);
-    where = { date: { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) } };
+    where = { date: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) } };
   } else {
     // all upcoming/future from today onward
     where = { date: { gte: startOfToday() } };
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   }
 
   const d = parsed.data;
-  const seed = new Date(`${d.date}T00:00:00`);
+  const seed = parseCalendarDate(d.date);
   if (Number.isNaN(seed.getTime())) {
     return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
   }

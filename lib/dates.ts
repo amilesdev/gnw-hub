@@ -2,18 +2,23 @@ import type { RepeatCadence } from '@prisma/client';
 
 export const UPCOMING_WINDOW_DAYS = 7;
 
-/** Start of today (local) at 00:00. */
+// Event dates represent a calendar day with no time-of-day meaning (the
+// time-of-day lives in the separate `time` string). To stay consistent between
+// the local dev server and Vercel's UTC server — and between server and browser
+// — every calendar-date value is anchored to UTC midnight and read with UTC
+// getters. Mixing local and UTC is what made a Sunday render as Saturday.
+
+/** Start of today at 00:00 UTC. */
 export function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const n = new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
 }
 
-/** End of the upcoming window (7 days from start of today). */
+/** End of the upcoming window (7 days from start of today), in UTC. */
 export function upcomingWindowEnd(from: Date = startOfToday()): Date {
   const d = new Date(from);
-  d.setDate(d.getDate() + UPCOMING_WINDOW_DAYS);
-  d.setHours(23, 59, 59, 999);
+  d.setUTCDate(d.getUTCDate() + UPCOMING_WINDOW_DAYS);
+  d.setUTCHours(23, 59, 59, 999);
   return d;
 }
 
@@ -34,23 +39,28 @@ export const SERIES_HORIZON_DAYS = 28;
 /** Exclusive end of the rolling window measured from `from` (start + 28 days). */
 export function seriesHorizonEnd(from: Date): Date {
   const d = new Date(from);
-  d.setDate(d.getDate() + SERIES_HORIZON_DAYS);
+  d.setUTCDate(d.getUTCDate() + SERIES_HORIZON_DAYS);
   return d;
 }
 
-/** Advance a date in place by one cadence step. No-op for `once`. */
+/** Advance a date in place by one cadence step (UTC). No-op for `once`. */
 export function stepDate(d: Date, repeats: RepeatCadence): void {
   switch (repeats) {
     case 'weekly':
-      d.setDate(d.getDate() + 7);
+      d.setUTCDate(d.getUTCDate() + 7);
       break;
     case 'biweekly':
-      d.setDate(d.getDate() + 14);
+      d.setUTCDate(d.getUTCDate() + 14);
       break;
     case 'monthly':
-      d.setMonth(d.getMonth() + 1);
+      d.setUTCMonth(d.getUTCMonth() + 1);
       break;
   }
+}
+
+/** Parse a "YYYY-MM-DD" form value into a UTC-midnight calendar date. */
+export function parseCalendarDate(ymd: string): Date {
+  return new Date(`${ymd}T00:00:00.000Z`);
 }
 
 /**
@@ -73,14 +83,18 @@ export function generateOccurrences(seed: Date, repeats: RepeatCadence): Date[] 
   return occurrences;
 }
 
-/** "YYYY-MM" key for a date (used for Setlist.month). */
+/** "YYYY-MM" key for a date (used for Setlist.month), read in UTC. */
 export function monthKey(date: Date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 export function formatMonthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 export function formatEventDate(date: Date): string {
@@ -88,6 +102,7 @@ export function formatEventDate(date: Date): string {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+    timeZone: 'UTC',
   });
 }
 

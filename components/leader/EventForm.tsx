@@ -76,8 +76,10 @@ function AttireColorField({
 
 function toDateInput(iso?: string): string {
   if (!iso) return '';
+  // Event dates are UTC-midnight calendar days — read the UTC parts so the
+  // <input type="date"> shows the same day regardless of the viewer's timezone.
   const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 export function EventForm({

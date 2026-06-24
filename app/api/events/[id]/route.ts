@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { eventSchema } from '@/lib/validation';
 import { serializeEvent } from '@/lib/serialize';
+import { parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -37,7 +38,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const data: Record<string, unknown> = {};
   if (d.eventName !== undefined) data.eventName = d.eventName;
   if (d.type !== undefined) data.type = d.type;
-  if (d.date !== undefined) data.date = new Date(`${d.date}T00:00:00`);
+  if (d.date !== undefined) data.date = parseCalendarDate(d.date);
   if (d.time !== undefined) data.time = d.time;
   if (d.location !== undefined) data.location = d.location;
   if (d.notes !== undefined) data.notes = d.notes ?? null;

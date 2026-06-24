@@ -15,7 +15,7 @@ type Props = {
   isSuperAdmin: boolean;
 };
 
-export function ProfileView({ name, email, role, section, part, isSuperAdmin }: Props) {
+export function ProfileView({ name, email, section, part }: Props) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -23,8 +23,6 @@ export function ProfileView({ name, email, role, section, part, isSuperAdmin }: 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  const roleLabel = isSuperAdmin ? 'Leader · Super-admin' : role === 'leader' ? 'Leader' : 'Member';
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -70,7 +68,6 @@ export function ProfileView({ name, email, role, section, part, isSuperAdmin }: 
         <dl className="mt-5 grid grid-cols-2 gap-3">
           <ReadOnly label="Section" value={section ?? '—'} />
           <ReadOnly label="Part" value={part ?? '—'} />
-          <ReadOnly label="Role" value={roleLabel} />
         </dl>
       </section>
 

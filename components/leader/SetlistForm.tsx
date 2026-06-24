@@ -62,9 +62,16 @@ export function SetlistForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Pickable events: upcoming ones, plus any already-linked events (which may be in the past).
+  // Only these event types can carry a setlist — Prayer and Holy Talks never do,
+  // so they're excluded from the picker.
+  const SETLIST_EVENT_TYPES = ['service', 'rehearsal', 'other'] as const;
+
+  // Pickable events: upcoming ones of a setlist-eligible type, plus any
+  // already-linked events (which may be in the past) so they can be unlinked.
   const eventOptions = useMemo(() => {
-    const opts = events.map((e) => ({ id: e.id, eventName: e.eventName, date: e.date }));
+    const opts = events
+      .filter((e) => (SETLIST_EVENT_TYPES as readonly string[]).includes(e.type))
+      .map((e) => ({ id: e.id, eventName: e.eventName, date: e.date }));
     for (const ev of initial?.events ?? []) {
       if (!opts.some((o) => o.id === ev.id)) opts.unshift({ id: ev.id, eventName: ev.eventName, date: ev.date });
     }

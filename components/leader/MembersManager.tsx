@@ -129,7 +129,6 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {m.section && <span className="chip bg-surface-2 text-ink-soft">{m.section}</span>}
                       {m.part && <span className="chip bg-surface-2 text-ink-soft">{m.part}</span>}
-                      <span className="chip bg-surface-2 text-ink-soft capitalize">{m.role}</span>
                       {expired && <span className="chip bg-bad/15 text-bad">Expired</span>}
                     </div>
                   </div>
@@ -190,7 +189,6 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {m.section && <span className="chip bg-surface-2 text-ink-soft">{m.section}</span>}
                   {m.part && <span className="chip bg-surface-2 text-ink-soft">{m.part}</span>}
-                  <span className="chip bg-accent/10 text-accent-ink capitalize">{m.role}</span>
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
