@@ -23,10 +23,9 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
   return (
     <nav
       className="no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
-      // Lift labels clear of the home indicator (safe-area-inset-bottom) plus a
-      // little breathing room; the bar's background still fills to the screen
-      // bottom via the 100vh shell.
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
+      // Reserve exactly the home-indicator safe area; the bar's background still
+      // fills to the screen bottom via the 100vh shell.
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <ul className="flex items-stretch justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon, exact }) => {
