@@ -151,6 +151,13 @@ export const Repeat = (p: P) => (
   </Base>
 );
 
+export const Link = (p: P) => (
+  <Base {...p}>
+    <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5" />
+    <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5" />
+  </Base>
+);
+
 export const Upload = (p: P) => (
   <Base {...p}>
     <path d="M12 16V4M7 9l5-5 5 5" />

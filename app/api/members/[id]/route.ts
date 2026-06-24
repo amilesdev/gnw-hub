@@ -29,7 +29,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return NextResponse.json({ member });
 }
 
-// DELETE /api/members/[id] — revoke a pending invite (leader only).
+// DELETE /api/members/[id] — remove a member or revoke a pending invite (leader only).
 export async function DELETE(_req: Request, { params }: Ctx) {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
@@ -37,8 +37,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
   const target = await prisma.user.findUnique({ where: { id } });
   if (!target) return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-  if (target.status === 'active') {
-    return NextResponse.json({ error: 'Cannot revoke an active member. Edit instead.' }, { status: 400 });
+  if (target.isSuperAdmin) {
+    return NextResponse.json({ error: 'The super-admin account cannot be removed.' }, { status: 400 });
   }
 
   await prisma.user.delete({ where: { id } });

@@ -10,7 +10,7 @@ export async function GET() {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
 
-  const members = await prisma.user.findMany({
+  const rows = await prisma.user.findMany({
     orderBy: [{ status: 'asc' }, { name: 'asc' }],
     select: {
       id: true,
@@ -22,9 +22,16 @@ export async function GET() {
       status: true,
       isSuperAdmin: true,
       inviteExpiry: true,
+      inviteToken: true,
       createdAt: true,
     },
   });
+  // Expose a shareable invite link for pending members so leaders can deliver it
+  // manually (e.g. text/DM) without relying on email. Never leak the raw token.
+  const members = rows.map(({ inviteToken, ...m }) => ({
+    ...m,
+    inviteUrl: m.status === 'pending' && inviteToken ? inviteUrl(inviteToken) : null,
+  }));
   return NextResponse.json({ members });
 }
 
@@ -68,5 +75,16 @@ export async function POST(req: Request) {
 
   const emailResult = await sendInviteEmail({ to: emailNorm, name, inviteUrl: inviteUrl(inviteToken) });
 
-  return NextResponse.json({ member, emailSkipped: emailResult.skipped ?? false }, { status: 201 });
+  // Member is created regardless; surface delivery problems so the leader can
+  // resend or share the invite link manually instead of failing silently.
+  return NextResponse.json(
+    {
+      member,
+      inviteUrl: inviteUrl(inviteToken),
+      emailSkipped: emailResult.skipped ?? false,
+      emailSent: emailResult.ok && !emailResult.skipped,
+      emailError: emailResult.ok ? undefined : emailResult.error,
+    },
+    { status: 201 },
+  );
 }

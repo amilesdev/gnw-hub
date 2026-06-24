@@ -27,5 +27,11 @@ export async function POST(_req: Request, { params }: Ctx) {
     inviteUrl: inviteUrl(inviteToken),
   });
 
-  return NextResponse.json({ ok: true, emailSkipped: emailResult.skipped ?? false });
+  return NextResponse.json({
+    ok: true,
+    inviteUrl: inviteUrl(inviteToken),
+    emailSkipped: emailResult.skipped ?? false,
+    emailSent: emailResult.ok && !emailResult.skipped,
+    emailError: emailResult.ok ? undefined : emailResult.error,
+  });
 }

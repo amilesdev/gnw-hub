@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { MembersManager, type MemberRow } from '@/components/leader/MembersManager';
+import { inviteUrl } from '@/lib/invites';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,12 +23,14 @@ export default async function MembersPage() {
       status: true,
       isSuperAdmin: true,
       inviteExpiry: true,
+      inviteToken: true,
     },
   });
 
-  const initialMembers: MemberRow[] = rows.map((r) => ({
+  const initialMembers: MemberRow[] = rows.map(({ inviteToken, ...r }) => ({
     ...r,
     inviteExpiry: r.inviteExpiry ? r.inviteExpiry.toISOString() : null,
+    inviteUrl: r.status === 'pending' && inviteToken ? inviteUrl(inviteToken) : null,
   }));
 
   return <MembersManager initialMembers={initialMembers} />;
