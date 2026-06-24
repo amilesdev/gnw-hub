@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Offline · GNW Worship Hub</title>
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 1rem; padding: max(env(safe-area-inset-top), 2rem) 2rem max(env(safe-area-inset-bottom), 2rem);
+        background: #faf7f2; color: #1c1a22; text-align: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) { body { background: #161410; color: #f0ece4; } }
+      img { width: 88px; height: 88px; border-radius: 22px; }
+      h1 { font-family: Georgia, Cambria, serif; font-size: 1.6rem; margin: .25rem 0 0; }
+      p { margin: 0; max-width: 22rem; line-height: 1.5; color: #68635c; }
+      @media (prefers-color-scheme: dark) { p { color: #a8a195; } }
+      button {
+        margin-top: .5rem; border: 0; border-radius: 1rem; padding: .85rem 1.5rem;
+        background: #5e7048; color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="/icons/icon-192.png" alt="GNW Worship Hub" />
+    <h1>You're offline</h1>
+    <p>GNW Hub needs a connection to load this page. Check your signal and try again.</p>
+    <button onclick="location.reload()">Try again</button>
+  </body>
+</html>
