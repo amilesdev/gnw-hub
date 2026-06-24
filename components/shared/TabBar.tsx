@@ -23,10 +23,10 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
   return (
     <nav
       className="no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
-      // Keep labels clear of the home indicator. env(safe-area-inset-bottom) can
-      // report ~0 in iOS standalone, so floor it to a fixed clearance; the bar's
-      // background still fills to the screen bottom via the 100vh shell.
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 2rem)' }}
+      // Lift labels clear of the home indicator (safe-area-inset-bottom) plus a
+      // little breathing room; the bar's background still fills to the screen
+      // bottom via the 100vh shell.
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
     >
       <ul className="flex items-stretch justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon, exact }) => {

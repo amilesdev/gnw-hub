@@ -3,7 +3,6 @@ import { Inter, Fraunces } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
-import { DebugViewport } from '@/components/shared/DebugViewport';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -57,7 +56,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>{children}</Providers>
         <ServiceWorkerRegistrar />
-        <DebugViewport />
       </body>
     </html>
   );
