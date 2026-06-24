@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === GNW design system — ported from Docs/GNW-Apps-Hub.md §10 + §4 === */
+
+:root {
+  --app-bg: 250 247 242; --surface: 255 255 255; --surface-2: 244 240 234;
+  --line: 234 228 219; --ink: 28 26 34; --ink-soft: 104 99 92;
+  --ink-faint: 150 144 134; --accent-soft: 230 234 217;
+}
+.dark {
+  --app-bg: 22 20 16; --surface: 32 29 24; --surface-2: 43 39 33;
+  --line: 58 53 45; --ink: 240 236 228; --ink-soft: 168 161 149;
+  --ink-faint: 119 112 101; --accent-soft: 42 48 30;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: rgb(var(--app-bg)); color: rgb(var(--ink));
+  font-family: theme('fontFamily.sans');
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none; overflow: hidden;
+}
+
+/* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
+.app-shell {
+  position: fixed; top: 0; bottom: 0; left: 50%;
+  transform: translateX(-50%); width: 100%; max-width: 430px;
+  display: flex; flex-direction: column;
+}
+
+/* === Grain (§4) === */
+/* A) Global page grain — fixed overlay across the whole app. */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  opacity: 0.11;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 -0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+.dark body::after { opacity: 0.14; }
+@media print { body::after { display: none; } }
+
+/* B) Local grain on solid color blocks. */
+.grain-block { position: relative; isolation: isolate; }
+.grain-block::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.5; mix-blend-mode: soft-light; border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.2 -0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 190px 190px;
+}
+
+@layer base {
+  h1, h2, h3 { font-family: theme('fontFamily.display'); letter-spacing: -0.005em; }
+}
+
+@layer components {
+  .font-display { font-family: theme('fontFamily.display'); letter-spacing: -0.005em; }
+  .page-title { @apply font-display text-[2.1rem] font-semibold leading-none tracking-[-0.01em]; }
+  .card { @apply rounded-3xl bg-surface border border-line shadow-card; }
+  .row-press { @apply transition-[transform,background-color] duration-150 active:scale-[0.985] active:bg-surface-2; }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5
+           font-semibold text-white shadow-pop transition active:scale-[0.97]
+           disabled:bg-ink-faint disabled:opacity-40 disabled:shadow-none disabled:active:scale-100;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-surface-2 px-4 py-2.5
+           font-semibold text-ink transition active:scale-[0.97];
+  }
+  .field {
+    @apply w-full rounded-2xl border border-line bg-surface px-4 py-3.5 text-ink
+           placeholder:text-ink-faint outline-none transition
+           focus:border-accent focus:ring-4 focus:ring-accent/15;
+  }
+  input[type='date'].field, input[type='time'].field {
+    @apply box-border max-w-full min-h-[3.375rem];
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='time']::-webkit-date-and-time-value { text-align: left; }
+  .label { @apply text-xs font-bold uppercase tracking-[0.08em] text-ink-faint; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold; }
+  .eyebrow { @apply text-xs font-bold uppercase tracking-[0.14em] text-ink-faint; }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+@media print {
+  body { background: #fff; color: #000; }
+  .no-print { display: none !important; }
+  .print-area { display: block !important; }
+}

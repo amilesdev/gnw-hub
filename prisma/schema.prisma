@@ -1,0 +1,168 @@
+// GNW Worship Hub — Prisma schema
+// Use `prisma migrate dev` (not db push) per project conventions.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  member
+  leader
+}
+
+enum MemberSection {
+  Vocalist
+  Band
+}
+
+// A member's part within their section. Soprano/Alto/Tenor are vocal;
+// Keys/Guitar/Bass/Drums are band. (The valid set depends on `section`.)
+enum MemberPart {
+  Soprano
+  Alto
+  Tenor
+  Keys
+  Guitar
+  Bass
+  Drums
+}
+
+enum UserStatus {
+  pending
+  active
+}
+
+enum EventType {
+  service
+  rehearsal
+  prayer
+  holy_talks
+  other
+}
+
+enum RepeatCadence {
+  once
+  weekly
+  biweekly
+  monthly
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String?
+  role         Role        @default(member)
+  section      MemberSection?
+  part         MemberPart?
+  status       UserStatus  @default(pending)
+  // Only one super-admin exists; they alone may grant the leader role.
+  isSuperAdmin Boolean     @default(false)
+  inviteToken  String?     @unique
+  inviteExpiry DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Event {
+  id        String        @id @default(cuid())
+  eventName String
+  type      EventType     @default(service)
+  date      DateTime // calendar day of the occurrence
+  time      String // "HH:mm" local label
+  location  String
+  repeats   RepeatCadence @default(once)
+  notes     String?
+
+  // Series grouping — occurrences generated from one recurring create share a seriesId.
+  seriesId  String?
+
+  // Attire (optional)
+  attirePrimary       String?
+  attirePrimaryHex    String? // exact swatch color (#RRGGBB) for attirePrimary
+  attireSecondary     String?
+  attireSecondaryHex  String?
+  attireComplement    String?
+  attireComplementHex String?
+  attireNotes         String?
+  attirePhotos        String[] @default([])
+
+  // Holy Talks (optional, holy_talks only)
+  topic          String?
+  scriptures     String[] @default([])
+  holyTalksNotes String?
+
+  // The setlist for this event, if any. One setlist can be shared by several
+  // events (e.g. a rehearsal and the service it leads into), but each event has
+  // at most one — keeping "This Week's Setlist" unambiguous.
+  setlistId String?
+  setlist   Setlist? @relation("EventSetlist", fields: [setlistId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([seriesId, date]) // one occurrence per slot; makes window top-up idempotent
+  @@index([date])
+  @@index([seriesId])
+  @@index([setlistId])
+}
+
+// Records a recurring-series occurrence that a leader deleted on purpose, so the
+// rolling-window top-up (ensureRecurringWindow) won't re-create that date.
+model SeriesSkip {
+  id        String   @id @default(cuid())
+  seriesId  String
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([seriesId, date])
+  @@index([seriesId])
+}
+
+model Setlist {
+  id        String   @id @default(cuid())
+  month     String // "YYYY-MM" — grouping key, derived from the earliest linked event's date.
+  // A setlist can be linked to multiple events (see Event.setlist).
+  events    Event[]  @relation("EventSetlist")
+  songs     Song[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([month])
+}
+
+model Song {
+  id            String   @id @default(cuid())
+  setlistId     String
+  setlist       Setlist  @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  position      Int // ordering within the setlist
+  songTitle     String
+  artist        String? // original artist / arranger
+  youtubeLink   String?
+  driveLink     String? // Google Drive vocal parts fallback
+  audioSoprano  String?
+  audioAlto     String?
+  audioTenor    String?
+  audioAllParts String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([setlistId, position])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  expiresAt DateTime // required; max 10 days from createdAt (enforced in UI + API)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
