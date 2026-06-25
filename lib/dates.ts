@@ -14,10 +14,14 @@ export function startOfToday(): Date {
   return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
 }
 
-/** End of the upcoming window (7 days from start of today), in UTC. */
+/**
+ * End of the upcoming window, in UTC: a span of exactly UPCOMING_WINDOW_DAYS
+ * calendar days (today + the next 6). Using a full 7-day span — rather than 8 —
+ * means a weekly recurring event lands in the window only once.
+ */
 export function upcomingWindowEnd(from: Date = startOfToday()): Date {
   const d = new Date(from);
-  d.setUTCDate(d.getUTCDate() + UPCOMING_WINDOW_DAYS);
+  d.setUTCDate(d.getUTCDate() + UPCOMING_WINDOW_DAYS - 1);
   d.setUTCHours(23, 59, 59, 999);
   return d;
 }

@@ -79,32 +79,31 @@ export function SetlistScreen() {
                   </p>
                 )}
               </div>
-              <ol className="space-y-2.5">
+              <div className="card overflow-hidden">
                 {sl.songs.map((s, i) => {
                   const partCount = [s.audioSoprano, s.audioAlto, s.audioTenor, s.audioAllParts].filter(Boolean).length;
                   return (
-                    <li key={s.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSong(s)}
-                        className="card row-press flex w-full animate-rise items-center gap-3 p-4 text-left"
-                      >
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink">
-                          {i + 1}
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSong(s)}
+                      className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink">
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{s.songTitle}</span>
+                        <span className="flex items-center gap-1 text-xs text-ink-faint">
+                          <Music width={12} height={12} />
+                          {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
                         </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">{s.songTitle}</span>
-                          <span className="flex items-center gap-1 text-xs text-ink-faint">
-                            <Music width={12} height={12} />
-                            {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
-                          </span>
-                        </span>
-                        <ChevronRight width={20} height={20} className="text-ink-faint" />
-                      </button>
-                    </li>
+                      </span>
+                      <ChevronRight width={20} height={20} className="text-ink-faint" />
+                    </button>
                   );
                 })}
-              </ol>
+              </div>
             </section>
           ))}
         </div>
