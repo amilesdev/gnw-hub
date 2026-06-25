@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { EventDTO } from '@/lib/serialize';
+import { useSession } from 'next-auth/react';
+import type { EventDTO, PrayerRequestDTO } from '@/lib/serialize';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
 import { SongDetail } from './SongDetail';
 import { EventTypeBadge } from './EventTypeBadge';
 import { hasAttire } from './EventCard';
-import { Calendar, Clock, MapPin, Shirt, Book, Music, ChevronRight, X } from './Icons';
+import { Calendar, Clock, MapPin, Shirt, Book, Music, Pray, Trash, ChevronRight, X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 
@@ -38,11 +39,145 @@ function ColorSwatch({ label, name, hex }: { label: string; name?: string | null
   );
 }
 
+function formatRequestDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Prayer-event-only section. Anyone signed in (member or leader) can add a
+ * request; all are shown to everyone as one ongoing, table-style list. Topped
+ * by the Mark 11:24 promise in the serif display face to set it apart.
+ */
+function PrayerRequests({ eventId }: { eventId: string }) {
+  const { data: session } = useSession();
+  const me = session?.user;
+  const [requests, setRequests] = useState<PrayerRequestDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<{ prayerRequests: PrayerRequestDTO[] }>(`/api/events/${eventId}/prayer-requests`)
+      .then(({ prayerRequests }) => {
+        if (active) setRequests(prayerRequests);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventId]);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { prayerRequest } = await apiFetch<{ prayerRequest: PrayerRequestDTO }>(
+        `/api/events/${eventId}/prayer-requests`,
+        { method: 'POST', body: JSON.stringify({ body }) },
+      );
+      setRequests((prev) => [...prev, prayerRequest]);
+      setDraft('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add your request.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    const prev = requests;
+    setRequests((r) => r.filter((x) => x.id !== id)); // optimistic
+    try {
+      await apiFetch(`/api/events/${eventId}/prayer-requests/${id}`, { method: 'DELETE' });
+    } catch {
+      setRequests(prev); // restore on failure
+    }
+  }
+
+  return (
+    <section className="card grain-block space-y-4 p-4">
+      <p className="eyebrow inline-flex items-center gap-1.5">
+        <Pray width={14} height={14} /> Prayer Requests
+      </p>
+
+      <figure className="rounded-2xl bg-surface-2 px-4 py-4 text-center">
+        <blockquote className="font-display text-[15px] italic leading-snug text-ink-soft">
+          “Therefore, I tell you, whatever you ask in prayer, believe that you have received it, and it
+          will be yours.”
+        </blockquote>
+        <figcaption className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+          Mark 11:24
+        </figcaption>
+      </figure>
+
+      {!loading && requests.length > 0 && (
+        <ul className="divide-y divide-line rounded-2xl border border-line">
+          {requests.map((r) => {
+            const canDelete = me && (me.id === r.authorId || me.role === 'leader');
+            return (
+              <li key={r.id} className="flex items-start gap-3 px-3.5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
+                  <p className="mt-1 text-xs text-ink-faint">
+                    <span className="font-semibold text-ink-soft">{r.authorName}</span>
+                    {' · '}
+                    {formatRequestDate(r.createdAt)}
+                  </p>
+                </div>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => remove(r.id)}
+                    aria-label="Remove prayer request"
+                    className="shrink-0 text-ink-faint transition hover:text-bad"
+                  >
+                    <Trash width={16} height={16} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {!loading && requests.length === 0 && (
+        <p className="py-1 text-center text-sm text-ink-faint">
+          No requests yet — be the first to share one.
+        </p>
+      )}
+
+      <form onSubmit={add} className="space-y-2">
+        <textarea
+          className="field min-h-[44px]"
+          rows={2}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Share a prayer request for the team…"
+          maxLength={2000}
+        />
+        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        <button type="submit" className="btn-primary w-full" disabled={busy || !draft.trim()}>
+          {busy ? 'Sharing…' : 'Add prayer request'}
+        </button>
+      </form>
+    </section>
+  );
+}
+
 export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () => void }) {
   const [setlist, setSetlist] = useState<SetlistDTO | null>(null);
   const [song, setSong] = useState<SongDTO | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const isHolyTalks = event.type === 'holy_talks';
+  const isPrayer = event.type === 'prayer';
 
   // Pull in the setlist tied to this event (if any) so it lives on the card.
   useEffect(() => {
@@ -110,6 +245,8 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
             <p className="whitespace-pre-wrap text-ink-soft">{event.notes}</p>
           </section>
         )}
+
+        {isPrayer && <PrayerRequests eventId={event.id} />}
 
         {isHolyTalks && (event.topic || event.scriptures.length > 0 || event.holyTalksNotes) && (
           <section className="card p-4">

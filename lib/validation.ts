@@ -100,6 +100,10 @@ export const eventSchema = z.object({
   holyTalksNotes: z.string().max(2000).optional().nullable(),
 });
 
+export const prayerRequestSchema = z.object({
+  body: z.string().min(1, 'Prayer request required').max(2000),
+});
+
 const MAX_ANNOUNCE_DAYS = 10;
 
 export const announcementSchema = z

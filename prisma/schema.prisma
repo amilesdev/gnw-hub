@@ -98,6 +98,10 @@ model Event {
   scriptures     String[] @default([])
   holyTalksNotes String?
 
+  // Prayer requests (prayer events only) — members and leaders can both add,
+  // and they're visible to everyone. Removed with the event.
+  prayerRequests PrayerRequest[]
+
   // The setlist for this event, if any. One setlist can be shared by several
   // events (e.g. a rehearsal and the service it leads into), but each event has
   // at most one — keeping "This Week's Setlist" unambiguous.
@@ -123,6 +127,25 @@ model SeriesSkip {
 
   @@unique([seriesId, date])
   @@index([seriesId])
+}
+
+// A prayer request attached to a prayer event. Any active user (member or
+// leader) can add one; all are visible to everyone in an ongoing list.
+model PrayerRequest {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Author identity is denormalized so the request still reads correctly even
+  // if the user is later removed (authorId then dangles, name persists).
+  authorId   String?
+  authorName String
+  body       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, createdAt])
 }
 
 model Setlist {

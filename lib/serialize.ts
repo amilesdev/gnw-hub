@@ -1,4 +1,4 @@
-import type { Event, Announcement } from '@prisma/client';
+import type { Event, Announcement, PrayerRequest } from '@prisma/client';
 
 // Shapes sent to the client (Dates → ISO strings).
 export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt'> & {
@@ -28,5 +28,18 @@ export function serializeAnnouncement(a: Announcement): AnnouncementDTO {
     expiresAt: a.expiresAt.toISOString(),
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
+  };
+}
+
+export type PrayerRequestDTO = Omit<PrayerRequest, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function serializePrayerRequest(p: PrayerRequest): PrayerRequestDTO {
+  return {
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
   };
 }
