@@ -1,4 +1,4 @@
-/* GNW Worship Hub — service worker.
+/* GNW Hub — service worker.
  * Conservative by design: this app is auth-gated with dynamic data, so we never
  * cache API/auth responses. We cache-first only immutable hashed build assets and
  * icons, and serve an offline fallback page when a navigation can't reach the network.
@@ -61,10 +61,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (_) {
-    data = { title: 'GNW Worship Hub', body: event.data ? event.data.text() : '' };
+    data = { title: 'GNW Hub', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'GNW Worship Hub';
+  const title = data.title || 'GNW Hub';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',

@@ -69,7 +69,7 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
     <div className="space-y-5 pt-2">
       <header className="flex items-end justify-between">
         <div>
-          <div className="eyebrow">{canManage ? 'Leader tools' : 'GNW Worship'}</div>
+          <div className="eyebrow">{canManage ? 'Leader tools' : 'GNW'}</div>
           <h1 className="page-title mt-2">Events</h1>
         </div>
         {canManage && (

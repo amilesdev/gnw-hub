@@ -30,7 +30,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthCard title="Welcome back" subtitle="Sign in to your GNW worship account.">
+    <AuthCard title="Welcome back" subtitle="Sign in to your GNW account." logoSize="lg">
       <form onSubmit={onSubmit} className={error ? 'animate-shake space-y-4' : 'space-y-4'}>
         <TextField
           label="Email"

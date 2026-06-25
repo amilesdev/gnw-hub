@@ -4,9 +4,9 @@ import type { MetadataRoute } from 'next';
 // to the Home Screen with a real icon, standalone window, and brand colors.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'GNW Worship Hub',
+    name: 'GNW Hub',
     short_name: 'GNW Hub',
-    description: 'Communication hub for the GNW praise & worship team.',
+    description: 'Communication hub for the GNW team.',
     id: '/',
     start_url: '/',
     scope: '/',

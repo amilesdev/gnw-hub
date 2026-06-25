@@ -35,7 +35,7 @@ export function MemberHome({
     <div className="animate-enter-home space-y-6 pt-2">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <div className="eyebrow">GNW Worship Hub</div>
+          <div className="eyebrow">GNW Hub</div>
           <h1 className="page-title mt-2">Shalom, {firstName}</h1>
         </div>
         <AnnouncementBell initial={announcements} />

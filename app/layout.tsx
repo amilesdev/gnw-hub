@@ -20,9 +20,9 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
-  title: 'GNW Worship Hub',
-  description: 'Communication hub for the GNW praise & worship team.',
-  applicationName: 'GNW Worship Hub',
+  title: 'GNW Hub',
+  description: 'Communication hub for the GNW team.',
+  applicationName: 'GNW Hub',
   manifest: '/manifest.webmanifest',
   // `default` status bar (tinted to match via theme-color) keeps the layout inside
   // the safe area so the bottom nav sits flush — matches the proven GNW Roll Call setup.
