@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { SetlistDTO } from '@/lib/setlist-serialize';
+import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { SetlistForm } from './SetlistForm';
+import { SongDetail } from '@/components/shared/SongDetail';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Plus, Pencil, Trash, Music } from '@/components/shared/Icons';
+import { Plus, Pencil, Trash, Music, ChevronRight } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, formatEventDate } from '@/lib/dates';
 
@@ -28,6 +29,7 @@ export function SetlistManager() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState>(null);
   const [confirmDelete, setConfirmDelete] = useState<SetlistDTO | null>(null);
+  const [song, setSong] = useState<SongDTO | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -78,27 +80,50 @@ export function SetlistManager() {
             <section key={month} className="space-y-3">
               <h2 className="eyebrow">{formatMonthLabel(month)}</h2>
               {list.map((s) => {
-                const audioCount = s.songs.reduce((n, song) => n + AUDIO_PARTS.filter((p) => song[p]).length, 0);
                 return (
-                  <div key={s.id} className="card animate-rise p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-display text-xl font-semibold">
-                          {s.events.length
-                            ? Array.from(new Set(s.events.map((e) => e.eventName))).join(' · ')
-                            : 'Unlinked setlist'}
-                        </h3>
-                        {s.events.length > 0 && (
-                          <p className="mt-0.5 text-sm text-ink-soft">
-                            {s.events.map((e) => formatEventDate(new Date(e.date))).join(' • ')}
-                          </p>
-                        )}
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
-                          <Music width={14} height={14} /> {s.songs.length} song{s.songs.length === 1 ? '' : 's'} · {audioCount} audio file{audioCount === 1 ? '' : 's'}
+                  <section key={s.id} className="animate-rise space-y-3">
+                    <div>
+                      <h3 className="font-display text-xl font-semibold">
+                        {s.events.length
+                          ? Array.from(new Set(s.events.map((e) => e.eventName))).join(' · ')
+                          : 'Unlinked setlist'}
+                      </h3>
+                      {s.events.length > 0 && (
+                        <p className="text-sm text-ink-faint">
+                          {s.events.map((e) => formatEventDate(new Date(e.date))).join(' • ')}
                         </p>
-                      </div>
+                      )}
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+
+                    {s.songs.length > 0 && (
+                      <div className="card overflow-hidden">
+                        {s.songs.map((song, i) => {
+                          const partCount = AUDIO_PARTS.filter((p) => song[p]).length;
+                          return (
+                            <button
+                              key={song.id}
+                              type="button"
+                              onClick={() => setSong(song)}
+                              className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
+                            >
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink">
+                                {i + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-semibold">{song.songTitle}</span>
+                                <span className="flex items-center gap-1 text-xs text-ink-faint">
+                                  <Music width={12} height={12} />
+                                  {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
+                                </span>
+                              </span>
+                              <ChevronRight width={20} height={20} className="text-ink-faint" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
                       <button className="btn-ghost !py-2 text-sm" onClick={() => setForm({ mode: 'edit', setlist: s })} type="button">
                         <Pencil width={15} height={15} /> Edit
                       </button>
@@ -106,7 +131,7 @@ export function SetlistManager() {
                         <Trash width={15} height={15} /> Delete
                       </button>
                     </div>
-                  </div>
+                  </section>
                 );
               })}
             </section>
@@ -118,6 +143,8 @@ export function SetlistManager() {
       {form?.mode === 'edit' && (
         <SetlistForm mode="edit" initial={form.setlist} onClose={() => setForm(null)} onSaved={() => { setForm(null); load(); }} />
       )}
+
+      {song && <SongDetail song={song} onClose={() => setSong(null)} />}
 
       <ConfirmDialog
         open={!!confirmDelete}

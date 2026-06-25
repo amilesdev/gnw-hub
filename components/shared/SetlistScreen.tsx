@@ -6,7 +6,7 @@ import { SongDetail } from './SongDetail';
 import { EmptyState } from './EmptyState';
 import { Music, ChevronRight } from './Icons';
 import { apiFetch } from '@/lib/api-client';
-import { formatMonthLabel, monthKey, formatEventDate, formatTimeLabel } from '@/lib/dates';
+import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
 
 export function SetlistScreen() {
   const [setlists, setSetlists] = useState<SetlistDTO[]>([]);
@@ -73,9 +73,7 @@ export function SetlistScreen() {
                 </h2>
                 {sl.events.length > 0 && (
                   <p className="text-sm text-ink-faint">
-                    {sl.events
-                      .map((e) => `${formatEventDate(new Date(e.date))} · ${formatTimeLabel(e.time)}`)
-                      .join('   •   ')}
+                    {sl.events.map((e) => formatEventDate(new Date(e.date))).join(' • ')}
                   </p>
                 )}
               </div>
