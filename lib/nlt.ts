@@ -30,6 +30,17 @@ export const COPYRIGHT =
 
 const API_BASE = 'https://api.nlt.to/api/passages';
 
+/**
+ * Lookup timeout. When NLT is healthy a passage comes back in well under a
+ * second, so this only ever bites when their service is degraded (the origin
+ * answers but the passage lookup hangs for 10–15s+). A ~6s ceiling still
+ * succeeds instantly on a healthy day, but fails fast on a bad one instead of
+ * freezing the sheet. We deliberately do NOT retry: the failure mode is a
+ * uniformly-slow origin, where a second attempt only doubles the wait for the
+ * same result.
+ */
+const LOOKUP_TIMEOUT_MS = 6000;
+
 /** Carries an HTTP status so the route can pass through a sensible code. */
 export class ScriptureError extends Error {
   constructor(message: string, readonly status: number) {
@@ -54,11 +65,16 @@ export async function fetchPassage(rawRef: string): Promise<ScripturePassage | n
 
   let res: Response;
   try {
-    res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    res = await fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
   } catch {
-    throw new ScriptureError('Could not reach the scripture service.', 502);
+    // Network error or timeout — almost always NLT being slow/down rather than
+    // anything on our end. Surface a friendly "temporarily unavailable".
+    throw new ScriptureError(
+      'The scripture service is temporarily unavailable. Please try again shortly.',
+      503,
+    );
   }
-  if (!res.ok) throw new ScriptureError('The scripture service returned an error.', 502);
+  if (!res.ok) throw new ScriptureError('The scripture service returned an error. Please try again shortly.', 502);
 
   const html = (await res.text()).trim();
   if (!html) return null; // empty body = reference not recognized
