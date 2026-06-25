@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
+
+/** Drag the sheet down this many px to dismiss it. */
+const CLOSE_THRESHOLD = 90;
 
 type Passage = {
   reference: string;
@@ -27,14 +30,56 @@ type State =
 export function ScriptureSheet({ reference, onClose }: { reference: string; onClose: () => void }) {
   const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<State>({ status: 'loading' });
+  // Vertical drag offset (>= 0) and whether a CSS transition smooths it.
+  const [dragY, setDragY] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, startY: 0, dy: 0 });
 
   useEffect(() => setMounted(true), []);
 
+  // Slide the sheet down off-screen, then unmount once it has played.
+  const close = useCallback(() => {
+    setAnimating(true);
+    setDragY(typeof window === 'undefined' ? 800 : window.innerHeight);
+    window.setTimeout(onClose, 240);
+  }, [onClose]);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    drag.current = { active: true, startY: e.touches[0].clientY, dy: 0 };
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = drag.current;
+    if (!d.active) return;
+    const dy = e.touches[0].clientY - d.startY;
+    // Only pull down, and only when the body is scrolled to the top — otherwise
+    // the gesture belongs to the scrollable passage.
+    if (dy <= 0 || (scrollRef.current?.scrollTop ?? 0) > 0) {
+      d.dy = 0;
+      if (dragY !== 0) setDragY(0);
+      return;
+    }
+    setAnimating(false);
+    d.dy = dy;
+    setDragY(dy);
+  };
+
+  const onTouchEnd = () => {
+    const d = drag.current;
+    if (!d.active) return;
+    d.active = false;
+    setAnimating(true);
+    if (d.dy > CLOSE_THRESHOLD) close();
+    else setDragY(0);
+  };
 
   useEffect(() => {
     let active = true;
@@ -63,9 +108,19 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
       aria-modal="true"
       aria-label={`Scripture: ${reference}`}
     >
-      <div className="absolute inset-0 animate-fade-in bg-ink/50" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-ink/50" onClick={close} aria-hidden />
 
-      <div className="relative z-10 mt-auto w-full max-w-[430px] animate-sheet-up px-3 pb-3">
+      <div
+        className="relative z-10 mt-auto w-full max-w-[430px] animate-sheet-up px-3 pb-3"
+        style={{
+          transform: `translateY(${dragY}px)`,
+          transition: animating ? 'transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
         <div
           className="grain-block relative flex max-h-[72vh] flex-col overflow-hidden rounded-3xl shadow-sheet ring-1 ring-black/10"
           style={{
@@ -81,7 +136,7 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             aria-label="Close"
             className="absolute right-3 top-3 z-20 grid h-8 w-8 place-items-center rounded-full transition active:scale-95"
             style={{ background: 'rgba(58,47,29,0.08)', color: '#5b4a2e' }}
@@ -104,7 +159,7 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
           </header>
 
           {/* body */}
-          <div className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-6 pb-5 pt-4">
+          <div ref={scrollRef} className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-6 pb-5 pt-4">
             {state.status === 'loading' && (
               <p className="py-8 text-center font-display text-lg italic" style={{ color: '#8a7448' }}>
                 Turning the page…
