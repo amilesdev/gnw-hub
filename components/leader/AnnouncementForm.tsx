@@ -61,7 +61,6 @@ export function AnnouncementForm({
             max={maxExpiry()}
             onChange={(e) => setExpiresAt(e.target.value)}
           />
-          <p className="mt-1 text-xs text-ink-faint">It auto-hides after this time — no cleanup needed.</p>
         </div>
         {!initial && (
           <label className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2 px-4 py-3">

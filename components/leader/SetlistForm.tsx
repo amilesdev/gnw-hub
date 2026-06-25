@@ -162,7 +162,7 @@ export function SetlistForm({
             )}
           </div>
           <p className="mb-2.5 mt-0.5 text-xs text-ink-faint">
-            Tap to link one or more events — swipe to see more. Filed under the earliest one’s month.
+            Tap to link one or more events — swipe to see more.
           </p>
           {eventOptions.length === 0 ? (
             <p className="text-sm text-ink-faint">No upcoming events yet. Add an event first.</p>
@@ -226,9 +226,6 @@ export function SetlistForm({
                 </div>
               </SortableContext>
             </DndContext>
-          )}
-          {mode === 'create' && (
-            <p className="mt-2 text-xs text-ink-faint">Save the setlist first, then re-open it to upload audio per song.</p>
           )}
         </div>
 

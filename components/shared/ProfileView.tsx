@@ -80,7 +80,7 @@ export function ProfileView({ name, email, section, part }: Props) {
             </span>
             <div>
               <p className="font-semibold">Password</p>
-              <p className="text-sm text-ink-faint">The only thing you can change here.</p>
+              <p className="text-sm text-ink-faint">Change your password.<br />This can&apos;t be undone.</p>
             </div>
           </div>
           {!open && (
