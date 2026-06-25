@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { TextField } from './Field';
 import { LogOut, Lock, Check } from './Icons';
+import { NotificationSettings } from './NotificationSettings';
 import { apiFetch } from '@/lib/api-client';
 
 type Props = {
@@ -133,6 +134,8 @@ export function ProfileView({ name, email, section, part }: Props) {
           </form>
         )}
       </section>
+
+      <NotificationSettings />
 
       <button
         type="button"

@@ -68,6 +68,24 @@ model User {
   inviteExpiry DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+
+  pushSubscriptions PushSubscription[]
+}
+
+// A single device's Web Push subscription. One user can have several (phone,
+// laptop, etc.), so subscriptions are per-device, keyed by their unique
+// browser endpoint. Removed when the user is deleted or the endpoint expires.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique // the browser push endpoint — dedupe key
+  p256dh    String // client public key (from subscription.keys)
+  auth      String // client auth secret (from subscription.keys)
+  userAgent String? // so a user can recognize which device this is
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Event {

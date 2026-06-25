@@ -15,6 +15,20 @@ function partMatchesSection(section: 'Vocalist' | 'Band', part: string): boolean
     : (BAND_PARTS as readonly string[]).includes(part);
 }
 
+/** A Web Push subscription as serialized from the browser's PushSubscription. */
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string().min(1),
+    auth: z.string().min(1),
+  }),
+  userAgent: z.string().max(500).optional(),
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url(),
+});
+
 export const inviteSchema = z
   .object({
     name: z.string().min(1, 'Name is required').max(120),
