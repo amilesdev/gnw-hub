@@ -87,14 +87,38 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 }
 
-// DELETE /api/events/[id] — delete a single occurrence (leader only).
-export async function DELETE(_req: Request, { params }: Ctx) {
+// DELETE /api/events/[id] — delete an event (leader only).
+// ?scope=series deletes the whole recurring series; default removes only this
+// occurrence.
+export async function DELETE(req: Request, { params }: Ctx) {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
   const existing = await prisma.event.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+
+  const scope = new URL(req.url).searchParams.get('scope');
+
+  // Delete the entire series: remove every occurrence sharing the seriesId.
+  // No anchor remains, so the rolling-window top-up has nothing to regenerate
+  // from — the SeriesSkip rows become moot, so clear them too.
+  if (scope === 'series' && existing.seriesId) {
+    const siblings = await prisma.event.findMany({ where: { seriesId: existing.seriesId } });
+
+    const paths = siblings
+      .flatMap((e) => e.attirePhotos)
+      .map(pathFromPublicUrl)
+      .filter((p): p is string => !!p);
+    if (paths.length) await deleteObjects(paths);
+
+    await prisma.$transaction([
+      prisma.event.deleteMany({ where: { seriesId: existing.seriesId } }),
+      prisma.seriesSkip.deleteMany({ where: { seriesId: existing.seriesId } }),
+    ]);
+
+    return NextResponse.json({ ok: true, deleted: siblings.length });
+  }
 
   // Best-effort cleanup of this occurrence's attire photos.
   const paths = existing.attirePhotos.map(pathFromPublicUrl).filter((p): p is string => !!p);

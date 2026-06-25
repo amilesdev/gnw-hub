@@ -6,6 +6,9 @@ import { Calendar, Clock, MapPin, Shirt, Repeat, Music } from './Icons';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 
 export function hasAttire(e: EventDTO): boolean {
+  // Attire only applies to Service and Other events; ignore any leftover data
+  // on other types (e.g. an event whose type was changed after the fact).
+  if (e.type !== 'service' && e.type !== 'other') return false;
   return Boolean(
     e.attirePrimary || e.attireSecondary || e.attireComplement || e.attireNotes || e.attirePhotos.length,
   );

@@ -7,6 +7,7 @@ import { EventDetail } from './EventDetail';
 import { EventsCalendar } from './EventsCalendar';
 import { EmptyState } from './EmptyState';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Modal } from './Modal';
 import { Plus, Pencil, Trash } from './Icons';
 import { EventForm } from '@/components/leader/EventForm';
 import { apiFetch } from '@/lib/api-client';
@@ -44,11 +45,12 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
     load();
   }, []);
 
-  async function remove() {
+  async function remove(scope: 'occurrence' | 'series' = 'occurrence') {
     if (!confirming) return;
     setBusy(true);
     try {
-      await apiFetch(`/api/events/${confirming.id}`, { method: 'DELETE' });
+      const qs = scope === 'series' ? '?scope=series' : '';
+      await apiFetch(`/api/events/${confirming.id}${qs}`, { method: 'DELETE' });
       setConfirming(null);
       refreshAll();
     } finally {
@@ -140,18 +142,44 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
         <EventForm mode="edit" initial={form.event} onClose={() => setForm(null)} onSaved={() => { setForm(null); refreshAll(); }} />
       )}
 
-      <ConfirmDialog
-        open={!!confirming}
-        title="Delete event?"
-        message={
-          confirming?.repeats !== 'once'
-            ? 'This deletes only this occurrence. Other dates in the series stay put.'
-            : 'This permanently deletes the event.'
-        }
-        busy={busy}
-        onConfirm={remove}
-        onClose={() => setConfirming(null)}
-      />
+      {/* Recurring events get a scope choice; one-offs use the simple confirm. */}
+      {confirming && confirming.seriesId ? (
+        <Modal open title="Delete recurring event?" onClose={() => setConfirming(null)}>
+          <p className="text-ink-soft">
+            This is part of a repeating series. Delete just this date, or the whole series?
+          </p>
+          <div className="mt-5 space-y-3">
+            <button
+              type="button"
+              onClick={() => remove('occurrence')}
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-bad px-5 py-3.5 font-semibold text-white shadow-pop transition active:scale-[0.97] disabled:opacity-40"
+            >
+              {busy ? 'Working…' : 'This event only'}
+            </button>
+            <button
+              type="button"
+              onClick={() => remove('series')}
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-bad/15 px-5 py-3.5 font-semibold text-bad transition active:scale-[0.97] disabled:opacity-40 dark:text-[#D98A84]"
+            >
+              {busy ? 'Working…' : 'Entire series'}
+            </button>
+            <button type="button" className="btn-ghost w-full" onClick={() => setConfirming(null)} disabled={busy}>
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      ) : (
+        <ConfirmDialog
+          open={!!confirming}
+          title="Delete event?"
+          message="This permanently deletes the event."
+          busy={busy}
+          onConfirm={() => remove('occurrence')}
+          onClose={() => setConfirming(null)}
+        />
+      )}
     </div>
   );
 }

@@ -128,6 +128,8 @@ export function EventForm({
   const folderKey = useRef(initial?.id ?? `draft-${randomToken(8)}`);
 
   const isHolyTalks = type === 'holy_talks';
+  // Attire only applies to Service and Other events.
+  const showAttire = type === 'service' || type === 'other';
 
   function addScripture() {
     const s = scriptureDraft.trim();
@@ -178,14 +180,14 @@ export function EventForm({
       location,
       repeats,
       notes: notes || null,
-      attirePrimary: attirePrimary || null,
-      attirePrimaryHex: attirePrimaryHex || null,
-      attireSecondary: attireSecondary || null,
-      attireSecondaryHex: attireSecondaryHex || null,
-      attireComplement: attireComplement || null,
-      attireComplementHex: attireComplementHex || null,
-      attireNotes: attireNotes || null,
-      attirePhotos,
+      attirePrimary: showAttire ? attirePrimary || null : null,
+      attirePrimaryHex: showAttire ? attirePrimaryHex || null : null,
+      attireSecondary: showAttire ? attireSecondary || null : null,
+      attireSecondaryHex: showAttire ? attireSecondaryHex || null : null,
+      attireComplement: showAttire ? attireComplement || null : null,
+      attireComplementHex: showAttire ? attireComplementHex || null : null,
+      attireNotes: showAttire ? attireNotes || null : null,
+      attirePhotos: showAttire ? attirePhotos : [],
       topic: isHolyTalks ? topic || null : null,
       scriptures: isHolyTalks ? scriptures : [],
       holyTalksNotes: isHolyTalks ? holyTalksNotes || null : null,
@@ -327,7 +329,8 @@ export function EventForm({
           </section>
         )}
 
-        {/* Attire — collapsible */}
+        {/* Attire — collapsible; only for Service and Other events */}
+        {showAttire && (
         <div className="card overflow-hidden">
           <button
             type="button"
@@ -403,6 +406,7 @@ export function EventForm({
             </div>
           )}
         </div>
+        )}
 
         {error && <p className="text-sm font-semibold text-bad">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
