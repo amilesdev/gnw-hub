@@ -25,12 +25,17 @@ body {
 }
 
 /* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
-/* Anchored top+bottom to the visible viewport (no `viewport-fit=cover`), so the
-   layout stays inside the safe area and the bottom nav sits flush — same proven
-   approach as GNW Roll Call. */
+/* With viewport-fit=cover, `bottom: 0` only reaches `innerHeight` (short of the
+   physical screen), so height:100vh is used to span the full screen and let the
+   nav reach the real bottom; the nav's own padding clears the home indicator. */
 .app-shell {
-  position: fixed; top: 0; bottom: 0; left: 50%;
+  position: fixed; top: 0; left: 50%;
   transform: translateX(-50%); width: 100%; max-width: 430px;
+  height: 100vh;
+  /* Paint the bg on the full-height shell (not just body) so cream fills behind
+     the status bar — body only spans innerHeight under black-translucent, leaving
+     the top unpainted. The grain (body::after, fixed) then reads over cream. */
+  background: rgb(var(--app-bg));
   display: flex; flex-direction: column;
 }
 
