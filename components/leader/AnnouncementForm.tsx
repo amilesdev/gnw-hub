@@ -30,7 +30,7 @@ export function AnnouncementForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!title.trim() || !body.trim()) return setError('Title and body are required.');
+    if (!title.trim()) return setError('Title is required.');
     setBusy(true);
     const payload = { title, body, expiresAt: new Date(expiresAt).toISOString() };
     try {
@@ -47,10 +47,10 @@ export function AnnouncementForm({
   }
 
   return (
-    <Modal open onClose={onClose} title={initial ? 'Edit announcement' : 'New announcement'}>
+    <Modal open onClose={onClose} title={initial ? 'Edit announcement' : 'New Update'}>
       <form onSubmit={submit} className="space-y-4">
         <TextField label="Title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Rehearsal moved" />
-        <TextArea label="Body" required value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share the details…" />
+        <TextArea label="Body (optional)" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share the details…" />
         <div className="min-w-0">
           <TextField
             label={`Expires (max ${ANNOUNCEMENT_MAX_DAYS} days out)`}

@@ -123,7 +123,7 @@ const MAX_ANNOUNCE_DAYS = 10;
 export const announcementSchema = z
   .object({
     title: z.string().min(1, 'Title required').max(200),
-    body: z.string().min(1, 'Body required').max(4000),
+    body: z.string().max(4000).optional().default(''),
     expiresAt: z.string().min(1, 'Expiry required'),
   })
   .refine(
