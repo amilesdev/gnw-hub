@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import type { EventDTO, PrayerRequestDTO } from '@/lib/serialize';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
+import { ScriptureSheet } from './ScriptureSheet';
 import { SongDetail } from './SongDetail';
 import { EventTypeBadge } from './EventTypeBadge';
 import { hasAttire } from './EventCard';
@@ -171,6 +172,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const [setlist, setSetlist] = useState<SetlistDTO | null>(null);
   const [song, setSong] = useState<SongDTO | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [openScripture, setOpenScripture] = useState<string | null>(null);
   const isHolyTalks = event.type === 'holy_talks';
   const isPrayer = event.type === 'prayer';
 
@@ -259,8 +261,15 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                 <p className="label mb-1.5">Scriptures</p>
                 <ul className="flex flex-wrap gap-1.5">
                   {event.scriptures.map((s, i) => (
-                    <li key={i} className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
-                      {s}
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenScripture(s)}
+                        className="chip row-press bg-accent/10 text-accent-ink dark:text-accent-on"
+                        aria-label={`Read ${s}`}
+                      >
+                        {s}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -331,6 +340,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
         </div>
       )}
       {song && <SongDetail song={song} onClose={() => setSong(null)} />}
+      {openScripture && <ScriptureSheet reference={openScripture} onClose={() => setOpenScripture(null)} />}
     </Overlay>
   );
 }
