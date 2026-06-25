@@ -39,10 +39,6 @@ function ColorSwatch({ label, name, hex }: { label: string; name?: string | null
   );
 }
 
-function formatRequestDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
 /**
  * Prayer-event-only section. Anyone signed in (member or leader) can add a
  * request; all are shown to everyone as one ongoing, table-style list. Topped
@@ -108,30 +104,29 @@ function PrayerRequests({ eventId }: { eventId: string }) {
         <Pray width={14} height={14} /> Prayer Requests
       </p>
 
-      <figure className="rounded-2xl bg-surface-2 px-4 py-4 text-center">
-        <blockquote className="font-display text-[15px] italic leading-snug text-ink-soft">
+      <figure className="grain-block overflow-hidden rounded-2xl bg-accent px-4 py-4 text-center text-white shadow-pop ring-1 ring-inset ring-white/10">
+        <blockquote className="font-display text-[15px] italic leading-snug text-white">
           “Therefore, I tell you, whatever you ask in prayer, believe that you have received it, and it
           will be yours.”
         </blockquote>
-        <figcaption className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+        <figcaption className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-white/70">
           Mark 11:24
         </figcaption>
       </figure>
 
       {!loading && requests.length > 0 && (
-        <ul className="divide-y divide-line rounded-2xl border border-line">
+        <ul className="rounded-2xl bg-surface-2 px-4 py-1.5 ring-1 ring-inset ring-line">
           {requests.map((r) => {
             const canDelete = me && (me.id === r.authorId || me.role === 'leader');
             return (
-              <li key={r.id} className="flex items-start gap-3 px-3.5 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
-                  <p className="mt-1 text-xs text-ink-faint">
-                    <span className="font-semibold text-ink-soft">{r.authorName}</span>
-                    {' · '}
-                    {formatRequestDate(r.createdAt)}
-                  </p>
-                </div>
+              <li
+                key={r.id}
+                className="flex items-end gap-3 border-b border-line py-3 leading-relaxed last:border-b-0"
+              >
+                <p className="min-w-0 flex-1 whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
+                <span className="shrink-0 font-display text-sm italic text-ink-faint">
+                  {r.authorName}
+                </span>
                 {canDelete && (
                   <button
                     type="button"
