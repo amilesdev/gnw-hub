@@ -29,6 +29,13 @@ export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url(),
 });
 
+/** A leader-composed push notification sent manually to the whole team. */
+export const pushSendSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(120),
+  body: z.string().min(1, 'Message is required').max(500),
+  url: z.string().max(500).optional(),
+});
+
 export const inviteSchema = z
   .object({
     name: z.string().min(1, 'Name is required').max(120),
