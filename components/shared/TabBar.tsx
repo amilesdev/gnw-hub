@@ -23,10 +23,9 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
   return (
     <nav
       className="no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
-      // Home-indicator inset + 1.75rem breathing room. With viewport-fit=cover the
-      // bar's background fills down to the physical bottom (incl. the home-indicator
-      // strip); this padding lifts the labels to the same spot as the flush version.
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.75rem)' }}
+      // Floor the bottom padding to 1.75rem (env is 0 without viewport-fit=cover);
+      // the bar then sits flush at the safe-area bottom — same as GNW Roll Call.
+      style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
     >
       <ul className="flex items-stretch justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon, exact }) => {
