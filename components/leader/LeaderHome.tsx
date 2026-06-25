@@ -13,7 +13,6 @@ import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
-import { PushComposer } from '@/components/leader/PushComposer';
 import { Calendar, Bell, Music, ChevronRight, Plus, Sparkle, Upload, Clock, Users } from '@/components/shared/Icons';
 
 export function LeaderHome({
@@ -34,7 +33,6 @@ export function LeaderHome({
   const [song, setSong] = useState<SongDTO | null>(null);
   const [addEvent, setAddEvent] = useState(false);
   const [addAnnouncement, setAddAnnouncement] = useState(false);
-  const [notify, setNotify] = useState(false);
   const firstName = name.split(' ')[0] || name;
 
   const refresh = () => router.refresh();
@@ -63,14 +61,6 @@ export function LeaderHome({
           <Bell width={18} height={18} className="text-accent" /> Post Update
         </button>
       </div>
-
-      <button
-        type="button"
-        onClick={() => setNotify(true)}
-        className="row-press inline-flex w-full items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-3.5 font-semibold text-ink shadow-card"
-      >
-        <Bell width={18} height={18} className="text-accent" /> Send notification
-      </button>
 
       {/* Alerts */}
       {hasAlerts && (
@@ -175,7 +165,6 @@ export function LeaderHome({
       {song && <SongDetail song={song} onClose={() => setSong(null)} />}
       {addEvent && <EventForm mode="create" onClose={() => setAddEvent(false)} onSaved={() => { setAddEvent(false); refresh(); }} />}
       {addAnnouncement && <AnnouncementForm onClose={() => setAddAnnouncement(false)} onSaved={() => { setAddAnnouncement(false); refresh(); }} />}
-      {notify && <PushComposer onClose={() => setNotify(false)} />}
     </div>
   );
 }

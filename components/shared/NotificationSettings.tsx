@@ -1,7 +1,8 @@
 'use client';
 
 import { usePushNotifications } from '@/lib/use-push-notifications';
-import { Bell, Check } from './Icons';
+import { Bell } from './Icons';
+import { Switch } from './Switch';
 
 /**
  * Profile card to enable/disable Web Push on this device. Handles the platform
@@ -24,23 +25,13 @@ export function NotificationSettings() {
           </div>
         </div>
 
-        {status === 'subscribed' && (
-          <button className="btn-ghost" onClick={unsubscribe} disabled={busy} type="button">
-            {busy ? '…' : 'Turn off'}
-          </button>
-        )}
-        {status === 'unsubscribed' && (
-          <button className="btn-primary" onClick={subscribe} disabled={busy} type="button">
-            {busy ? 'Enabling…' : 'Turn on'}
-          </button>
-        )}
+        <Switch
+          checked={status === 'subscribed'}
+          onChange={(on) => (on ? subscribe() : unsubscribe())}
+          disabled={busy || !(status === 'subscribed' || status === 'unsubscribed')}
+          aria-label="Push notifications"
+        />
       </div>
-
-      {status === 'subscribed' && (
-        <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-good">
-          <Check width={16} height={16} /> You'll get alerts on this device.
-        </p>
-      )}
 
       {status === 'needs-install' && (
         <p className="mt-3 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-ink-soft">
@@ -74,7 +65,7 @@ function subtitle(status: ReturnType<typeof usePushNotifications>['status']): st
     case 'subscribed':
       return 'On for this device.';
     case 'unsubscribed':
-      return 'Get alerts for announcements and setlists.';
+      return 'Get alerts for team updates.';
     case 'needs-install':
       return 'Add to Home Screen to enable.';
     case 'denied':

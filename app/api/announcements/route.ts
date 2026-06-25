@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { announcementSchema } from '@/lib/validation';
 import { serializeAnnouncement } from '@/lib/serialize';
+import { sendPush } from '@/lib/push';
 
 // GET /api/announcements — active (unexpired) announcements, newest first.
 // Auto-expiry: anything past expiresAt is excluded from the query.
@@ -35,5 +36,13 @@ export async function POST(req: Request) {
       expiresAt: new Date(parsed.data.expiresAt),
     },
   });
+
+  // Optionally fan out as a push notification to the whole team. `notify` is a
+  // transport flag (not part of the announcement record); zod strips it, so we
+  // read it off the raw body. Best-effort — a push failure shouldn't fail the post.
+  if (body?.notify) {
+    await sendPush({ title: parsed.data.title, body: parsed.data.body, url: '/' }).catch(() => {});
+  }
+
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) }, { status: 201 });
 }
