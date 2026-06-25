@@ -19,6 +19,12 @@ const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
  * Behaves like a pushed page: slides in from the right and can be dragged back
  * out with a left-edge swipe on touch devices (the iOS "back" gesture). The
  * edge-zone start keeps it from hijacking horizontal scrollers inside the page.
+ *
+ * The swipe listeners are attached natively as { passive: false } so that, once
+ * a horizontal edge-drag is committed, we can preventDefault() the browser's own
+ * left-edge back gesture. (React attaches touchmove passively, which can't.)
+ * Without this, the native gesture fired alongside ours and popped the route
+ * underneath — closing the overlay *and* navigating all the way back to Home.
  */
 export function Overlay({
   title,
@@ -36,7 +42,7 @@ export function Overlay({
   const [offset, setOffset] = useState(0);
   // When true a CSS transition smooths the transform; off while finger-tracking.
   const [animating, setAnimating] = useState(true);
-  const drag = useRef({ active: false, startX: 0, startY: 0, dx: 0, horizontal: null as boolean | null });
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const vw = () => (typeof window === 'undefined' ? 430 : window.innerWidth);
 
@@ -60,40 +66,63 @@ export function Overlay({
     return () => window.removeEventListener('keydown', onKey);
   }, [close]);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if (t.clientX > EDGE_ZONE) return; // only the left edge starts a back-swipe
-    drag.current = { active: true, startX: t.clientX, startY: t.clientY, dx: 0, horizontal: null };
-    setAnimating(false);
-  };
+  // Edge swipe-back, wired with native non-passive listeners (see the note above).
+  useEffect(() => {
+    if (!mounted) return;
+    const el = panelRef.current;
+    if (!el) return;
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    const d = drag.current;
-    if (!d.active) return;
-    const t = e.touches[0];
-    const dx = t.clientX - d.startX;
-    const dy = t.clientY - d.startY;
-    if (d.horizontal === null) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      d.horizontal = Math.abs(dx) > Math.abs(dy);
-    }
-    if (!d.horizontal) {
-      d.active = false; // vertical intent — let the content scroll
-      return;
-    }
-    d.dx = Math.max(0, dx); // only rightward (toward "back")
-    setOffset(d.dx);
-  };
+    const drag = { active: false, startX: 0, startY: 0, dx: 0, horizontal: null as boolean | null };
 
-  const onTouchEnd = () => {
-    const d = drag.current;
-    if (!d.active) return;
-    d.active = false;
-    setAnimating(true);
-    if (d.dx > CLOSE_THRESHOLD) close();
-    else setOffset(0);
-  };
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (t.clientX > EDGE_ZONE) return; // only the left edge starts a back-swipe
+      drag.active = true;
+      drag.startX = t.clientX;
+      drag.startY = t.clientY;
+      drag.dx = 0;
+      drag.horizontal = null;
+      setAnimating(false);
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!drag.active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - drag.startX;
+      const dy = t.clientY - drag.startY;
+      if (drag.horizontal === null) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        drag.horizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      if (!drag.horizontal) {
+        drag.active = false; // vertical intent — let the content scroll
+        return;
+      }
+      e.preventDefault(); // cancel the browser's native back-swipe + h-scroll
+      drag.dx = Math.max(0, dx); // only rightward (toward "back")
+      setOffset(drag.dx);
+    };
+
+    const onEnd = () => {
+      if (!drag.active) return;
+      drag.active = false;
+      setAnimating(true);
+      if (drag.dx > CLOSE_THRESHOLD) close();
+      else setOffset(0);
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [mounted, close]);
 
   if (!mounted) return null;
 
@@ -104,15 +133,12 @@ export function Overlay({
     <div className="fixed inset-0 z-50 flex justify-center">
       <div className="absolute inset-0 bg-ink/40" style={{ opacity: progress }} aria-hidden />
       <div
+        ref={panelRef}
         className="relative flex h-full w-full max-w-[430px] flex-col bg-app shadow-card-lg"
         style={{
           transform: `translateX(${offset}px)`,
           transition: animating ? `transform 0.24s ${EASE}` : 'none',
         }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
       >
         <header
           className="shrink-0 px-5 pb-3"
