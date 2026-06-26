@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 
 type Ctx = { params: Promise<{ id: string }> };
+
+const lyricChartSchema = z.object({
+  title: z.string(),
+  lines: z.array(
+    z.object({
+      type: z.enum(['section', 'lyric', 'blank']),
+      text: z.string(),
+      bold: z.boolean(),
+    }),
+  ),
+  parsedAt: z.string(),
+});
 
 const patchSchema = z.object({
   songTitle: z.string().min(1).max(200).optional(),
@@ -15,6 +28,9 @@ const patchSchema = z.object({
   audioAlto: z.string().nullable().optional(),
   audioTenor: z.string().nullable().optional(),
   audioAllParts: z.string().nullable().optional(),
+  // Lyric chart import: set both together, or null both to clear.
+  lyricChart: lyricChartSchema.nullable().optional(),
+  lyricDocUrl: z.string().nullable().optional(),
 });
 
 // PATCH /api/songs/[id] — set/replace/clear a song's fields & audio slots. Leader only.
@@ -54,6 +70,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
       ...(d.audioAlto !== undefined ? { audioAlto: d.audioAlto || null } : {}),
       ...(d.audioTenor !== undefined ? { audioTenor: d.audioTenor || null } : {}),
       ...(d.audioAllParts !== undefined ? { audioAllParts: d.audioAllParts || null } : {}),
+      // Stamp the import time whenever a chart is set; clear it when removed.
+      ...(d.lyricChart !== undefined
+        ? { lyricChart: d.lyricChart ?? Prisma.DbNull, lyricChartUpdatedAt: d.lyricChart ? new Date() : null }
+        : {}),
+      ...(d.lyricDocUrl !== undefined ? { lyricDocUrl: d.lyricDocUrl || null } : {}),
     },
   });
 

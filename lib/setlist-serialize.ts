@@ -1,5 +1,19 @@
 import type { Setlist, Song, Event } from '@prisma/client';
 
+// A single line of a parsed lyric chart. `section` lines are verse/chorus/etc.
+// labels; `lyric` lines are sung text; `blank` lines are spacers.
+export type LyricLine = {
+  type: 'section' | 'lyric' | 'blank';
+  text: string;
+  bold: boolean;
+};
+
+export type LyricChart = {
+  title: string;
+  lines: LyricLine[];
+  parsedAt: string; // ISO timestamp
+};
+
 export type SongDTO = {
   id: string;
   position: number;
@@ -11,6 +25,9 @@ export type SongDTO = {
   audioAlto: string | null;
   audioTenor: string | null;
   audioAllParts: string | null;
+  lyricChart: LyricChart | null;
+  lyricDocUrl: string | null;
+  lyricChartUpdatedAt: string | null;
 };
 
 export type LinkedEventDTO = { id: string; eventName: string; date: string; time: string };
@@ -44,6 +61,9 @@ export function serializeSetlist(s: FullSetlist): SetlistDTO {
         audioAlto: song.audioAlto,
         audioTenor: song.audioTenor,
         audioAllParts: song.audioAllParts,
+        lyricChart: (song.lyricChart as LyricChart | null) ?? null,
+        lyricDocUrl: song.lyricDocUrl,
+        lyricChartUpdatedAt: song.lyricChartUpdatedAt?.toISOString() ?? null,
       })),
     events: [...s.events]
       .sort((a, b) => a.date.getTime() - b.date.getTime())
