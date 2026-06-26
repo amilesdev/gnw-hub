@@ -1,4 +1,4 @@
-import { Home, Calendar, Music, UserIcon, Settings } from './Icons';
+import { Home, Calendar, Music, UserIcon } from './Icons';
 import type { TabItem } from './TabBar';
 
 // Member bottom nav (4 items).
@@ -14,5 +14,5 @@ export const leaderTabs: TabItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home, exact: true },
   { href: '/dashboard/events', label: 'Events', icon: Calendar },
   { href: '/dashboard/setlist', label: 'Setlist', icon: Music },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/settings', label: 'Settings', icon: UserIcon },
 ];
