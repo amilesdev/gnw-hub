@@ -9,14 +9,24 @@ import { Check } from './Icons';
  * voting) and the leader review sheet.
  */
 export function PollResults({ results }: { results: PollResultsDTO }) {
-  const { choices, totalVoters, myChoiceIds } = results;
+  const { choices, totalVoters, myChoiceIds, voters } = results;
   const denom = totalVoters || 1; // avoid divide-by-zero; bars read as 0%
+
+  // Leader-only: names of who picked each choice, keyed by choiceId. Undefined
+  // for members, so the per-choice voter list simply doesn't render for them.
+  const namesByChoice = voters
+    ? voters.reduce<Record<string, string[]>>((acc, v) => {
+        for (const cid of v.choiceIds) (acc[cid] ??= []).push(v.name);
+        return acc;
+      }, {})
+    : null;
 
   return (
     <div className="space-y-2.5">
       {choices.map((c) => {
         const pct = Math.round((c.votes / denom) * 100);
         const mine = myChoiceIds.includes(c.id);
+        const names = namesByChoice?.[c.id];
         return (
           <div
             key={c.id}
@@ -38,6 +48,11 @@ export function PollResults({ results }: { results: PollResultsDTO }) {
                 {pct}% · {c.votes}
               </span>
             </div>
+            {namesByChoice && (
+              <p className="relative mt-1.5 text-xs text-ink-faint">
+                {names && names.length > 0 ? names.join(', ') : 'No votes yet'}
+              </p>
+            )}
           </div>
         );
       })}

@@ -47,6 +47,10 @@ export type PollDTO = {
 
 export type PollResultChoiceDTO = PollChoiceDTO & { votes: number };
 
+// One voter and the choice(s) they picked. Leader-only — populated for the
+// review surface so leaders can see exactly who voted what.
+export type PollVoterDTO = { userId: string; name: string; choiceIds: string[] };
+
 // Shape shown once results are visible (after you vote, or to a leader).
 export type PollResultsDTO = {
   id: string;
@@ -59,6 +63,7 @@ export type PollResultsDTO = {
   totalVotes: number; // sum across choices (multiple-answer can exceed voters)
   totalVoters: number; // distinct people who voted
   myChoiceIds: string[]; // the current viewer's selections ([] if not voted)
+  voters?: PollVoterDTO[]; // per-voter breakdown; leader-only, omitted otherwise
 };
 
 type PollWithChoices = Poll & { choices: PollChoice[] };
@@ -79,7 +84,7 @@ export function serializePoll(p: PollWithChoices): PollDTO {
 
 export function serializePollResults(
   p: PollWithCounts,
-  opts: { totalVoters: number; myChoiceIds: string[]; now?: Date },
+  opts: { totalVoters: number; myChoiceIds: string[]; voters?: PollVoterDTO[]; now?: Date },
 ): PollResultsDTO {
   const choices = [...p.choices].sort(byPosition).map((c) => ({
     id: c.id,
@@ -98,6 +103,7 @@ export function serializePollResults(
     totalVotes: choices.reduce((sum, c) => sum + c.votes, 0),
     totalVoters: opts.totalVoters,
     myChoiceIds: opts.myChoiceIds,
+    ...(opts.voters ? { voters: opts.voters } : {}),
   };
 }
 
