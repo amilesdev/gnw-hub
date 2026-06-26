@@ -12,7 +12,9 @@ export async function GET() {
   if ('error' in guard) return guard.error;
 
   const polls = await prisma.poll.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true } });
-  const results = await Promise.all(polls.map((p) => getPollResults(p.id, guard.user.id)));
+  const results = await Promise.all(
+    polls.map((p) => getPollResults(p.id, guard.user.id, { includeVoters: true })),
+  );
   return NextResponse.json({ polls: results.filter((r) => r !== null) });
 }
 

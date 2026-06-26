@@ -7,7 +7,7 @@ import { pollResultsToCsv, pollCsvFilename } from '@/lib/poll-csv';
 import { PollForm } from './PollForm';
 import { PollResults } from '@/components/shared/PollResults';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { ChevronDown, ChevronRight, Trash, Upload } from '@/components/shared/Icons';
+import { ChevronDown, ChevronRight, Trash, Upload, Check } from '@/components/shared/Icons';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -30,6 +30,7 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
   const [loaded, setLoaded] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<PollResultsDTO | null>(null);
+  const [ending, setEnding] = useState<PollResultsDTO | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
@@ -45,12 +46,34 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
     refresh();
   }, []);
 
+  // Keep tallies fresh while a leader is watching a live poll, so they can
+  // monitor answers as they come in. Stops once the poll is ended or collapsed.
+  const openPoll = polls.find((p) => p.id === openId);
+  const watching = !!openPoll && !openPoll.ended;
+  useEffect(() => {
+    if (!watching) return;
+    const t = setInterval(refresh, 5000);
+    return () => clearInterval(t);
+  }, [watching]);
+
   async function remove() {
     if (!confirming) return;
     setBusy(true);
     try {
       await apiFetch(`/api/polls/${confirming.id}`, { method: 'DELETE' });
       setConfirming(null);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function endEarly() {
+    if (!ending) return;
+    setBusy(true);
+    try {
+      await apiFetch(`/api/polls/${ending.id}`, { method: 'PATCH' });
+      setEnding(null);
       await refresh();
     } finally {
       setBusy(false);
@@ -92,6 +115,15 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
               {open && (
                 <div className="space-y-3 border-t border-line px-4 py-4">
                   <PollResults results={p} />
+                  {!p.ended && (
+                    <button
+                      type="button"
+                      onClick={() => setEnding(p)}
+                      className="btn-ghost w-full !py-2 text-sm"
+                    >
+                      <Check width={16} height={16} /> End poll now
+                    </button>
+                  )}
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -120,6 +152,17 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
       {creating && (
         <PollForm onClose={() => onCreatingChange(false)} onSaved={() => { onCreatingChange(false); refresh(); }} />
       )}
+
+      <ConfirmDialog
+        open={!!ending}
+        title="End poll now?"
+        message="Voting closes immediately for everyone. You can still review and download the results."
+        confirmLabel="End poll"
+        destructive={false}
+        busy={busy}
+        onConfirm={endEarly}
+        onClose={() => setEnding(null)}
+      />
 
       <ConfirmDialog
         open={!!confirming}
