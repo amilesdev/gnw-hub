@@ -114,9 +114,6 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
             </span>
             <Switch checked={multiple} onChange={setMultiple} aria-label="Allow multiple answers" />
           </label>
-          <p className="px-1 text-xs text-ink-faint">
-            Results are public — each person sees the tally right after they vote.
-          </p>
         </div>
 
         {error && <p className="text-sm font-semibold text-bad">{error}</p>}
