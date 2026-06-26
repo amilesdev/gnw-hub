@@ -213,3 +213,53 @@ model Announcement {
 
   @@index([expiresAt])
 }
+
+// A team poll created by a leader. Pops up as a blocking prompt for the whole
+// team (members + leaders) until each user votes. Results become visible to a
+// user the moment they vote (public results); leaders can download the
+// distribution once the poll has ended (past `endsAt`).
+model Poll {
+  id          String   @id @default(cuid())
+  question    String
+  // Whether a voter may pick more than one choice.
+  multiple    Boolean  @default(false)
+  // When the poll closes. After this it no longer blocks/accepts votes; leaders
+  // can review and download results.
+  endsAt      DateTime
+  choices     PollChoice[]
+  votes       PollVote[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([endsAt])
+}
+
+model PollChoice {
+  id       String     @id @default(cuid())
+  pollId   String
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  position Int // ordering within the poll
+  text     String
+  votes    PollVote[]
+
+  @@index([pollId, position])
+}
+
+// One row per (user, choice) selection. A single-answer poll yields one row per
+// voter; a multiple-answer poll can yield several. The presence of any row for
+// (pollId, userId) means that user has voted.
+model PollVote {
+  id        String     @id @default(cuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  choiceId  String
+  choice    PollChoice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+  // Voter identity kept for one-vote-per-person enforcement and turnout counts.
+  // Not a FK to User so a removed user's tallies still stand.
+  userId    String
+  createdAt DateTime   @default(now())
+
+  @@unique([pollId, userId, choiceId]) // can't pick the same choice twice
+  @@index([pollId, userId])
+  @@index([choiceId])
+}

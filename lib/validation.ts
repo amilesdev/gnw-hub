@@ -118,6 +118,26 @@ export const prayerRequestSchema = z.object({
   body: z.string().min(1, 'Prayer request required').max(2000),
 });
 
+export const pollSchema = z
+  .object({
+    question: z.string().trim().min(1, 'Question is required').max(300),
+    // Blank trailing fields from the form are dropped; need at least two real choices.
+    choices: z
+      .array(z.string())
+      .transform((arr) => arr.map((s) => s.trim()).filter(Boolean))
+      .pipe(z.array(z.string().max(200)).min(2, 'Add at least two choices').max(10, 'Up to 10 choices')),
+    multiple: z.boolean().default(false),
+    endsAt: z.string().min(1, 'End time is required'),
+  })
+  .refine((d) => new Date(d.endsAt).getTime() > Date.now(), {
+    message: 'End time must be in the future',
+    path: ['endsAt'],
+  });
+
+export const pollVoteSchema = z.object({
+  choiceIds: z.array(z.string().min(1)).min(1, 'Pick an option'),
+});
+
 const MAX_ANNOUNCE_DAYS = 10;
 
 export const announcementSchema = z

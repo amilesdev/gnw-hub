@@ -13,7 +13,8 @@ import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
-import { Calendar, Bell, Music, ChevronRight, Plus, Sparkle, Upload, Clock, Users } from '@/components/shared/Icons';
+import { PollsManager } from '@/components/leader/PollsManager';
+import { Calendar, Bell, Music, ChevronRight, Poll, Sparkle, Upload, Clock, Users } from '@/components/shared/Icons';
 
 export function LeaderHome({
   name,
@@ -33,6 +34,7 @@ export function LeaderHome({
   const [song, setSong] = useState<SongDTO | null>(null);
   const [addEvent, setAddEvent] = useState(false);
   const [addAnnouncement, setAddAnnouncement] = useState(false);
+  const [addPoll, setAddPoll] = useState(false);
   const firstName = name.split(' ')[0] || name;
 
   const refresh = () => router.refresh();
@@ -59,6 +61,20 @@ export function LeaderHome({
           className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
         >
           <Bell width={18} height={18} className="text-accent" /> Post Update
+        </button>
+        <button
+          type="button"
+          onClick={() => setAddPoll(true)}
+          className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
+        >
+          <Poll width={18} height={18} className="text-accent" /> Add Poll
+        </button>
+        <button
+          type="button"
+          disabled
+          className="inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink-faint shadow-card opacity-60"
+        >
+          Coming Soon
         </button>
       </div>
 
@@ -160,6 +176,9 @@ export function LeaderHome({
           <AnnouncementCards announcements={announcements} />
         )}
       </section>
+
+      {/* Polls */}
+      <PollsManager creating={addPoll} onCreatingChange={setAddPoll} />
 
       {detail && <EventDetail event={detail} onClose={() => setDetail(null)} />}
       {song && <SongDetail song={song} onClose={() => setSong(null)} />}

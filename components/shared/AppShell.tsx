@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { TabBar } from './TabBar';
+import { PollGate } from './PollGate';
 
 /**
  * Fixed, centered phone shell (max 430px) with a scrollable content area and a
@@ -24,6 +25,7 @@ export function AppShell({
         {children}
       </main>
       <TabBar variant={variant} />
+      <PollGate />
     </div>
   );
 }
