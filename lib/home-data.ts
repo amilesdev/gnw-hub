@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeEvent, serializeAnnouncement, type EventDTO, type AnnouncementDTO } from '@/lib/serialize';
-import type { SongDTO } from '@/lib/setlist-serialize';
+import type { LyricChart, SongDTO } from '@/lib/setlist-serialize';
 import { startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import type { Song } from '@prisma/client';
 
@@ -16,6 +16,9 @@ function toSongDTO(s: Song): SongDTO {
     audioAlto: s.audioAlto,
     audioTenor: s.audioTenor,
     audioAllParts: s.audioAllParts,
+    lyricChart: (s.lyricChart as LyricChart | null) ?? null,
+    lyricDocUrl: s.lyricDocUrl,
+    lyricChartUpdatedAt: s.lyricChartUpdatedAt?.toISOString() ?? null,
   };
 }
 

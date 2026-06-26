@@ -5,7 +5,8 @@ import type { SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS, PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
 import { AudioPlayer } from './AudioPlayer';
-import { Play, Music } from './Icons';
+import { LyricChartPreview } from './LyricChartPreview';
+import { Play, Music, FileText } from './Icons';
 import { cn } from '@/lib/utils';
 
 /** Member song view: four equally-presented part buttons → in-app player. */
@@ -70,6 +71,19 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
           <div className="card flex items-center gap-3 p-4 text-ink-faint">
             <Music width={20} height={20} />
             <span className="text-sm">Pick a part above to start listening.</span>
+          </div>
+        )}
+
+        {song.lyricChart && (
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <FileText width={16} height={16} className="text-ink-soft" />
+              <p className="label !mb-0">Lyrics</p>
+            </div>
+            <div className="card p-4">
+              <LyricChartPreview chart={song.lyricChart} bare />
+            </div>
+            <p className="mt-2 text-center text-[11px] text-ink-faint">Imported from Google Docs</p>
           </div>
         )}
       </div>

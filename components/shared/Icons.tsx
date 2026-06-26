@@ -217,3 +217,11 @@ export const Pray = (p: P) => (
     <path d="M9 21h6" />
   </Base>
 );
+
+export const FileText = (p: P) => (
+  <Base {...p}>
+    <path d="M6 3.5h7l5 5V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5" />
+    <path d="M13 3.5V9h5" />
+    <path d="M9 13h6M9 16.5h6" />
+  </Base>
+);

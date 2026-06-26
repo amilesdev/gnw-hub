@@ -191,6 +191,12 @@ model Song {
   audioAlto     String?
   audioTenor    String?
   audioAllParts String?
+  // Lyric chart imported from a Google Doc. `lyricChart` holds the parsed
+  // structured chart (see lib/parseGoogleDoc.ts); `lyricDocUrl` remembers the
+  // source doc for re-imports; `lyricChartUpdatedAt` tracks the last import.
+  lyricChart          Json?
+  lyricDocUrl         String?
+  lyricChartUpdatedAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

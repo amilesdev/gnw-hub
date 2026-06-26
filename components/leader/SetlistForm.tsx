@@ -18,6 +18,7 @@ import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
 import { Plus, Trash, Grip, Check } from '@/components/shared/Icons';
 import { SongAudioSlots } from './SongAudioSlots';
+import { LyricChartImport } from './LyricChartImport';
 import { apiFetch } from '@/lib/api-client';
 import { cn, randomToken } from '@/lib/utils';
 import { formatEventDate, monthKey } from '@/lib/dates';
@@ -30,6 +31,7 @@ type Row = {
   youtubeLink: string;
   driveLink: string;
   audio?: Pick<SongDTO, 'audioSoprano' | 'audioAlto' | 'audioTenor' | 'audioAllParts'>;
+  lyric?: Pick<SongDTO, 'lyricChart' | 'lyricDocUrl' | 'lyricChartUpdatedAt'>;
 };
 
 function toRows(setlist?: SetlistDTO): Row[] {
@@ -42,6 +44,7 @@ function toRows(setlist?: SetlistDTO): Row[] {
     youtubeLink: s.youtubeLink ?? '',
     driveLink: s.driveLink ?? '',
     audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
+    lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
   }));
 }
 
@@ -256,7 +259,7 @@ function SortableSong({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.key });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
-  const songForAudio: SongDTO | null = canEditAudio && row.id
+  const songForEdit: SongDTO | null = canEditAudio && row.id
     ? {
         id: row.id,
         position: index,
@@ -268,6 +271,9 @@ function SortableSong({
         audioAlto: row.audio?.audioAlto ?? null,
         audioTenor: row.audio?.audioTenor ?? null,
         audioAllParts: row.audio?.audioAllParts ?? null,
+        lyricChart: row.lyric?.lyricChart ?? null,
+        lyricDocUrl: row.lyric?.lyricDocUrl ?? null,
+        lyricChartUpdatedAt: row.lyric?.lyricChartUpdatedAt ?? null,
       }
     : null;
 
@@ -293,9 +299,10 @@ function SortableSong({
         <input className="field !py-2.5 text-sm" value={row.youtubeLink} onChange={(e) => onUpdate({ youtubeLink: e.target.value })} placeholder="YouTube link" />
         <input className="field !py-2.5 text-sm" value={row.driveLink} onChange={(e) => onUpdate({ driveLink: e.target.value })} placeholder="Drive link (optional)" />
       </div>
-      {songForAudio && (
-        <div className="pl-9">
-          <SongAudioSlots song={songForAudio} month={month} onChanged={(s) => onUpdate({ audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts } })} />
+      {songForEdit && (
+        <div className="space-y-3 pl-9">
+          <SongAudioSlots song={songForEdit} month={month} onChanged={(s) => onUpdate({ audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts } })} />
+          <LyricChartImport song={songForEdit} onChanged={(s) => onUpdate({ lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt } })} />
         </div>
       )}
     </div>
