@@ -225,3 +225,10 @@ export const FileText = (p: P) => (
     <path d="M9 13h6M9 16.5h6" />
   </Base>
 );
+
+export const Poll = (p: P) => (
+  <Base {...p}>
+    <path d="M4 20.5h16" />
+    <path d="M7 20.5v-7M12 20.5V5.5M17 20.5v-10" />
+  </Base>
+);

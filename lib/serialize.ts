@@ -1,4 +1,4 @@
-import type { Event, Announcement, PrayerRequest } from '@prisma/client';
+import type { Event, Announcement, PrayerRequest, Poll, PollChoice } from '@prisma/client';
 
 // Shapes sent to the client (Dates → ISO strings).
 export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt'> & {
@@ -28,6 +28,76 @@ export function serializeAnnouncement(a: Announcement): AnnouncementDTO {
     expiresAt: a.expiresAt.toISOString(),
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
+  };
+}
+
+// --- Polls -----------------------------------------------------------------
+
+export type PollChoiceDTO = { id: string; position: number; text: string };
+
+// Shape shown while voting (no tallies — results are hidden until you vote).
+export type PollDTO = {
+  id: string;
+  question: string;
+  multiple: boolean;
+  endsAt: string;
+  createdAt: string;
+  choices: PollChoiceDTO[];
+};
+
+export type PollResultChoiceDTO = PollChoiceDTO & { votes: number };
+
+// Shape shown once results are visible (after you vote, or to a leader).
+export type PollResultsDTO = {
+  id: string;
+  question: string;
+  multiple: boolean;
+  endsAt: string;
+  createdAt: string;
+  ended: boolean;
+  choices: PollResultChoiceDTO[];
+  totalVotes: number; // sum across choices (multiple-answer can exceed voters)
+  totalVoters: number; // distinct people who voted
+  myChoiceIds: string[]; // the current viewer's selections ([] if not voted)
+};
+
+type PollWithChoices = Poll & { choices: PollChoice[] };
+type PollWithCounts = Poll & { choices: (PollChoice & { _count: { votes: number } })[] };
+
+const byPosition = (a: PollChoice, b: PollChoice) => a.position - b.position;
+
+export function serializePoll(p: PollWithChoices): PollDTO {
+  return {
+    id: p.id,
+    question: p.question,
+    multiple: p.multiple,
+    endsAt: p.endsAt.toISOString(),
+    createdAt: p.createdAt.toISOString(),
+    choices: [...p.choices].sort(byPosition).map((c) => ({ id: c.id, position: c.position, text: c.text })),
+  };
+}
+
+export function serializePollResults(
+  p: PollWithCounts,
+  opts: { totalVoters: number; myChoiceIds: string[]; now?: Date },
+): PollResultsDTO {
+  const choices = [...p.choices].sort(byPosition).map((c) => ({
+    id: c.id,
+    position: c.position,
+    text: c.text,
+    votes: c._count.votes,
+  }));
+  return {
+    id: p.id,
+    question: p.question,
+    multiple: p.multiple,
+    endsAt: p.endsAt.toISOString(),
+    createdAt: p.createdAt.toISOString(),
+    ended: (opts.now ?? new Date()).getTime() >= p.endsAt.getTime(),
+    choices,
+    totalVotes: choices.reduce((sum, c) => sum + c.votes, 0),
+    totalVoters: opts.totalVoters,
+    myChoiceIds: opts.myChoiceIds,
   };
 }
 
