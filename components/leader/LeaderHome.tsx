@@ -105,7 +105,7 @@ export function LeaderHome({
             )}
             {alerts.pendingInvites > 0 && (
               <AlertRow
-                href="/dashboard/members"
+                href="/dashboard/settings"
                 icon={<Users width={18} height={18} />}
                 tone="info"
                 title={`${alerts.pendingInvites} pending invite${alerts.pendingInvites > 1 ? 's' : ''}`}

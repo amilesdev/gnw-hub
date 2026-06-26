@@ -232,3 +232,10 @@ export const Poll = (p: P) => (
     <path d="M7 20.5v-7M12 20.5V5.5M17 20.5v-10" />
   </Base>
 );
+
+export const Settings = (p: P) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 2.5v2.3M12 19.2v2.3M21.5 12h-2.3M4.8 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" />
+  </Base>
+);
