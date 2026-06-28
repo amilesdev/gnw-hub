@@ -92,6 +92,242 @@ body::after {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* === GNW Play === */
+/* Floating emoji reaction: drifts up the screen and fades. */
+@keyframes play-float-up {
+  0% { transform: translateY(0) scale(0.8); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-60vh) scale(1.4); opacity: 0; }
+}
+.play-reaction { animation: play-float-up 2.4s ease-out forwards; }
+
+/* Countdown number pop. */
+@keyframes play-count-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  40% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.play-count { animation: play-count-pop 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Podium platform rise with a spring overshoot. */
+@keyframes play-podium-rise {
+  0% { transform: translateY(120%); }
+  70% { transform: translateY(-6%); }
+  100% { transform: translateY(0); }
+}
+.play-podium-rise { animation: play-podium-rise 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Avatar drop + squash/stretch landing. */
+@keyframes play-avatar-drop {
+  0% { transform: translateY(-220%) scaleY(1); opacity: 0; }
+  55% { opacity: 1; }
+  70% { transform: translateY(0) scaleY(0.7) scaleX(1.25); }
+  85% { transform: translateY(0) scaleY(1.12) scaleX(0.92); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.play-avatar-drop { animation: play-avatar-drop 0.85s ease-out both; }
+
+/* 1st-place idle wiggle/bob (Mario-Party trophy energy). */
+@keyframes play-champ-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-10px) rotate(4deg); }
+}
+.play-champ-bob { animation: play-champ-bob 1.6s ease-in-out infinite; }
+
+/* Confetti fall. */
+@keyframes play-confetti {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(85vh) rotate(720deg); opacity: 0.9; }
+}
+.play-confetti { animation: play-confetti linear forwards; }
+
+/* === GNW Play — gamified theme === */
+/* Fun palette layered on top of the brand scheme (same olive accent, more pop). */
+:root {
+  --play-purple: 124 92 255;
+  --play-blue: 56 178 255;
+  --play-pink: 255 92 138;
+  --play-orange: 255 159 67;
+  --play-green: 46 196 110;
+  --play-yellow: 245 197 66;
+}
+
+/* While a Play screen is mounted, kill the global page grain (game mode is clean,
+   flat, colorful — no paper texture). Toggled by usePlayActive(). */
+html.play-active body::after { display: none; }
+
+/* Playful, slowly drifting multi-color glow backdrop for Play screens. Sits
+   behind content (z-0); screens render content at z-10. */
+.play-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 18% 12%, rgb(var(--play-purple) / 0.20), transparent 60%),
+    radial-gradient(55% 45% at 88% 16%, rgb(var(--play-blue) / 0.18), transparent 60%),
+    radial-gradient(60% 50% at 82% 88%, rgb(var(--play-pink) / 0.16), transparent 60%),
+    radial-gradient(60% 55% at 10% 92%, rgb(var(--play-green) / 0.16), transparent 60%);
+  background-size: 200% 200%;
+  animation: play-bg-drift 18s ease-in-out infinite alternate;
+}
+.dark .play-bg {
+  background:
+    radial-gradient(60% 50% at 18% 12%, rgb(var(--play-purple) / 0.30), transparent 60%),
+    radial-gradient(55% 45% at 88% 16%, rgb(var(--play-blue) / 0.26), transparent 60%),
+    radial-gradient(60% 50% at 82% 88%, rgb(var(--play-pink) / 0.24), transparent 60%),
+    radial-gradient(60% 55% at 10% 92%, rgb(var(--play-green) / 0.24), transparent 60%);
+  background-size: 200% 200%;
+  animation: play-bg-drift 18s ease-in-out infinite alternate;
+}
+@keyframes play-bg-drift {
+  from { background-position: 0% 0%; }
+  to { background-position: 100% 100%; }
+}
+
+/* Artwork backdrop for the Play home. Sits behind the animated .play-bg glow
+   (which drifts subtly on top) and behind content (z-10). */
+.play-home-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url('/play/play-bg.png');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Background-only grain for Play screens. The global page grain is killed on
+   play-active (below); instead the texture rides on the topmost backdrop layer
+   (.play-bg, z-0) so it grains the background but never the cards/buttons,
+   which sit on the content layer (z-10) above it. Scoped to the full-screen
+   backdrop (direct child of .app-shell) so it skips PlayModal's accent rail. */
+.app-shell > .play-bg::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  opacity: 0.11;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 -0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+.dark .app-shell > .play-bg::after { opacity: 0.14; }
+
+/* Enter gate: the white "angelic" light that appears on hold-complete. Not a flat
+   fill — a radiant white core blooms from the button center, soft light-rays sweep
+   outward, and a gentle white wash finally takes the whole screen, like an angel
+   appearing before it hands off to the (gamified) game home. */
+@keyframes play-light-bloom {
+  0%   { transform: translate(-50%, -50%) scale(0.18); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(16); opacity: 1; }
+}
+.play-light-bloom {
+  background: radial-gradient(circle, #fff 0%, #fff 40%, rgb(255 255 255 / 0.9) 56%, rgb(255 255 255 / 0) 74%);
+  animation: play-light-bloom 0.9s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+@keyframes play-light-rays {
+  0%   { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 0; }
+  28%  { opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(3.6) rotate(24deg); opacity: 0; }
+}
+.play-light-rays {
+  background: repeating-conic-gradient(from 0deg, rgb(255 255 255 / 0.95) 0deg 5deg, rgb(255 255 255 / 0) 5deg 15deg);
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 12%, transparent 68%);
+  filter: blur(1px);
+  animation: play-light-rays 0.9s ease-out both;
+}
+
+@keyframes play-light-wash {
+  0%   { opacity: 0; }
+  50%  { opacity: 0; }
+  100% { opacity: 1; }
+}
+.play-light-wash {
+  background: radial-gradient(circle at 50% 50%, #fff 0%, #fff 60%, #f6f7fb 100%);
+  animation: play-light-wash 0.9s ease-in forwards;
+}
+
+/* Enter gate: resting halo — a soft sage glow that slowly swells out and fades
+   (a glow, not a thin ring). The gate stays native to the Hub. */
+@keyframes play-glow-out {
+  0% { transform: scale(0.7); opacity: 0.55; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.play-glow { animation: play-glow-out 3.6s ease-out infinite; filter: blur(11px); }
+
+/* Gamified core breathing (bright green) — guest join, etc. */
+@keyframes play-core-breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 18px 50px -12px rgb(var(--play-green) / 0.7); }
+  50% { transform: scale(1.045); box-shadow: 0 24px 70px -10px rgb(var(--play-green) / 0.9); }
+}
+.play-core-breathe { animation: play-core-breathe 2.8s ease-in-out infinite; }
+
+/* Member "Join Game" urgency — an expanding green ring radiates out and fades,
+   over a steady resting drop shadow. Only applied while a game is in the lobby. */
+@keyframes play-join-pulse {
+  0%   { box-shadow: 0 16px 44px -14px rgb(var(--play-green) / 0.55), 0 0 0 0 rgb(var(--play-green) / 0.55); }
+  70%  { box-shadow: 0 16px 44px -14px rgb(var(--play-green) / 0.55), 0 0 0 18px rgb(var(--play-green) / 0); }
+  100% { box-shadow: 0 16px 44px -14px rgb(var(--play-green) / 0.55), 0 0 0 0 rgb(var(--play-green) / 0); }
+}
+.play-join-pulse { animation: play-join-pulse 1.9s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .play-join-pulse { animation: none; }
+}
+
+/* Enter gate: gentle idle breathing of the (sage) core circle. */
+@keyframes play-core-breathe-sage {
+  0%, 100% { transform: scale(1); box-shadow: 0 16px 44px -14px rgb(94 112 72 / 0.6); }
+  50% { transform: scale(1.04); box-shadow: 0 22px 60px -12px rgb(94 112 72 / 0.8); }
+}
+.play-core-breathe-sage { animation: play-core-breathe-sage 3s ease-in-out infinite; }
+
+/* Reveal the game home after the green flood. */
+@keyframes play-home-in {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: scale(1); }
+}
+.play-home-in { animation: play-home-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Bouncy pressable for game tiles. */
+.play-press { transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.play-press:active { transform: scale(0.95); }
+
+/* Gamified backdrop applied directly to a screen container (content paints on
+   top automatically — no z-index juggling needed). */
+.play-surface {
+  background-color: rgb(var(--app-bg));
+  background-image:
+    radial-gradient(55% 45% at 18% 10%, rgb(var(--play-purple) / 0.16), transparent 60%),
+    radial-gradient(50% 42% at 88% 14%, rgb(var(--play-blue) / 0.15), transparent 60%),
+    radial-gradient(55% 48% at 84% 90%, rgb(var(--play-pink) / 0.13), transparent 60%),
+    radial-gradient(58% 50% at 8% 92%, rgb(var(--play-green) / 0.13), transparent 60%);
+  background-size: 200% 200%;
+  animation: play-bg-drift 22s ease-in-out infinite alternate;
+}
+.dark .play-surface {
+  background-image:
+    radial-gradient(55% 45% at 18% 10%, rgb(var(--play-purple) / 0.26), transparent 60%),
+    radial-gradient(50% 42% at 88% 14%, rgb(var(--play-blue) / 0.22), transparent 60%),
+    radial-gradient(55% 48% at 84% 90%, rgb(var(--play-pink) / 0.20), transparent 60%),
+    radial-gradient(58% 50% at 8% 92%, rgb(var(--play-green) / 0.20), transparent 60%);
+}
+
+/* Once the player has crossed into the game world (html.play-active), the brand
+   sage accent clashes with the post-transition neon-green theme. Remap the sage
+   accent + success utilities to play-green across the live Play screens. The
+   Enter gate is intentionally NOT play-active, so it keeps its native sage. */
+html.play-active .btn-primary:not(:disabled) {
+  background-color: rgb(var(--play-green));
+  box-shadow: 0 10px 28px -10px rgb(var(--play-green) / 0.55);
+}
+html.play-active .bg-accent { background-color: rgb(var(--play-green)) !important; }
+html.play-active .bg-accent-soft { background-color: rgb(var(--play-green) / 0.16) !important; }
+html.play-active .border-accent { border-color: rgb(var(--play-green)) !important; }
+html.play-active .ring-accent { --tw-ring-color: rgb(var(--play-green)) !important; }
+html.play-active .ring-good { --tw-ring-color: rgb(var(--play-green)) !important; }
+html.play-active .text-accent,
+html.play-active .text-accent-ink,
+html.play-active .text-accent-on,
+html.play-active .text-good { color: rgb(var(--play-green)) !important; }
+html.play-active .field:focus {
+  border-color: rgb(var(--play-green));
+  box-shadow: 0 0 0 4px rgb(var(--play-green) / 0.18);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
