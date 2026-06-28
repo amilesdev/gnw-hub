@@ -11,20 +11,28 @@ const EDGE_ZONE = 32;
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 /**
+ * Shared stack of mounted overlays. Only the top-most one reacts to a back-swipe
+ * (or Escape) so a single gesture can never pop more than one page — overlays
+ * stack (an event → a song, etc.) and we must close exactly one at a time.
+ */
+let overlayStack: number[] = [];
+let nextOverlayId = 1;
+
+/**
  * Full-screen task overlay (forms, detail views) that covers the tab bar.
  * Rendered via a portal pinned to the viewport so it always reaches the very
  * top of the screen, regardless of any transformed ancestor (the phone shell
  * is translated, which would otherwise re-anchor an absolutely-positioned child).
  *
- * Behaves like a pushed page: slides in from the right and can be dragged back
- * out with a left-edge swipe on touch devices (the iOS "back" gesture). The
+ * Appears with a simple fade (a "switch", not a slide). It can still be dragged
+ * back out with a left-edge swipe on touch devices (the iOS "back" gesture); the
  * edge-zone start keeps it from hijacking horizontal scrollers inside the page.
  *
- * The swipe listeners are attached natively as { passive: false } so that, once
- * a horizontal edge-drag is committed, we can preventDefault() the browser's own
- * left-edge back gesture. (React attaches touchmove passively, which can't.)
- * Without this, the native gesture fired alongside ours and popped the route
- * underneath — closing the overlay *and* navigating all the way back to Home.
+ * The drag is driven straight through the DOM (no per-frame React state) so it
+ * tracks the finger smoothly. The listeners are attached natively as
+ * { passive: false } so that, once a horizontal edge-drag is committed, we can
+ * preventDefault() the browser's own left-edge back gesture — otherwise the
+ * native gesture fires alongside ours and pops the route underneath.
  */
 export function Overlay({
   title,
@@ -38,30 +46,48 @@ export function Overlay({
   action?: ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
-  // Horizontal offset of the panel in px. Starts off-screen for the slide-in.
-  const [offset, setOffset] = useState(0);
-  // When true a CSS transition smooths the transform; off while finger-tracking.
-  const [animating, setAnimating] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const idRef = useRef(0);
+  const closingRef = useRef(false);
 
   const vw = () => (typeof window === 'undefined' ? 430 : window.innerWidth);
+  const isTop = () => overlayStack[overlayStack.length - 1] === idRef.current;
 
-  // Slide out to the right, then unmount once the transition has played.
+  // Register in the overlay stack and fade in on mount.
+  useEffect(() => {
+    const id = nextOverlayId++;
+    idRef.current = id;
+    overlayStack.push(id);
+    setMounted(true);
+    return () => {
+      overlayStack = overlayStack.filter((x) => x !== id);
+    };
+  }, []);
+
+  // Fade the panel out (the "switch" back), then unmount once it has played.
   const close = useCallback(() => {
-    setAnimating(true);
-    setOffset(vw());
-    window.setTimeout(onClose, 240);
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const panel = panelRef.current;
+    const backdrop = backdropRef.current;
+    if (panel) {
+      panel.style.animation = 'none';
+      panel.style.transition = 'opacity 0.18s ease-out';
+      panel.style.opacity = '0';
+    }
+    if (backdrop) {
+      backdrop.style.animation = 'none';
+      backdrop.style.transition = 'opacity 0.18s ease-out';
+      backdrop.style.opacity = '0';
+    }
+    window.setTimeout(onClose, 180);
   }, [onClose]);
 
   useEffect(() => {
-    setMounted(true);
-    setOffset(vw()); // park off-screen before the first paint settles
-    const id = requestAnimationFrame(() => setOffset(0)); // then slide into place
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTop()) close();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [close]);
@@ -71,10 +97,13 @@ export function Overlay({
     if (!mounted) return;
     const el = panelRef.current;
     if (!el) return;
+    const backdrop = backdropRef.current;
 
     const drag = { active: false, startX: 0, startY: 0, dx: 0, horizontal: null as boolean | null };
 
     const onStart = (e: TouchEvent) => {
+      // Only the top-most overlay responds — never pop two pages on one swipe.
+      if (closingRef.current || !isTop()) return;
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
       if (t.clientX > EDGE_ZONE) return; // only the left edge starts a back-swipe
@@ -83,7 +112,6 @@ export function Overlay({
       drag.startY = t.clientY;
       drag.dx = 0;
       drag.horizontal = null;
-      setAnimating(false);
     };
 
     const onMove = (e: TouchEvent) => {
@@ -94,6 +122,12 @@ export function Overlay({
       if (drag.horizontal === null) {
         if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
         drag.horizontal = Math.abs(dx) > Math.abs(dy);
+        if (drag.horizontal) {
+          // Take over from any entrance animation and track the finger 1:1.
+          el.style.animation = 'none';
+          el.style.transition = 'none';
+          if (backdrop) backdrop.style.transition = 'none';
+        }
       }
       if (!drag.horizontal) {
         drag.active = false; // vertical intent — let the content scroll
@@ -101,15 +135,34 @@ export function Overlay({
       }
       e.preventDefault(); // cancel the browser's native back-swipe + h-scroll
       drag.dx = Math.max(0, dx); // only rightward (toward "back")
-      setOffset(drag.dx);
+      el.style.transform = `translateX(${drag.dx}px)`;
+      if (backdrop) backdrop.style.opacity = String(Math.max(0, 1 - drag.dx / vw()));
     };
 
     const onEnd = () => {
       if (!drag.active) return;
       drag.active = false;
-      setAnimating(true);
-      if (drag.dx > CLOSE_THRESHOLD) close();
-      else setOffset(0);
+      if (!drag.horizontal) return;
+
+      if (drag.dx > CLOSE_THRESHOLD) {
+        // Commit: finish the slide off-screen, then unmount.
+        closingRef.current = true;
+        el.style.transition = `transform 0.2s ${EASE}`;
+        el.style.transform = `translateX(${vw()}px)`;
+        if (backdrop) {
+          backdrop.style.transition = `opacity 0.2s ${EASE}`;
+          backdrop.style.opacity = '0';
+        }
+        window.setTimeout(onClose, 200);
+      } else {
+        // Settle back into place.
+        el.style.transition = `transform 0.2s ${EASE}`;
+        el.style.transform = 'translateX(0)';
+        if (backdrop) {
+          backdrop.style.transition = `opacity 0.2s ${EASE}`;
+          backdrop.style.opacity = '1';
+        }
+      }
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });
@@ -122,23 +175,16 @@ export function Overlay({
       el.removeEventListener('touchend', onEnd);
       el.removeEventListener('touchcancel', onEnd);
     };
-  }, [mounted, close]);
+  }, [mounted, onClose]);
 
   if (!mounted) return null;
 
-  // Backdrop dims as the page settles in and lightens as it's dragged away.
-  const progress = Math.max(0, Math.min(1, 1 - offset / vw()));
-
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-center">
-      <div className="absolute inset-0 bg-ink/40" style={{ opacity: progress }} aria-hidden />
+      <div ref={backdropRef} className="absolute inset-0 animate-fade-in bg-ink/40" aria-hidden />
       <div
         ref={panelRef}
-        className="relative flex h-full w-full max-w-[430px] flex-col bg-app shadow-card-lg"
-        style={{
-          transform: `translateX(${offset}px)`,
-          transition: animating ? `transform 0.24s ${EASE}` : 'none',
-        }}
+        className="relative flex h-full w-full max-w-[430px] flex-col animate-fade-in bg-app shadow-card-lg"
       >
         <header
           className="shrink-0 px-5 pb-3"
