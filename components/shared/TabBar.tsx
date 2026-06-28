@@ -34,6 +34,10 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                // Replace history instead of pushing so switching tabs never
+                // stacks a back-entry — a native left-edge swipe then can't pop
+                // one tab back to another. Every tab stays "stuck" like Home.
+                replace
                 className={cn(
                   'row-press flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5',
                   active ? 'text-accent' : 'text-ink-faint',
