@@ -136,6 +136,15 @@ export const Play = (p: P) => (
   </Base>
 );
 
+// The GNW Play tab mark: a bold play triangle (the hero) with one faint halo ring
+// so it reads as a sibling of the other line-drawn nav icons, not a target.
+export const PlayRings = (p: P) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9.6" opacity={0.28} />
+    <path d="M10 8 16.5 12 10 16V8Z" fill="currentColor" />
+  </Base>
+);
+
 export const Pause = (p: P) => (
   <Base {...p}>
     <path d="M8 5v14M16 5v14" />

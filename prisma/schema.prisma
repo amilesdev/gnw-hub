@@ -53,23 +53,58 @@ enum RepeatCadence {
   monthly
 }
 
+// === GNW Play ===
+// True/False is stored as a degenerate multiple-choice (options ["True","False"]),
+// so `type` only distinguishes how the builder/play UI renders it.
+enum QuestionType {
+  multiple_choice
+  true_false
+}
+
+enum GameMode {
+  classic
+  team_battle
+  survival
+}
+
+enum SessionStatus {
+  lobby
+  active
+  ended
+}
+
+// Round lifecycle. The server owns this; clients render from it but never write.
+enum RoundStatus {
+  answering
+  revealing
+  between_rounds
+}
+
 model User {
-  id           String      @id @default(cuid())
+  id           String         @id @default(cuid())
   name         String
-  email        String      @unique
+  email        String         @unique
   passwordHash String?
-  role         Role        @default(member)
+  role         Role           @default(member)
   section      MemberSection?
   part         MemberPart?
-  status       UserStatus  @default(pending)
+  status       UserStatus     @default(pending)
   // Only one super-admin exists; they alone may grant the leader role.
-  isSuperAdmin Boolean     @default(false)
-  inviteToken  String?     @unique
+  isSuperAdmin Boolean        @default(false)
+  inviteToken  String?        @unique
   inviteExpiry DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   pushSubscriptions PushSubscription[]
+
+  // GNW Play — all-time wins. Only ever incremented for a game's 1st place;
+  // surfaced solely on Play Home + the Play leaderboard (not elsewhere in Hub).
+  playPoints Int @default(0)
+
+  questionPacks  QuestionPack[] // packs this user authored
+  hostedSessions GameSession[] // game sessions this user hosts
+  gamePlayers    GamePlayer[] // this user's seats across sessions
 }
 
 // A single device's Web Push subscription. One user can have several (phone,
@@ -99,7 +134,7 @@ model Event {
   notes     String?
 
   // Series grouping — occurrences generated from one recurring create share a seriesId.
-  seriesId  String?
+  seriesId String?
 
   // Attire (optional)
   attirePrimary       String?
@@ -179,26 +214,26 @@ model Setlist {
 }
 
 model Song {
-  id            String   @id @default(cuid())
-  setlistId     String
-  setlist       Setlist  @relation(fields: [setlistId], references: [id], onDelete: Cascade)
-  position      Int // ordering within the setlist
-  songTitle     String
-  artist        String? // original artist / arranger
-  youtubeLink   String?
-  driveLink     String? // Google Drive vocal parts fallback
-  audioSoprano  String?
-  audioAlto     String?
-  audioTenor    String?
-  audioAllParts String?
+  id                  String    @id @default(cuid())
+  setlistId           String
+  setlist             Setlist   @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  position            Int // ordering within the setlist
+  songTitle           String
+  artist              String? // original artist / arranger
+  youtubeLink         String?
+  driveLink           String? // Google Drive vocal parts fallback
+  audioSoprano        String?
+  audioAlto           String?
+  audioTenor          String?
+  audioAllParts       String?
   // Lyric chart imported from a Google Doc. `lyricChart` holds the parsed
   // structured chart (see lib/parseGoogleDoc.ts); `lyricDocUrl` remembers the
   // source doc for re-imports; `lyricChartUpdatedAt` tracks the last import.
   lyricChart          Json?
   lyricDocUrl         String?
   lyricChartUpdatedAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@index([setlistId, position])
 }
@@ -219,17 +254,17 @@ model Announcement {
 // user the moment they vote (public results); leaders can download the
 // distribution once the poll has ended (past `endsAt`).
 model Poll {
-  id          String   @id @default(cuid())
-  question    String
+  id        String       @id @default(cuid())
+  question  String
   // Whether a voter may pick more than one choice.
-  multiple    Boolean  @default(false)
+  multiple  Boolean      @default(false)
   // When the poll closes. After this it no longer blocks/accepts votes; leaders
   // can review and download results.
-  endsAt      DateTime
-  choices     PollChoice[]
-  votes       PollVote[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  endsAt    DateTime
+  choices   PollChoice[]
+  votes     PollVote[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@index([endsAt])
 }
@@ -262,4 +297,133 @@ model PollVote {
   @@unique([pollId, userId, choiceId]) // can't pick the same choice twice
   @@index([pollId, userId])
   @@index([choiceId])
+}
+
+// ===========================================================================
+// GNW Play — real-time quiz game. Lives under /app/play. Server (API routes) is
+// the single source of truth for timestamps, scoring, and round state; Supabase
+// Realtime Broadcast is only the fast push layer on channel `game:${sessionId}`.
+// ===========================================================================
+
+// A reusable set of questions a leader authors in the Pack Builder.
+model QuestionPack {
+  id          String        @id @default(cuid())
+  // Author. Packs are owned content, so they're removed with their creator.
+  createdById String?
+  creator     User?         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  name        String
+  questions   Question[]
+  sessions    GameSession[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([createdById, updatedAt])
+}
+
+model Question {
+  id            String       @id @default(cuid())
+  packId        String
+  pack          QuestionPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  type          QuestionType
+  questionText  String
+  // MCQ: array of 4 strings. T/F: always ["True","False"].
+  options       Json
+  // The correct option string, exactly as it appears in `options`.
+  correctAnswer String
+  orderIndex    Int
+  answers       GameAnswer[]
+  createdAt     DateTime     @default(now())
+
+  @@index([packId, orderIndex])
+}
+
+// One live (or finished) play-through of a pack. Only one session may be in a
+// non-ended state across all of Hub at a time (enforced in the API, not the DB).
+model GameSession {
+  id                   String        @id @default(cuid())
+  packId               String
+  pack                 QuestionPack  @relation(fields: [packId], references: [id])
+  hostId               String
+  host                 User          @relation(fields: [hostId], references: [id])
+  mode                 GameMode
+  status               SessionStatus @default(lobby)
+  // { time_per_question, shuffle, team_names? }
+  settings             Json
+  // Ordered array of question IDs as they will be played.
+  questionOrder        Json
+  currentQuestionIndex Int           @default(0)
+  guestAccessEnabled   Boolean       @default(false)
+  guestLinkToken       String?       @unique
+
+  players    GamePlayer[]
+  answers    GameAnswer[]
+  teams      GameTeam[]
+  roundState RoundState?
+
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status])
+}
+
+// A seat in a session: a Hub user or a named guest (userId null).
+model GamePlayer {
+  id               String      @id @default(cuid())
+  sessionId        String
+  session          GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName        String? // used only when userId is null
+  team             String? // team_battle only
+  hearts           Int         @default(3) // survival only
+  isEliminated     Boolean     @default(false)
+  isSpectator      Boolean     @default(false)
+  playPointsEarned Int         @default(0)
+  joinedAt         DateTime    @default(now())
+
+  answers GameAnswer[]
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model GameAnswer {
+  id           String      @id @default(cuid())
+  sessionId    String
+  session      GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  playerId     String
+  player       GamePlayer  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question    @relation(fields: [questionId], references: [id])
+  answer       String
+  // ALWAYS server-recorded (Date.now() in the API route); never client-supplied.
+  submittedAt  DateTime
+  isCorrect    Boolean?
+  // submittedAt − round_state.questionStartAt, computed on the server.
+  timeTakenMs  Int?
+  pointsEarned Int         @default(0)
+
+  @@unique([playerId, questionId]) // one answer per player per question
+  @@index([sessionId, questionId])
+}
+
+// Per-session round clock + lifecycle. One row per session (PK = sessionId).
+model RoundState {
+  sessionId       String      @id
+  session         GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // Set when the server starts a question; the timing anchor for speed scoring.
+  questionStartAt DateTime?
+  roundNumber     Int         @default(0)
+  status          RoundStatus @default(between_rounds)
+}
+
+model GameTeam {
+  id         String      @id @default(cuid())
+  sessionId  String
+  session    GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name       String
+  teamPoints Int         @default(0)
+
+  @@index([sessionId])
 }
