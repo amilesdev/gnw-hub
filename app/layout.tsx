@@ -24,9 +24,12 @@ export const metadata: Metadata = {
   description: 'Communication hub for the GNW team.',
   applicationName: 'GNW Hub',
   manifest: '/manifest.webmanifest',
-  // `default` status bar (tinted to match via theme-color) keeps the layout inside
-  // the safe area so the bottom nav sits flush — matches the proven GNW Roll Call setup.
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GNW Hub' },
+  // `black-translucent` lets the web view extend *under* the status bar so the app
+  // background/grain fills edge-to-edge (no flat status-bar strip). Requires
+  // `viewportFit: 'cover'` below; content is then inset via env(safe-area-inset-top).
+  // NOTE: on the light theme the status-bar clock/icons render light — readable in
+  // dark mode, faint on the cream bg in light mode (inherent black-translucent cost).
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'GNW Hub' },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -41,6 +44,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Render edge-to-edge under the status bar / home indicator. Pairs with the
+  // `black-translucent` status bar; the shell + safe-area insets handle spacing.
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FAF7F2' },
     { media: '(prefers-color-scheme: dark)', color: '#161410' },

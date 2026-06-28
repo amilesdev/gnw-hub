@@ -25,13 +25,21 @@ body {
 }
 
 /* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
-/* Anchored top+bottom to the visible viewport (no `viewport-fit=cover`), so the
-   layout stays inside the safe area and the bottom nav sits flush — same proven
-   approach as GNW Roll Call. */
+/* Browser / Android: anchor top+bottom to the actual viewport — robust against
+   dynamic toolbars, no regression from the previous setup. */
 .app-shell {
   position: fixed; top: 0; bottom: 0; left: 50%;
   transform: translateX(-50%); width: 100%; max-width: 430px;
   display: flex; flex-direction: column;
+}
+
+/* iOS installed PWA (`viewport-fit=cover`): `position:fixed; bottom:0` underflows
+   to innerHeight (873) instead of the physical screen (932), leaving a gap below
+   the bottom nav. Pin to the full screen height instead so the nav sits flush at
+   the physical bottom; its own padding-bottom: max(1.75rem, env(safe-area-inset-bottom))
+   then clears the home indicator. Scoped to standalone so browsers are untouched. */
+@media all and (display-mode: standalone) {
+  .app-shell { height: 100vh; bottom: auto; }
 }
 
 /* === Grain (§4) === */
