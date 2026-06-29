@@ -14,7 +14,7 @@ import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
-import { Calendar, Bell, Music, ChevronRight, Poll, Sparkle, Upload, Clock, Users } from '@/components/shared/Icons';
+import { Calendar, Bell, Music, ChevronRight, Poll, Sparkle, Users } from '@/components/shared/Icons';
 
 export function LeaderHome({
   name,
@@ -38,7 +38,7 @@ export function LeaderHome({
   const firstName = name.split(' ')[0] || name;
 
   const refresh = () => router.refresh();
-  const hasAlerts = alerts.unfilledAudioSlots > 0 || alerts.expiringSoon > 0 || alerts.pendingInvites > 0;
+  const hasAlerts = alerts.pendingInvites > 0;
 
   return (
     <div className="animate-enter-home space-y-6 pt-2">
@@ -85,24 +85,6 @@ export function LeaderHome({
             <Sparkle width={14} height={14} className="text-warn" /> Needs your attention
           </h2>
           <div className="space-y-2.5">
-            {alerts.unfilledAudioSlots > 0 && (
-              <AlertRow
-                href="/dashboard/setlist"
-                icon={<Upload width={18} height={18} />}
-                tone="warn"
-                title={`${alerts.unfilledAudioSlots} audio slot${alerts.unfilledAudioSlots > 1 ? 's' : ''} unfilled`}
-                sub={`Across ${alerts.unfilledSongs} song${alerts.unfilledSongs > 1 ? 's' : ''} in this week’s setlist`}
-              />
-            )}
-            {alerts.expiringSoon > 0 && (
-              <AlertRow
-                href="/dashboard"
-                icon={<Clock width={18} height={18} />}
-                tone="warn"
-                title={`${alerts.expiringSoon} announcement${alerts.expiringSoon > 1 ? 's' : ''} expiring soon`}
-                sub="Expires within 24 hours — open the bell to extend"
-              />
-            )}
             {alerts.pendingInvites > 0 && (
               <AlertRow
                 href="/dashboard/settings"

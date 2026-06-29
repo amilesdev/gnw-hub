@@ -10,12 +10,12 @@ export default async function LeaderHomePage() {
   if (!user) redirect('/login');
   if (user.role !== 'leader') redirect('/home');
 
-  const [events, announcements, thisWeek] = await Promise.all([
+  const [events, announcements, thisWeek, alerts] = await Promise.all([
     getUpcomingEvents(),
     getActiveAnnouncements(),
     getThisWeekSetlist(),
+    getLeaderAlerts(),
   ]);
-  const alerts = await getLeaderAlerts(thisWeek);
 
   return (
     <LeaderHome

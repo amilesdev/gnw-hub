@@ -53,34 +53,14 @@ export async function getThisWeekSetlist(): Promise<ThisWeekSetlist> {
 }
 
 export type LeaderAlerts = {
-  unfilledAudioSlots: number;
-  unfilledSongs: number;
-  expiringSoon: number;
   pendingInvites: number;
 };
 
 /**
- * Leader home alerts: unfilled audio this week, announcements expiring <24h, pending invites.
- * Takes the already-fetched `thisWeek` setlist to avoid re-querying it.
+ * Leader home alerts: pending invites.
  */
-export async function getLeaderAlerts(thisWeek: ThisWeekSetlist): Promise<LeaderAlerts> {
-  const within24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
+export async function getLeaderAlerts(): Promise<LeaderAlerts> {
+  const pendingInvites = await prisma.user.count({ where: { status: 'pending' } });
 
-  const [expiringSoon, pendingInvites] = await Promise.all([
-    prisma.announcement.count({ where: { expiresAt: { gt: new Date(), lte: within24h } } }),
-    prisma.user.count({ where: { status: 'pending' } }),
-  ]);
-
-  let unfilledAudioSlots = 0;
-  let unfilledSongs = 0;
-  for (const song of thisWeek?.songs ?? []) {
-    const filled = [song.audioSoprano, song.audioAlto, song.audioTenor, song.audioAllParts].filter(Boolean).length;
-    const missing = 4 - filled;
-    if (missing > 0) {
-      unfilledAudioSlots += missing;
-      unfilledSongs += 1;
-    }
-  }
-
-  return { unfilledAudioSlots, unfilledSongs, expiringSoon, pendingInvites };
+  return { pendingInvites };
 }
