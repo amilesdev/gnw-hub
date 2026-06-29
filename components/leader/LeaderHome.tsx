@@ -14,7 +14,7 @@ import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
-import { Calendar, Bell, Music, ChevronRight, Poll, Sparkle, Users } from '@/components/shared/Icons';
+import { Calendar, Bell, Music, ChevronRight, Poll, Users } from '@/components/shared/Icons';
 
 export function LeaderHome({
   name,
@@ -81,9 +81,7 @@ export function LeaderHome({
       {/* Alerts */}
       {hasAlerts && (
         <section className="space-y-3">
-          <h2 className="eyebrow inline-flex items-center gap-1.5">
-            <Sparkle width={14} height={14} className="text-warn" /> Needs your attention
-          </h2>
+          <h2 className="eyebrow">Needs your attention</h2>
           <div className="space-y-2.5">
             {alerts.pendingInvites > 0 && (
               <AlertRow

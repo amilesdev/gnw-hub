@@ -6,9 +6,11 @@ import { getPollResults } from '@/lib/polls';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// POST /api/polls/[id]/vote — record the current user's vote, then return the
-// poll's results (votes make results public to the voter). Re-voting is a no-op
-// that just returns current results, so the gate is safe to retry.
+// POST /api/polls/[id]/vote — record (or replace) the current user's vote, then
+// return the poll's results (votes make results public to the voter). While the
+// poll is open this is idempotent on the *selection*: re-submitting overwrites
+// the user's previous picks, so the gate's first vote and later edits from the
+// member Polls section both flow through here. Votes lock once the poll ends.
 export async function POST(req: Request, { params }: Ctx) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
@@ -19,12 +21,6 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!poll) return NextResponse.json({ error: 'Poll not found' }, { status: 404 });
   if (poll.endsAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: 'This poll has ended.' }, { status: 409 });
-  }
-
-  // Already voted? Idempotent — hand back results without changing anything.
-  const existing = await prisma.pollVote.findFirst({ where: { pollId: id, userId } });
-  if (existing) {
-    return NextResponse.json({ results: await getPollResults(id, userId) });
   }
 
   const parsed = pollVoteSchema.safeParse(await req.json().catch(() => null));
@@ -42,10 +38,15 @@ export async function POST(req: Request, { params }: Ctx) {
     return NextResponse.json({ error: 'This poll allows only one answer.' }, { status: 400 });
   }
 
-  await prisma.pollVote.createMany({
-    data: choiceIds.map((choiceId) => ({ pollId: id, choiceId, userId })),
-    skipDuplicates: true,
-  });
+  // Clear any prior picks, then write the new ones, so a member can change their
+  // answer while the poll is still open.
+  await prisma.$transaction([
+    prisma.pollVote.deleteMany({ where: { pollId: id, userId } }),
+    prisma.pollVote.createMany({
+      data: choiceIds.map((choiceId) => ({ pollId: id, choiceId, userId })),
+      skipDuplicates: true,
+    }),
+  ]);
 
-  return NextResponse.json({ results: await getPollResults(id, userId) }, { status: 201 });
+  return NextResponse.json({ results: await getPollResults(id, userId) });
 }

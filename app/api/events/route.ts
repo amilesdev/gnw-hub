@@ -5,6 +5,7 @@ import { eventSchema } from '@/lib/validation';
 import { serializeEvent } from '@/lib/serialize';
 import { generateOccurrences, parseCalendarDate, startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { ensureRecurringWindow } from '@/lib/recurrence';
+import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { randomToken } from '@/lib/utils';
 
 // GET /api/events?scope=upcoming|all|month&month=YYYY-MM
@@ -12,8 +13,10 @@ export async function GET(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
 
-  // Keep each recurring series topped up to its rolling window before reading.
+  // Keep each recurring series topped up to its rolling window before reading,
+  // and sweep away setlists whose linked events have all passed.
   await ensureRecurringWindow();
+  await pruneExpiredSetlists();
 
   const url = new URL(req.url);
   const scope = url.searchParams.get('scope') ?? 'all';

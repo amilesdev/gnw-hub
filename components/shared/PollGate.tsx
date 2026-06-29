@@ -7,6 +7,9 @@ import { PollResults } from './PollResults';
 import { Check } from './Icons';
 
 const POLL_INTERVAL_MS = 20_000;
+// While a voter is looking at their results, refresh the tallies on this
+// cadence so they watch answers come in live (matches the leader's view).
+const RESULTS_INTERVAL_MS = 5_000;
 
 /**
  * App-wide blocking poll prompt. Mounted inside the authenticated shell, it
@@ -58,6 +61,22 @@ export function PollGate() {
     setSelected([]);
     setError(null);
   }, [current?.id]);
+
+  // Once voted, keep the results panel live until the poll ends or "Done".
+  const shownId = results?.id ?? null;
+  const shownEnded = results?.ended ?? false;
+  useEffect(() => {
+    if (!shownId || shownEnded) return;
+    const t = setInterval(async () => {
+      try {
+        const data = await apiFetch<{ results: PollResultsDTO }>(`/api/polls/${shownId}`);
+        setResults(data.results);
+      } catch {
+        // transient/offline — try again next tick.
+      }
+    }, RESULTS_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [shownId, shownEnded]);
 
   // Lock background scroll while the gate is up.
   useEffect(() => {

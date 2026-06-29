@@ -11,6 +11,7 @@ import { EventDetail } from '@/components/shared/EventDetail';
 import { SongDetail } from '@/components/shared/SongDetail';
 import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
+import { MemberPolls } from '@/components/member/MemberPolls';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Music, ChevronRight } from '@/components/shared/Icons';
 
@@ -99,6 +100,9 @@ export function MemberHome({
           <AnnouncementCards announcements={announcements} />
         )}
       </section>
+
+      {/* Polls */}
+      <MemberPolls />
 
       {detail && <EventDetail event={detail} onClose={() => setDetail(null)} />}
       {song && <SongDetail song={song} onClose={() => setSong(null)} />}

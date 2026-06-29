@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { serializeSetlist } from '@/lib/setlist-serialize';
+import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { monthKey } from '@/lib/dates';
 
 const setlistInclude = {
@@ -14,6 +15,9 @@ const setlistInclude = {
 export async function GET(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
+
+  // Sweep away setlists whose linked events have all passed before listing.
+  await pruneExpiredSetlists();
 
   const params = new URL(req.url).searchParams;
   const month = params.get('month');
