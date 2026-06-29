@@ -84,9 +84,11 @@ export function SetlistManager() {
                   <section key={s.id} className="animate-rise space-y-3">
                     <div>
                       <h3 className="font-display text-xl font-semibold">
-                        {s.events.length
-                          ? Array.from(new Set(s.events.map((e) => e.eventName))).join(' · ')
-                          : 'Unlinked setlist'}
+                        {s.name
+                          ? s.name
+                          : s.events.length
+                            ? Array.from(new Set(s.events.map((e) => e.eventName))).join(' · ')
+                            : 'Unlinked setlist'}
                       </h3>
                       {s.events.length > 0 && (
                         <p className="text-sm text-ink-faint">

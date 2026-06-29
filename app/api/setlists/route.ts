@@ -35,6 +35,7 @@ export async function GET(req: Request) {
 }
 
 const createSchema = z.object({
+  name: z.string().max(200).optional().nullable(),
   eventIds: z.array(z.string().min(1)).min(1, 'Pick at least one event'),
   songs: z
     .array(
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
-  const { eventIds, songs } = parsed.data;
+  const { name, eventIds, songs } = parsed.data;
 
   const events = await prisma.event.findMany({
     where: { id: { in: eventIds } },
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
 
   const setlist = await prisma.setlist.create({
     data: {
+      name: name?.trim() || null,
       month: monthKey(earliest.date),
       events: { connect: eventIds.map((id) => ({ id })) },
       songs: {

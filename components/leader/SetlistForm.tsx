@@ -60,6 +60,7 @@ export function SetlistForm({
   onSaved: () => void;
 }) {
   const [rows, setRows] = useState<Row[]>(toRows(initial));
+  const [name, setName] = useState(initial?.name ?? '');
   const [eventIds, setEventIds] = useState<string[]>(initial?.events.map((e) => e.id) ?? []);
   const [events, setEvents] = useState<EventDTO[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -132,10 +133,11 @@ export function SetlistForm({
     }
     setBusy(true);
     try {
+      const setlistName = name.trim() || null;
       if (mode === 'create') {
-        await apiFetch('/api/setlists', { method: 'POST', body: JSON.stringify({ eventIds, songs: songs.map(({ id: _id, ...s }) => s) }) });
+        await apiFetch('/api/setlists', { method: 'POST', body: JSON.stringify({ name: setlistName, eventIds, songs: songs.map(({ id: _id, ...s }) => s) }) });
       } else {
-        await apiFetch(`/api/setlists/${initial!.id}`, { method: 'PATCH', body: JSON.stringify({ eventIds, songs }) });
+        await apiFetch(`/api/setlists/${initial!.id}`, { method: 'PATCH', body: JSON.stringify({ name: setlistName, eventIds, songs }) });
       }
       onSaved();
     } catch (err) {
@@ -155,6 +157,17 @@ export function SetlistForm({
       }
     >
       <form id="setlist-form" onSubmit={save} className="space-y-5">
+        <div>
+          <FieldLabel>Setlist name</FieldLabel>
+          <input
+            className="field mt-1.5"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New setlist"
+            maxLength={200}
+          />
+        </div>
+
         <div>
           <div className="flex items-baseline justify-between">
             <FieldLabel>Events</FieldLabel>

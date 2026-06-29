@@ -34,6 +34,7 @@ export type LinkedEventDTO = { id: string; eventName: string; date: string; time
 
 export type SetlistDTO = {
   id: string;
+  name: string | null;
   month: string;
   songs: SongDTO[];
   events: LinkedEventDTO[];
@@ -46,6 +47,7 @@ type FullSetlist = Setlist & { songs: Song[]; events: LinkedEvent[] };
 export function serializeSetlist(s: FullSetlist): SetlistDTO {
   return {
     id: s.id,
+    name: s.name,
     month: s.month,
     createdAt: s.createdAt.toISOString(),
     songs: [...s.songs]

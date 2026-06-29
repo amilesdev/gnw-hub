@@ -67,9 +67,11 @@ export function SetlistScreen() {
             <section key={sl.id} className="space-y-3">
               <div>
                 <h2 className="font-display text-xl font-semibold">
-                  {sl.events.length
-                    ? Array.from(new Set(sl.events.map((e) => e.eventName))).join(' · ')
-                    : 'Setlist'}
+                  {sl.name
+                    ? sl.name
+                    : sl.events.length
+                      ? Array.from(new Set(sl.events.map((e) => e.eventName))).join(' · ')
+                      : 'Setlist'}
                 </h2>
                 {sl.events.length > 0 && (
                   <p className="text-sm text-ink-faint">

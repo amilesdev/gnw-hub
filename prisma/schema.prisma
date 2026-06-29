@@ -203,6 +203,7 @@ model PrayerRequest {
 
 model Setlist {
   id        String   @id @default(cuid())
+  name      String? // optional display name; falls back to linked event names when empty.
   month     String // "YYYY-MM" — grouping key, derived from the earliest linked event's date.
   // A setlist can be linked to multiple events (see Event.setlist).
   events    Event[]  @relation("EventSetlist")

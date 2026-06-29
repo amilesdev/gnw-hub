@@ -31,6 +31,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 const patchSchema = z.object({
+  name: z.string().max(200).optional().nullable(),
   eventIds: z.array(z.string().min(1)).min(1, 'Pick at least one event').optional(),
   songs: z
     .array(
@@ -59,7 +60,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
-  const { eventIds, songs } = parsed.data;
+  const { name, eventIds, songs } = parsed.data;
 
   // Re-linking events re-derives the setlist's month from the earliest one.
   let nextMonth: string | undefined;
@@ -79,11 +80,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 
   await prisma.$transaction(async (tx) => {
-    if (eventIds) {
+    if (eventIds || name !== undefined) {
       // `set` replaces the full link set: connects new events, unlinks dropped ones.
       await tx.setlist.update({
         where: { id },
-        data: { month: nextMonth, events: { set: eventIds.map((eid) => ({ id: eid })) } },
+        data: {
+          ...(name !== undefined ? { name: name?.trim() || null } : {}),
+          ...(eventIds ? { month: nextMonth, events: { set: eventIds.map((eid) => ({ id: eid })) } } : {}),
+        },
       });
     }
 
