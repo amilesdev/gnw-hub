@@ -35,7 +35,8 @@ export async function getUpcomingEvents(): Promise<EventDTO[]> {
 export async function getActiveAnnouncements(): Promise<AnnouncementDTO[]> {
   const announcements = await prisma.announcement.findMany({
     where: { expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+    include: { author: { select: { name: true } } },
   });
   return announcements.map(serializeAnnouncement);
 }

@@ -65,7 +65,7 @@ export function AnnouncementBell({
       >
         <Bell width={21} height={21} />
         {hasActive && (
-          <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-surface" />
+          <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-bad ring-2 ring-surface" />
         )}
       </button>
 

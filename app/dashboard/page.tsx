@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { getUpcomingEvents, getActiveAnnouncements, getThisWeekSetlist, getLeaderAlerts } from '@/lib/home-data';
+import { getVerseOfDay } from '@/lib/bible';
 import { LeaderHome } from '@/components/leader/LeaderHome';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ export default async function LeaderHomePage() {
       announcements={announcements}
       thisWeek={thisWeek}
       alerts={alerts}
+      verse={getVerseOfDay()}
     />
   );
 }

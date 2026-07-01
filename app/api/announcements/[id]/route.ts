@@ -28,6 +28,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       body: parsed.data.body,
       expiresAt: new Date(parsed.data.expiresAt),
     },
+    include: { author: { select: { name: true } } },
   });
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) });
 }

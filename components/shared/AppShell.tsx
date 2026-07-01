@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { TabBar } from './TabBar';
 import { PollGate } from './PollGate';
+import { AudioProvider } from './AudioProvider';
+import { MiniPlayer } from './MiniPlayer';
 
 /**
  * Fixed, centered phone shell (max 430px) with a scrollable content area and a
@@ -16,16 +18,19 @@ export function AppShell({
   header?: ReactNode;
 }) {
   return (
-    <div className="app-shell">
-      {header}
-      <main
-        className="no-scrollbar flex-1 overflow-y-auto px-5 pb-6"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
-      >
-        {children}
-      </main>
-      <TabBar variant={variant} />
-      <PollGate />
-    </div>
+    <AudioProvider>
+      <div className="app-shell">
+        {header}
+        <main
+          className="no-scrollbar flex-1 overflow-y-auto px-5 pb-6"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
+        >
+          {children}
+        </main>
+        <MiniPlayer />
+        <TabBar variant={variant} />
+        <PollGate />
+      </div>
+    </AudioProvider>
   );
 }

@@ -22,3 +22,15 @@ const VERSES: Verse[] = [
 export function getRandomVerse(): Verse {
   return VERSES[Math.floor(Math.random() * VERSES.length)];
 }
+
+/**
+ * A stable "verse of the day": the same verse for everyone for the whole
+ * calendar day (rotates by day-of-year), so the home ribbon doesn't reshuffle
+ * on every request. Read in UTC to stay consistent with the rest of the app.
+ */
+export function getVerseOfDay(now: Date = new Date()): Verse {
+  const yearStart = Date.UTC(now.getUTCFullYear(), 0, 0);
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const dayOfYear = Math.floor((today - yearStart) / 86_400_000);
+  return VERSES[dayOfYear % VERSES.length];
+}

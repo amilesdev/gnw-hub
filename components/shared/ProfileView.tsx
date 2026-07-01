@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { PasswordField } from './PasswordField';
-import { LogOut, Lock, Check } from './Icons';
+import { LogOut, Lock, Check, Moon } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
+import { Switch } from './Switch';
 import { apiFetch } from '@/lib/api-client';
 
 type Props = {
@@ -16,7 +17,8 @@ type Props = {
   isSuperAdmin: boolean;
 };
 
-export function ProfileView({ name, email, section, part }: Props) {
+export function ProfileView({ name, email, role, section, part }: Props) {
+  const roleChip = [part, role].filter(Boolean).join(' · ');
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -64,6 +66,7 @@ export function ProfileView({ name, email, section, part }: Props) {
           <div>
             <p className="font-display text-xl font-semibold">{name}</p>
             <p className="text-sm text-ink-soft">{email}</p>
+            <span className="chip mt-1.5 bg-accent/10 capitalize text-accent-ink dark:text-accent-on">{roleChip}</span>
           </div>
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-3">
@@ -133,6 +136,28 @@ export function ProfileView({ name, email, section, part }: Props) {
       </section>
 
       <NotificationSettings />
+
+      {/* Dark mode — not built yet; shown to gauge interest. The toggle is inert
+          and a "Coming soon" chip inside the card explains why. */}
+      <section className="card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+              <Moon width={18} height={18} />
+            </span>
+            <div>
+              <p className="flex items-center gap-2 font-semibold">
+                Dark mode
+                <span className="chip bg-accent/10 text-[10px] font-bold uppercase tracking-wide text-accent-ink dark:text-accent-on">
+                  Coming soon
+                </span>
+              </p>
+              <p className="text-sm text-ink-faint">Easier on the eyes at night. We&apos;re working on it.</p>
+            </div>
+          </div>
+          <Switch checked={false} onChange={() => {}} disabled aria-label="Dark mode (coming soon)" />
+        </div>
+      </section>
 
       <button
         type="button"

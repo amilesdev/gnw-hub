@@ -5,6 +5,7 @@ import type { SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS, PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
 import { AudioPlayer } from './AudioPlayer';
+import { useAudio } from './AudioProvider';
 import { LyricChartPreview } from './LyricChartPreview';
 import { Play, Music, FileText } from './Icons';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils';
 export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => void }) {
   const [part, setPart] = useState<AudioPart | null>(null);
   const activeSrc = part ? song[part] : null;
+  const { play } = useAudio();
 
   return (
     <Overlay title={song.songTitle} onClose={onClose}>
@@ -43,7 +45,10 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
                   key={p}
                   type="button"
                   disabled={!available}
-                  onClick={() => setPart(p)}
+                  onClick={() => {
+                    setPart(p);
+                    play({ src: song[p]!, title: song.songTitle, part: PART_LABELS[p] });
+                  }}
                   className={cn(
                     'row-press flex items-center justify-between rounded-2xl border px-4 py-4 text-left font-semibold',
                     active
@@ -66,7 +71,7 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
         </div>
 
         {activeSrc ? (
-          <AudioPlayer src={activeSrc} label={PART_LABELS[part!]} />
+          <AudioPlayer />
         ) : (
           <div className="card flex items-center gap-3 p-4 text-ink-faint">
             <Music width={20} height={20} />

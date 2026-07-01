@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useAudio } from './AudioProvider';
 import { Play, Pause } from './Icons';
 
 function fmt(t: number): string {
@@ -10,44 +10,18 @@ function fmt(t: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** In-app streaming player: play/pause, scrub bar, elapsed time. No download. */
-export function AudioPlayer({ src, label }: { src: string; label: string }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [current, setCurrent] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    // Reset when the source changes (switching parts).
-    setPlaying(false);
-    setCurrent(0);
-    setDuration(0);
-    setFailed(false);
-  }, [src]);
-
-  function toggle() {
-    const el = audioRef.current;
-    if (!el) return;
-    if (playing) {
-      el.pause();
-    } else {
-      // play() rejects (NotSupportedError) when the browser can't decode the
-      // source — catch it so it surfaces as a message, not an unhandled error.
-      el.play().catch(() => setFailed(true));
-    }
-  }
-
-  function seek(value: number) {
-    const el = audioRef.current;
-    if (!el) return;
-    el.currentTime = value;
-    setCurrent(value);
-  }
+/**
+ * Full in-modal transport for the currently-loaded part. Reads the app-wide
+ * audio (see AudioProvider) so the same track keeps playing in the MiniPlayer
+ * after the song sheet is closed. Renders nothing until a part is playing.
+ */
+export function AudioPlayer() {
+  const { track, playing, current, duration, failed, toggle, seek } = useAudio();
+  if (!track) return null;
 
   return (
     <div className="card grain-block p-4">
-      <p className="label mb-3">{label}</p>
+      <p className="label mb-3">{track.part}</p>
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -79,19 +53,6 @@ export function AudioPlayer({ src, label }: { src: string; label: string }) {
           This audio couldn’t be played in your browser.
         </p>
       )}
-      <audio
-        ref={audioRef}
-        src={src}
-        preload="metadata"
-        controlsList="nodownload"
-        onContextMenu={(e) => e.preventDefault()}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onEnded={() => setPlaying(false)}
-        onError={() => setFailed(true)}
-      />
     </div>
   );
 }

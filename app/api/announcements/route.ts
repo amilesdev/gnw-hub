@@ -13,7 +13,8 @@ export async function GET() {
 
   const announcements = await prisma.announcement.findMany({
     where: { expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+    include: { author: { select: { name: true } } },
   });
   return NextResponse.json({ announcements: announcements.map(serializeAnnouncement) });
 }
@@ -34,7 +35,9 @@ export async function POST(req: Request) {
       title: parsed.data.title,
       body: parsed.data.body,
       expiresAt: new Date(parsed.data.expiresAt),
+      authorId: guard.user.id,
     },
+    include: { author: { select: { name: true } } },
   });
 
   // Optionally fan out as a push notification to the whole team. `notify` is a

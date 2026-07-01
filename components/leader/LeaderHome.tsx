@@ -5,12 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { EventDTO, AnnouncementDTO } from '@/lib/serialize';
 import type { SongDTO } from '@/lib/setlist-serialize';
+import type { Verse } from '@/lib/bible';
 import type { ThisWeekSetlist, LeaderAlerts } from '@/lib/home-data';
 import { EventCard } from '@/components/shared/EventCard';
 import { EventDetail } from '@/components/shared/EventDetail';
 import { SongDetail } from '@/components/shared/SongDetail';
 import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
+import { UpNextHero } from '@/components/shared/UpNextHero';
+import { VerseRibbon } from '@/components/shared/VerseRibbon';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
@@ -22,12 +25,14 @@ export function LeaderHome({
   announcements,
   thisWeek,
   alerts,
+  verse,
 }: {
   name: string;
   events: EventDTO[];
   announcements: AnnouncementDTO[];
   thisWeek: ThisWeekSetlist;
   alerts: LeaderAlerts;
+  verse: Verse;
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<EventDTO | null>(null);
@@ -49,6 +54,8 @@ export function LeaderHome({
         </div>
         <AnnouncementBell initial={announcements} canManage onChange={refresh} />
       </header>
+
+      <VerseRibbon verse={verse} />
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 gap-3">
@@ -96,10 +103,10 @@ export function LeaderHome({
         </section>
       )}
 
-      {/* Upcoming Events */}
+      {/* Up next — the soonest gathering, promoted; the rest follow below. */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="eyebrow">Upcoming · next 7 days</h2>
+          <h2 className="eyebrow">{events.length === 0 ? 'Upcoming · next 7 days' : 'Up next'}</h2>
           <Link href="/dashboard/events" className="text-sm font-semibold text-accent-ink dark:text-accent-on">
             Manage →
           </Link>
@@ -107,9 +114,18 @@ export function LeaderHome({
         {events.length === 0 ? (
           <div className="card p-5 text-center text-sm text-ink-faint">No events this week. Tap “Add Event” to schedule one.</div>
         ) : (
-          events.map((e) => <EventCard key={e.id} event={e} onClick={() => setDetail(e)} />)
+          <UpNextHero event={events[0]} onOpen={() => setDetail(events[0])} />
         )}
       </section>
+
+      {events.length > 1 && (
+        <section className="space-y-3">
+          <h2 className="eyebrow">Later this week</h2>
+          {events.slice(1).map((e) => (
+            <EventCard key={e.id} event={e} onClick={() => setDetail(e)} />
+          ))}
+        </section>
+      )}
 
       {/* This Week's Setlist */}
       <section className="space-y-3">
@@ -153,7 +169,7 @@ export function LeaderHome({
         {announcements.length === 0 ? (
           <div className="card p-5 text-center text-sm text-ink-faint">No active announcements. Use “Post Update” to share news.</div>
         ) : (
-          <AnnouncementCards announcements={announcements} />
+          <AnnouncementCards announcements={announcements} canManage onChange={refresh} />
         )}
       </section>
 

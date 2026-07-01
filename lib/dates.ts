@@ -33,6 +33,18 @@ export function isWithinUpcomingWindow(date: Date): boolean {
 }
 
 /**
+ * Whole calendar days from today until the given event date, in UTC. 0 = today,
+ * 1 = tomorrow. Used for the "Up next" countdown. Both sides are anchored to UTC
+ * midnight so the count never drifts by the local/UTC offset.
+ */
+export function daysUntil(date: Date): number {
+  const today = startOfToday();
+  const d = new Date(date);
+  const target = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return Math.round((target - today.getTime()) / 86_400_000);
+}
+
+/**
  * How far ahead a recurring series stays materialized: a rolling 4-calendar-week
  * (28-day) horizon. The number of occurrences "up" follows from the cadence —
  * weekly → 4, biweekly → 2, monthly → 1 — and the window rolls forward over time

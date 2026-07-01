@@ -105,6 +105,8 @@ model User {
   questionPacks  QuestionPack[] // packs this user authored
   hostedSessions GameSession[] // game sessions this user hosts
   gamePlayers    GamePlayer[] // this user's seats across sessions
+
+  announcements Announcement[] // announcements this user authored
 }
 
 // A single device's Web Push subscription. One user can have several (phone,
@@ -243,11 +245,19 @@ model Announcement {
   id        String   @id @default(cuid())
   title     String
   body      String
+  // Pinned announcements sort to the top of everyone's feed and get a
+  // highlighted treatment. Toggled by a leader from the Home screen.
+  pinned    Boolean  @default(false)
+  // The leader who posted it — surfaced as author name + avatar on the card.
+  // Nullable so pre-existing posts (and posts by a since-removed user) still show.
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
   expiresAt DateTime // required; max 10 days from createdAt (enforced in UI + API)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([expiresAt])
+  @@index([pinned])
 }
 
 // A team poll created by a leader. Pops up as a blocking prompt for the whole

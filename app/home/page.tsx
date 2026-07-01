@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { getUpcomingEvents, getActiveAnnouncements, getThisWeekSetlist } from '@/lib/home-data';
-import { getRandomVerse } from '@/lib/bible';
+import { getVerseOfDay } from '@/lib/bible';
 import { MemberHome } from '@/components/member/MemberHome';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export default async function MemberHomePage() {
     getActiveAnnouncements(),
     getThisWeekSetlist(),
   ]);
-  const verse = getRandomVerse(); // local, instant — only used for empty states
+  const verse = getVerseOfDay(); // local, instant — verse-of-the-day ribbon + empty states
 
   return (
     <MemberHome

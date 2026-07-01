@@ -264,3 +264,16 @@ export const Settings = (p: P) => (
     <path d="M12 2.5v2.3M12 19.2v2.3M21.5 12h-2.3M4.8 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" />
   </Base>
 );
+
+export const Pin = (p: P) => (
+  <Base {...p}>
+    <path d="M9 4h6M10 4l-.5 6-3 2.5v1.5h11V12.5L14.5 10 14 4" />
+    <path d="M12 15.5V21" />
+  </Base>
+);
+
+export const Moon = (p: P) => (
+  <Base {...p}>
+    <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a7 7 0 1 0 11 11Z" />
+  </Base>
+);

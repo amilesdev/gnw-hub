@@ -11,6 +11,8 @@ import { EventDetail } from '@/components/shared/EventDetail';
 import { SongDetail } from '@/components/shared/SongDetail';
 import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
+import { UpNextHero } from '@/components/shared/UpNextHero';
+import { VerseRibbon } from '@/components/shared/VerseRibbon';
 import { MemberPolls } from '@/components/member/MemberPolls';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Music, ChevronRight } from '@/components/shared/Icons';
@@ -42,15 +44,31 @@ export function MemberHome({
         <AnnouncementBell initial={announcements} />
       </header>
 
-      {/* Upcoming Events */}
-      <section className="space-y-3">
-        <h2 className="eyebrow">Upcoming · next 7 days</h2>
-        {events.length === 0 ? (
+      <VerseRibbon verse={verse} />
+
+      {/* Up next — the soonest gathering, promoted; the rest follow below. */}
+      {events.length === 0 ? (
+        <section className="space-y-3">
+          <h2 className="eyebrow">Upcoming · next 7 days</h2>
           <EmptyState message="Nothing on the calendar this week. Take a breath and rest up." verse={verse} />
-        ) : (
-          events.map((e) => <EventCard key={e.id} event={e} onClick={() => setDetail(e)} />)
-        )}
-      </section>
+        </section>
+      ) : (
+        <>
+          <section className="space-y-3">
+            <h2 className="eyebrow">Up next</h2>
+            <UpNextHero event={events[0]} onOpen={() => setDetail(events[0])} />
+          </section>
+
+          {events.length > 1 && (
+            <section className="space-y-3">
+              <h2 className="eyebrow">Later this week</h2>
+              {events.slice(1).map((e) => (
+                <EventCard key={e.id} event={e} onClick={() => setDetail(e)} />
+              ))}
+            </section>
+          )}
+        </>
+      )}
 
       {/* This Week's Setlist */}
       <section className="space-y-3">
