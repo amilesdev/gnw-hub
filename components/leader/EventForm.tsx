@@ -65,7 +65,7 @@ function AttireColorField({
             type="button"
             onClick={() => onHex('')}
             aria-label={`Clear ${label} color`}
-            className="shrink-0 text-ink-faint hover:text-ink"
+            className="row-press shrink-0 rounded-lg p-1 text-ink-faint hover:text-ink"
           >
             <X width={16} height={16} />
           </button>
@@ -214,7 +214,14 @@ export function EventForm({
       }
     >
       <form id="event-form" onSubmit={submit} className="space-y-4">
-        <TextField label="Event name" required value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Sunday Service" />
+        <TextField
+          label="Event name"
+          required
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
+          placeholder="Sunday Service"
+          enterKeyHint="next"
+        />
 
         <SelectField label="Type" value={type} onChange={(e) => setType(e.target.value as FormEvent['type'])}>
           {TYPES.map((t) => (
@@ -259,7 +266,14 @@ export function EventForm({
           </div>
         </div>
 
-        <TextField label="Location" required value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Main sanctuary" />
+        <TextField
+          label="Location"
+          required
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Main sanctuary"
+          enterKeyHint="next"
+        />
 
         <SelectField
           label="Repeats"
@@ -305,6 +319,7 @@ export function EventForm({
                     }
                   }}
                   placeholder="e.g. John 3:16"
+                  enterKeyHint="done"
                 />
                 <button type="button" className="btn-ghost shrink-0" onClick={addScripture}>
                   <Plus width={18} height={18} />
@@ -315,7 +330,12 @@ export function EventForm({
                   {scriptures.map((s, i) => (
                     <li key={i} className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
                       {s}
-                      <button type="button" onClick={() => setScriptures((p) => p.filter((_, j) => j !== i))} aria-label={`Remove ${s}`}>
+                      <button
+                        type="button"
+                        onClick={() => setScriptures((p) => p.filter((_, j) => j !== i))}
+                        aria-label={`Remove ${s}`}
+                        className="transition active:scale-90"
+                      >
                         <X width={13} height={13} />
                       </button>
                     </li>
@@ -380,7 +400,7 @@ export function EventForm({
                       <button
                         type="button"
                         onClick={() => removePhoto(url)}
-                        className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-bad text-white shadow-card"
+                        className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-bad text-white shadow-card transition active:scale-90"
                         aria-label="Remove photo"
                       >
                         <Trash width={13} height={13} />

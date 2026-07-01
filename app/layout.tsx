@@ -41,6 +41,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Shrink the layout viewport when the soft keyboard opens instead of letting it
+  // overlay content, so focused inputs and submit buttons stay on-screen.
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FAF7F2' },
     { media: '(prefers-color-scheme: dark)', color: '#161410' },

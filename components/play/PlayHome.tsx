@@ -350,6 +350,7 @@ export function PlayHome({
           className="field"
           placeholder="Pack name"
           value={newName}
+          enterKeyHint="go"
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createPack()}
         />

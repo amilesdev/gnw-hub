@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { playSfx } from '@/lib/play/audio';
+import { haptics } from '@/lib/haptics';
 import { TabBar } from '@/components/shared/TabBar';
 
 const HOLD_MS = 1100;
@@ -40,7 +41,7 @@ export function EnterGate({ variant, onEnter }: { variant: 'member' | 'leader'; 
     setEntering(true);
     setHolding(false);
     playSfx('game-start', { volume: 0.7 });
-    if (navigator.vibrate) navigator.vibrate(30);
+    haptics.press();
     setTimeout(onEnter, 860); // hands off while the white light still covers the screen
   };
 

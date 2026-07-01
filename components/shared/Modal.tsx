@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from './Icons';
 
-/** Centered, scale-in modal floating on a dimmed backdrop. */
+/** Scale-in modal floating on a dimmed backdrop. Centered on wide screens;
+ *  anchored to the bottom on phones so it rides just above the soft keyboard. */
 export function Modal({
   open,
   onClose,
@@ -19,6 +20,17 @@ export function Modal({
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  // When a field inside the dialog gains focus, wait for the keyboard to animate
+  // in, then scroll it to the middle of the (now shorter) viewport so it — and the
+  // submit button below it — never end up hidden behind the keyboard.
+  const onFocusCapture = (e: React.FocusEvent<HTMLDivElement>) => {
+    const el = e.target;
+    if (!el.matches('input, textarea, select')) return;
+    window.setTimeout(() => {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 250);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -39,13 +51,14 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-5">
+    <div className="absolute inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-5">
       <div className="absolute inset-0 animate-fade-in bg-ink/40" onClick={onClose} aria-hidden />
       <div
-        className="card relative z-10 max-h-[85%] w-full animate-scale-in overflow-hidden"
+        className="card relative z-10 max-h-[88%] w-full animate-scale-in overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        onFocusCapture={onFocusCapture}
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h2 id={titleId} className="font-display text-xl font-semibold">{title}</h2>

@@ -34,7 +34,7 @@ export function PlayLeaderboard({
       >
         <Link
           href="/play"
-          className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+          className="row-press grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
           aria-label="Back to Play"
         >
           <ChevronLeft width={18} height={18} />

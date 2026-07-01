@@ -228,7 +228,13 @@ export function Lobby({ initial }: { initial: LobbySnapshot }) {
                 <h2 className="eyebrow">{tn}</h2>
                 <div className="grid grid-cols-4 gap-3">
                   {players.filter((p) => p.team === tn).map((p) => (
-                    <button key={p.id} type="button" onClick={() => movePlayer(p)} disabled={!isHost}>
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => movePlayer(p)}
+                      disabled={!isHost}
+                      className={cn(isHost && 'transition active:scale-95')}
+                    >
                       <Avatar name={p.name} isGuest={p.isGuest} />
                     </button>
                   ))}
@@ -240,7 +246,13 @@ export function Lobby({ initial }: { initial: LobbySnapshot }) {
                 <h2 className="eyebrow text-warn">Unassigned</h2>
                 <div className="grid grid-cols-4 gap-3">
                   {players.filter((p) => !p.team).map((p) => (
-                    <button key={p.id} type="button" onClick={() => movePlayer(p)} disabled={!isHost}>
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => movePlayer(p)}
+                      disabled={!isHost}
+                      className={cn(isHost && 'transition active:scale-95')}
+                    >
                       <Avatar name={p.name} isGuest={p.isGuest} />
                     </button>
                   ))}

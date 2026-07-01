@@ -63,6 +63,8 @@ export function GuestJoin({
               placeholder="Enter your name"
               value={name}
               maxLength={40}
+              autoComplete="name"
+              enterKeyHint="go"
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && join()}
             />

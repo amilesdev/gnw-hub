@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PollDTO, PollResultsDTO } from '@/lib/serialize';
 import { apiFetch } from '@/lib/api-client';
+import { haptics } from '@/lib/haptics';
 import { PollResults } from './PollResults';
 import { Check } from './Icons';
 
@@ -110,6 +111,7 @@ export function PollGate() {
         method: 'POST',
         body: JSON.stringify({ choiceIds: selected }),
       });
+      haptics.tap();
       setResults(data.results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not submit your vote.');

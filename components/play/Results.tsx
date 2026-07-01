@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useGameChannel } from '@/lib/play/realtime-client';
 import { playSfx, stopSfx } from '@/lib/play/audio';
+import { haptics } from '@/lib/haptics';
 import { usePlayActive } from '@/lib/play/use-play-active';
 import type { FinalResultPayload } from '@/lib/play/types';
 
@@ -52,6 +53,7 @@ export function Results({
 
   // Celebration sequence.
   useEffect(() => {
+    haptics.success();
     playSfx('celebration-music', { volume: 0.7 });
     const drops = [0.3, 0.6, 0.9].map((d, i) =>
       setTimeout(() => playSfx('podium-land', { volume: 0.8 }), d * 1000 + i * 50),
@@ -171,7 +173,7 @@ export function Results({
               type="button"
               onClick={() => router.push('/play')}
               className={cn(
-                'flex-1 rounded-2xl bg-white/15 px-5 py-3.5 font-semibold text-white',
+                'flex-1 rounded-2xl bg-white/15 px-5 py-3.5 font-semibold text-white transition active:scale-[0.97]',
                 !isHost && 'flex-1',
               )}
             >

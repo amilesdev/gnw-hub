@@ -1,6 +1,7 @@
 'use client';
 
 import { Modal } from './Modal';
+import { haptics } from '@/lib/haptics';
 
 export function ConfirmDialog({
   open,
@@ -21,6 +22,11 @@ export function ConfirmDialog({
   onClose: () => void;
   busy?: boolean;
 }) {
+  function confirm() {
+    if (destructive) haptics.warn();
+    onConfirm();
+  }
+
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <p className="text-ink-soft">{message}</p>
@@ -30,7 +36,7 @@ export function ConfirmDialog({
         </button>
         <button
           type="button"
-          onClick={onConfirm}
+          onClick={confirm}
           disabled={busy}
           className={
             destructive

@@ -9,6 +9,7 @@ import { TextField } from '@/components/shared/Field';
 import { PasswordField } from '@/components/shared/PasswordField';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { apiFetch } from '@/lib/api-client';
+import { haptics } from '@/lib/haptics';
 
 type ValidState =
   | { kind: 'loading' }
@@ -60,6 +61,7 @@ function InviteFlow() {
         method: 'POST',
         body: JSON.stringify({ token, password, confirm }),
       });
+      haptics.success();
       // Auto sign-in then land on member home.
       const res = await signIn('credentials', { email, password, redirect: false });
       if (res?.error) {
@@ -116,6 +118,7 @@ function InviteFlow() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="At least 8 characters"
+          enterKeyHint="next"
         />
         <PasswordField
           label="Confirm password"
@@ -124,6 +127,7 @@ function InviteFlow() {
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           placeholder="Re-enter password"
+          enterKeyHint="go"
         />
         {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>

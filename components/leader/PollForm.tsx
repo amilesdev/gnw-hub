@@ -60,6 +60,7 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="What’s your question?"
+          enterKeyHint="next"
         />
 
         <div className="space-y-2">
@@ -71,6 +72,7 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
                 value={c}
                 onChange={(e) => setChoice(i, e.target.value)}
                 placeholder={`Choice ${i + 1}`}
+                enterKeyHint="next"
               />
               {choices.length > 2 && (
                 <button

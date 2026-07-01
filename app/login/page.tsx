@@ -41,6 +41,7 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
+          enterKeyHint="next"
         />
         <PasswordField
           label="Password"
@@ -49,6 +50,7 @@ function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
+          enterKeyHint="go"
         />
         {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>

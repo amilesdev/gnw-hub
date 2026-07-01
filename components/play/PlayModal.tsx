@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { X } from '@/components/shared/Icons';
+import { haptics } from '@/lib/haptics';
 
 /**
  * Gamified dialog for the Play world — bouncy scale-in on a blurred backdrop,
@@ -71,6 +72,11 @@ export function PlayConfirm({
   busy?: boolean;
   error?: string | null;
 }) {
+  function confirm() {
+    haptics.warn();
+    onConfirm();
+  }
+
   return (
     <PlayModal open={open} onClose={onClose} title={title}>
       <p className="text-ink-soft">{message}</p>
@@ -86,7 +92,7 @@ export function PlayConfirm({
         </button>
         <button
           type="button"
-          onClick={onConfirm}
+          onClick={confirm}
           disabled={busy}
           className="play-press flex-1 rounded-2xl bg-bad px-5 py-3.5 font-bold text-white shadow-pop disabled:opacity-40"
         >

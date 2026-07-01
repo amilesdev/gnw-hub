@@ -77,7 +77,13 @@ export function SongAudioSlots({
                 <button type="button" className="btn-ghost !px-2.5 !py-1.5 text-xs" disabled={busy} onClick={() => fileRefs.current[part]?.click()}>
                   Replace
                 </button>
-                <button type="button" className="text-bad" disabled={busy} onClick={() => clearOne(part)} aria-label="Delete audio">
+                <button
+                  type="button"
+                  className="row-press rounded-lg p-1 text-bad"
+                  disabled={busy}
+                  onClick={() => clearOne(part)}
+                  aria-label="Delete audio"
+                >
                   <Trash width={16} height={16} />
                 </button>
               </>

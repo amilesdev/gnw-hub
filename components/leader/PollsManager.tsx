@@ -7,7 +7,9 @@ import { pollResultsToCsv, pollCsvFilename } from '@/lib/poll-csv';
 import { PollForm } from './PollForm';
 import { PollResults } from '@/components/shared/PollResults';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { ChevronDown, ChevronRight, Trash, Upload, Check } from '@/components/shared/Icons';
+import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { ChevronDown, ChevronRight, Trash, Upload, Check, Poll as PollIcon } from '@/components/shared/Icons';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -84,8 +86,13 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
     <section className="space-y-3 pb-2">
       <h2 className="eyebrow">Polls</h2>
 
-      {loaded && polls.length === 0 ? (
-        <div className="card p-5 text-center text-sm text-ink-faint">No polls yet. Tap “Add Poll” to ask the team.</div>
+      {!loaded ? (
+        <SkeletonList>
+          <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
+          <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
+        </SkeletonList>
+      ) : polls.length === 0 ? (
+        <EmptyState icon={PollIcon} message="No polls yet. Tap “Add Poll” to ask the team." />
       ) : (
         polls.map((p) => {
           const open = openId === p.id;

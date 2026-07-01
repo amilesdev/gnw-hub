@@ -73,7 +73,7 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
         <button
           type="button"
           onClick={() => (step === 1 ? router.push('/play') : setStep(step - 1))}
-          className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+          className="row-press grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
           aria-label="Back"
         >
           <ChevronLeft width={18} height={18} />
@@ -160,7 +160,7 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
                 <button
                   type="button"
                   onClick={() => setSeconds((s) => Math.max(5, s - 5))}
-                  className="grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-xl font-bold text-ink-soft"
+                  className="row-press grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-xl font-bold text-ink-soft"
                 >
                   −
                 </button>
@@ -168,7 +168,7 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
                 <button
                   type="button"
                   onClick={() => setSeconds((s) => Math.min(60, s + 5))}
-                  className="grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-xl font-bold text-ink-soft"
+                  className="row-press grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-xl font-bold text-ink-soft"
                 >
                   +
                 </button>
@@ -180,8 +180,8 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
             {mode === 'team_battle' && (
               <div className="card space-y-3 p-4">
                 <div className="label">Team names</div>
-                <input className="field" value={teamA} onChange={(e) => setTeamA(e.target.value)} placeholder="Team 1" />
-                <input className="field" value={teamB} onChange={(e) => setTeamB(e.target.value)} placeholder="Team 2" />
+                <input className="field" value={teamA} onChange={(e) => setTeamA(e.target.value)} placeholder="Team 1" enterKeyHint="next" />
+                <input className="field" value={teamB} onChange={(e) => setTeamB(e.target.value)} placeholder="Team 2" enterKeyHint="done" />
               </div>
             )}
 

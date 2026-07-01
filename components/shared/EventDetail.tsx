@@ -133,7 +133,7 @@ function PrayerRequests({ eventId }: { eventId: string }) {
                     type="button"
                     onClick={() => remove(r.id)}
                     aria-label="Remove prayer request"
-                    className="shrink-0 text-ink-faint transition hover:text-bad"
+                    className="row-press shrink-0 rounded-lg p-1 text-ink-faint transition hover:text-bad"
                   >
                     <Trash width={16} height={16} />
                   </button>
@@ -332,7 +332,11 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
           className="absolute inset-0 z-[60] flex animate-fade-in items-center justify-center bg-ink/80 p-6"
           onClick={() => setLightbox(null)}
         >
-          <button className="absolute right-5 top-5 text-white" onClick={() => setLightbox(null)} aria-label="Close">
+          <button
+            className="row-press absolute right-5 top-5 rounded-full p-1 text-white"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+          >
             <X width={26} height={26} />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}

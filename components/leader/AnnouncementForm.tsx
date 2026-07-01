@@ -49,7 +49,14 @@ export function AnnouncementForm({
   return (
     <Modal open onClose={onClose} title={initial ? 'Edit announcement' : 'New Update'}>
       <form onSubmit={submit} className="space-y-4">
-        <TextField label="Title" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Rehearsal moved" />
+        <TextField
+          label="Title"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Rehearsal moved"
+          enterKeyHint="next"
+        />
         <TextArea label="Body (optional)" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Share the details…" />
         <div className="min-w-0">
           <TextField

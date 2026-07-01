@@ -114,7 +114,12 @@ export function LyricChartImport({
             </button>
           )}
           {chart && !confirmReimport && (
-            <button type="button" className="text-xs font-semibold text-bad" disabled={busy} onClick={clearChart}>
+            <button
+              type="button"
+              className="row-press rounded-lg px-1.5 py-1 text-xs font-semibold text-bad"
+              disabled={busy}
+              onClick={clearChart}
+            >
               Remove
             </button>
           )}

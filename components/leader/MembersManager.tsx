@@ -109,7 +109,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
         <div className="card flex items-start gap-2 bg-accent/5 p-4 text-sm text-accent-ink">
           <Check width={16} height={16} className="mt-0.5 shrink-0" />
           <span>{notice}</span>
-          <button className="ml-auto text-ink-faint" onClick={() => setNotice(null)} type="button">
+          <button className="row-press ml-auto rounded-lg px-1.5 py-0.5 text-ink-faint" onClick={() => setNotice(null)} type="button">
             Dismiss
           </button>
         </div>
@@ -300,7 +300,15 @@ function InviteModal({
   return (
     <Modal open={open} onClose={onClose} title="Invite a member">
       <form onSubmit={submit} className="space-y-4">
-        <TextField label="Name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
+        <TextField
+          label="Name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Full name"
+          autoComplete="name"
+          enterKeyHint="next"
+        />
         <TextField
           label="Email"
           type="email"
@@ -308,6 +316,8 @@ function InviteModal({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="them@email.com"
+          autoComplete="email"
+          enterKeyHint="next"
         />
         <div className="space-y-1.5">
           <FieldLabel>Section</FieldLabel>
@@ -387,7 +397,14 @@ function EditModal({
   return (
     <Modal open onClose={onClose} title={`Edit ${member.name.split(' ')[0]}`}>
       <form onSubmit={submit} className="space-y-4">
-        <TextField label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <TextField
+          label="Name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="name"
+          enterKeyHint="done"
+        />
         <div className="space-y-1.5">
           <FieldLabel>Section</FieldLabel>
           <SegmentedControl

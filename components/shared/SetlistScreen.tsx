@@ -48,8 +48,8 @@ export function SetlistScreen() {
               onClick={() => setActiveMonth(m)}
               className={
                 m === activeMonth
-                  ? 'chip shrink-0 bg-accent px-3.5 py-2 text-white'
-                  : 'chip shrink-0 bg-surface-2 px-3.5 py-2 text-ink-soft'
+                  ? 'chip shrink-0 bg-accent px-3.5 py-2 text-white transition active:scale-95'
+                  : 'chip shrink-0 bg-surface-2 px-3.5 py-2 text-ink-soft transition active:scale-95'
               }
             >
               {formatMonthLabel(m)}

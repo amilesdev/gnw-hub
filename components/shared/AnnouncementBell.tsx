@@ -60,7 +60,7 @@ export function AnnouncementBell({
       <button
         type="button"
         onClick={() => setListOpen(true)}
-        className="relative grid h-11 w-11 place-items-center rounded-2xl bg-surface border border-line text-ink-soft shadow-card"
+        className="row-press relative grid h-11 w-11 place-items-center rounded-2xl bg-surface border border-line text-ink-soft shadow-card"
         aria-label="Announcements"
       >
         <Bell width={21} height={21} />

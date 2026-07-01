@@ -88,7 +88,7 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
             type="button"
             onClick={() => setView(v)}
             className={
-              'rounded-xl py-2 text-sm font-semibold capitalize transition ' +
+              'rounded-xl py-2 text-sm font-semibold capitalize transition active:scale-[0.97] ' +
               (view === v ? 'bg-surface text-ink shadow-card' : 'text-ink-soft')
             }
           >

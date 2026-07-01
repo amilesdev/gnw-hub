@@ -107,6 +107,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
               required
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
+              enterKeyHint="next"
             />
             <PasswordField
               label="New password"
@@ -114,6 +115,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
               required
               value={next}
               onChange={(e) => setNext(e.target.value)}
+              enterKeyHint="next"
             />
             <PasswordField
               label="Confirm new password"
@@ -121,6 +123,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
+              enterKeyHint="done"
             />
             {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
             <div className="flex gap-3">

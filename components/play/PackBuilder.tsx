@@ -164,7 +164,7 @@ export function PackBuilder({ initialPack }: { initialPack: SerializedPack }) {
           <button
             type="button"
             onClick={() => router.push('/play')}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+            className="row-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft"
             aria-label="Back to Play"
           >
             <ChevronLeft width={18} height={18} />
@@ -173,6 +173,7 @@ export function PackBuilder({ initialPack }: { initialPack: SerializedPack }) {
             className="min-w-0 flex-1 bg-transparent font-display text-xl font-semibold text-ink outline-none"
             value={name}
             disabled={locked}
+            enterKeyHint="done"
             onChange={(e) => changeName(e.target.value)}
             placeholder="Pack name"
           />
@@ -180,7 +181,7 @@ export function PackBuilder({ initialPack }: { initialPack: SerializedPack }) {
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+              className="row-press grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
               aria-label="Pack actions"
             >
               ⋯

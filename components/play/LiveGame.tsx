@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useGameChannel, sendReaction } from '@/lib/play/realtime-client';
 import { playSfx } from '@/lib/play/audio';
+import { haptics } from '@/lib/haptics';
 import { ReactionLayer, EmojiBar, useReactionList } from './Reactions';
 import { Check, X, Pause, Play } from '@/components/shared/Icons';
 import { usePlayActive } from '@/lib/play/use-play-active';
@@ -179,6 +180,7 @@ export function LiveGame({ initial }: { initial: GameSnapshot }) {
     if (locked || spectator || phase !== 'question' || !question) return;
     setSelected(option);
     setLocked(true);
+    haptics.tap();
     try {
       await apiFetch('/api/play/submit-answer', {
         method: 'POST',
@@ -247,7 +249,7 @@ export function LiveGame({ initial }: { initial: GameSnapshot }) {
           <button
             type="button"
             onClick={togglePause}
-            className="ml-auto grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+            className="row-press ml-auto grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
             aria-label={paused ? 'Resume' : 'Pause'}
           >
             {paused ? <Play width={16} height={16} /> : <Pause width={16} height={16} />}
@@ -413,7 +415,11 @@ export function LiveGame({ initial }: { initial: GameSnapshot }) {
         style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
       >
         {isHost ? (
-          <button type="button" onClick={endGame} className="w-full text-center text-sm font-semibold text-bad">
+          <button
+            type="button"
+            onClick={endGame}
+            className="row-press w-full rounded-lg py-1 text-center text-sm font-semibold text-bad"
+          >
             End game
           </button>
         ) : (

@@ -165,6 +165,7 @@ export function SetlistForm({
             onChange={(e) => setName(e.target.value)}
             placeholder="New setlist"
             maxLength={200}
+            enterKeyHint="done"
           />
         </div>
 
@@ -302,15 +303,30 @@ function SortableSong({
           value={row.songTitle}
           onChange={(e) => onUpdate({ songTitle: e.target.value })}
           placeholder="Song title"
+          enterKeyHint="next"
         />
-        <button type="button" className="text-bad" onClick={onRemove} aria-label="Remove song">
+        <button type="button" className="row-press rounded-lg p-1 text-bad" onClick={onRemove} aria-label="Remove song">
           <Trash width={18} height={18} />
         </button>
       </div>
       <div className="grid grid-cols-1 gap-2 pl-9">
-        <input className="field !py-2.5 text-sm" value={row.artist} onChange={(e) => onUpdate({ artist: e.target.value })} placeholder="Artist" />
-        <input className="field !py-2.5 text-sm" value={row.youtubeLink} onChange={(e) => onUpdate({ youtubeLink: e.target.value })} placeholder="YouTube link" />
-        <input className="field !py-2.5 text-sm" value={row.driveLink} onChange={(e) => onUpdate({ driveLink: e.target.value })} placeholder="Drive link (optional)" />
+        <input className="field !py-2.5 text-sm" value={row.artist} onChange={(e) => onUpdate({ artist: e.target.value })} placeholder="Artist" enterKeyHint="next" />
+        <input
+          className="field !py-2.5 text-sm"
+          value={row.youtubeLink}
+          onChange={(e) => onUpdate({ youtubeLink: e.target.value })}
+          placeholder="YouTube link"
+          inputMode="url"
+          enterKeyHint="next"
+        />
+        <input
+          className="field !py-2.5 text-sm"
+          value={row.driveLink}
+          onChange={(e) => onUpdate({ driveLink: e.target.value })}
+          placeholder="Drive link (optional)"
+          inputMode="url"
+          enterKeyHint="done"
+        />
       </div>
       {songForEdit && (
         <div className="space-y-3 pl-9">

@@ -61,7 +61,7 @@ const config: Config = {
         'fade-in': 'fade-in 0.2s ease-out',
         rise: 'rise 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
         'scale-in': 'scale-in 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
-        'enter-home': 'enter-home 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+        'enter-home': 'enter-home 0.36s cubic-bezier(0.22, 1, 0.36, 1)',
         breathe: 'breathe 3.5s ease-in-out infinite',
         floaty: 'floaty 4s ease-in-out infinite',
         'pulse-ring': 'pulse-ring 3s cubic-bezier(0.16, 1, 0.3, 1) infinite',

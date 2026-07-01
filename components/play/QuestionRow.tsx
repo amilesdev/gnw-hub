@@ -153,6 +153,7 @@ export function QuestionRow({
                       value={opt}
                       disabled={locked}
                       onChange={(e) => setOption(i, e.target.value)}
+                      enterKeyHint="next"
                     />
                   </div>
                 );
@@ -183,7 +184,7 @@ export function QuestionRow({
             <button
               type="button"
               onClick={onDelete}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-bad"
+              className="row-press inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-sm font-semibold text-bad"
             >
               <Trash width={15} height={15} /> Delete question
             </button>
