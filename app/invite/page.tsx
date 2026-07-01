@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthCard } from '@/components/shared/AuthCard';
 import { TextField } from '@/components/shared/Field';
+import { PasswordField } from '@/components/shared/PasswordField';
+import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { apiFetch } from '@/lib/api-client';
 
 type ValidState =
@@ -75,7 +77,15 @@ function InviteFlow() {
   if (state.kind === 'loading') {
     return (
       <AuthCard title="Checking your invite…">
-        <div className="h-2 w-24 animate-breathe rounded-full bg-accent/30" />
+        <SkeletonList>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-[3.375rem] w-full rounded-2xl" />
+            </div>
+          ))}
+          <Skeleton className="h-[3.375rem] w-full rounded-2xl" />
+        </SkeletonList>
       </AuthCard>
     );
   }
@@ -95,29 +105,27 @@ function InviteFlow() {
   }
 
   return (
-    <AuthCard title={`Hey ${state.name.split(' ')[0]} 👋`} subtitle="Set a password to finish joining the team.">
+    <AuthCard title={`Welcome, ${state.name.split(' ')[0]}`} subtitle="Set a password to finish joining the team.">
       <form onSubmit={onSubmit} className={error ? 'animate-shake space-y-4' : 'space-y-4'}>
         <TextField label="Name" value={state.name} disabled readOnly />
         <TextField label="Email" value={state.email} disabled readOnly />
-        <TextField
+        <PasswordField
           label="Create password"
-          type="password"
           autoComplete="new-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="At least 8 characters"
         />
-        <TextField
+        <PasswordField
           label="Confirm password"
-          type="password"
           autoComplete="new-password"
           required
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           placeholder="Re-enter password"
         />
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Setting up…' : 'Join the team'}
         </button>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
-import { TextField } from './Field';
+import { PasswordField } from './PasswordField';
 import { LogOut, Lock, Check } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
 import { apiFetch } from '@/lib/api-client';
@@ -98,31 +98,28 @@ export function ProfileView({ name, email, section, part }: Props) {
 
         {open && (
           <form onSubmit={changePassword} className="mt-4 space-y-4">
-            <TextField
+            <PasswordField
               label="Current password"
-              type="password"
               autoComplete="current-password"
               required
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
             />
-            <TextField
+            <PasswordField
               label="New password"
-              type="password"
               autoComplete="new-password"
               required
               value={next}
               onChange={(e) => setNext(e.target.value)}
             />
-            <TextField
+            <PasswordField
               label="Confirm new password"
-              type="password"
               autoComplete="new-password"
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
-            {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+            {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
             <div className="flex gap-3">
               <button type="button" className="btn-ghost flex-1" onClick={() => setOpen(false)} disabled={busy}>
                 Cancel

@@ -6,6 +6,7 @@ import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { SetlistForm } from './SetlistForm';
 import { SongDetail } from '@/components/shared/SongDetail';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Skeleton, SetlistSkeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Plus, Pencil, Trash, Music, ChevronRight } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
@@ -71,7 +72,10 @@ export function SetlistManager() {
       </header>
 
       {loading ? (
-        <div className="h-2 w-24 animate-breathe rounded-full bg-accent/30" />
+        <SkeletonList>
+          <Skeleton className="h-4 w-28" />
+          <SetlistSkeleton rows={3} />
+        </SkeletonList>
       ) : setlists.length === 0 ? (
         <EmptyState message="No setlists yet. Create one and start adding songs for the month." />
       ) : (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
 import { EmptyState } from './EmptyState';
+import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
 import { Music, ChevronRight, Clock } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
@@ -58,7 +59,10 @@ export function SetlistScreen() {
       )}
 
       {loading ? (
-        <div className="h-2 w-24 animate-breathe rounded-full bg-accent/30" />
+        <SkeletonList>
+          <Skeleton className="h-6 w-44" />
+          <SetlistSkeleton />
+        </SkeletonList>
       ) : monthSetlists.length === 0 ? (
         <EmptyState icon={Clock} message="No setlist for this month yet. Sit tight — your leaders are picking the songs." />
       ) : (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { X } from './Icons';
 
 /** Centered, scale-in modal floating on a dimmed backdrop. */
@@ -17,6 +17,9 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -24,15 +27,30 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Move focus into the dialog on open and restore it to the trigger on close,
+  // so keyboard/screen-reader users aren't stranded behind the scrim.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    return () => prev?.focus?.();
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center p-5">
       <div className="absolute inset-0 animate-fade-in bg-ink/40" onClick={onClose} aria-hidden />
-      <div className="card relative z-10 max-h-[85%] w-full animate-scale-in overflow-hidden">
+      <div
+        className="card relative z-10 max-h-[85%] w-full animate-scale-in overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+      >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h2 className="font-display text-xl font-semibold">{title}</h2>
+          <h2 id={titleId} className="font-display text-xl font-semibold">{title}</h2>
           <button
+            ref={closeRef}
             type="button"
             onClick={onClose}
             className="row-press grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"

@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthCard } from '@/components/shared/AuthCard';
 import { TextField } from '@/components/shared/Field';
+import { PasswordField } from '@/components/shared/PasswordField';
 
 function LoginForm() {
   const router = useRouter();
@@ -41,16 +42,15 @@ function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
         />
-        <TextField
+        <PasswordField
           label="Password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="••••••••"
         />
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>

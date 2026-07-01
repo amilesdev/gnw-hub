@@ -6,6 +6,7 @@ import { EventCard } from './EventCard';
 import { EventDetail } from './EventDetail';
 import { EventsCalendar } from './EventsCalendar';
 import { EmptyState } from './EmptyState';
+import { EventCardSkeleton, SkeletonList } from './Skeleton';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
 import { Plus, Pencil, Trash } from './Icons';
@@ -105,7 +106,11 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
           onDelete={(e) => setConfirming(e)}
         />
       ) : loading ? (
-        <div className="h-2 w-24 animate-breathe rounded-full bg-accent/30" />
+        <SkeletonList>
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+        </SkeletonList>
       ) : events.length === 0 ? (
         <EmptyState message={canManage ? 'No upcoming events yet. Add one to get the team ready.' : 'No upcoming events right now. Rest up — more is coming.'} />
       ) : (

@@ -11,7 +11,7 @@ export function FieldWrap({ label, error, children }: WrapProps) {
     <label className="block space-y-1.5">
       {label && <FieldLabel>{label}</FieldLabel>}
       {children}
-      {error && <span className="block text-xs font-semibold text-bad">{error}</span>}
+      {error && <span role="alert" className="block text-xs font-semibold text-bad">{error}</span>}
     </label>
   );
 }

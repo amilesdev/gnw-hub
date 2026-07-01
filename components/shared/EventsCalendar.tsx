@@ -5,8 +5,9 @@ import type { EventDTO } from '@/lib/serialize';
 import { EventCard } from './EventCard';
 import { EVENT_DOT_STYLES } from './EventTypeBadge';
 import { Pencil, Trash, ChevronLeft, ChevronRight } from './Icons';
+import { EventCardSkeleton, Skeleton, SkeletonList } from './Skeleton';
 import { apiFetch } from '@/lib/api-client';
-import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
+import { formatMonthLabel, formatEventDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -14,6 +15,17 @@ const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 /** Day-of-month key for grouping (events are stored at UTC midnight). */
 function dayOf(iso: string): number {
   return new Date(iso).getUTCDate();
+}
+
+/**
+ * "YYYY-MM" for a date read in the viewer's local zone. The calendar shows the
+ * user's own wall-clock month, and its cells select by day number — which lines
+ * up with UTC-midnight event dates. Reading "today" in UTC here (as monthKey
+ * does) drifts a month ahead late on the last day of the month (e.g. the evening
+ * of June 30 in the US is already July 1 UTC → the grid jumped to July 30).
+ */
+function localMonthKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export function EventsCalendar({
@@ -30,7 +42,7 @@ export function EventsCalendar({
   onDelete: (e: EventDTO) => void;
 }) {
   const today = new Date();
-  const [cursor, setCursor] = useState(() => monthKey(today)); // "YYYY-MM"
+  const [cursor, setCursor] = useState(() => localMonthKey(today)); // "YYYY-MM"
   const [events, setEvents] = useState<EventDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
@@ -64,12 +76,12 @@ export function EventsCalendar({
 
   const firstWeekday = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(year, month, 0).getDate();
-  const isCurrentMonth = monthKey(today) === cursor;
+  const isCurrentMonth = localMonthKey(today) === cursor;
   const todayDate = today.getDate();
 
   function shiftMonth(delta: number) {
     const d = new Date(year, month - 1 + delta, 1);
-    setCursor(monthKey(d));
+    setCursor(localMonthKey(d));
     setSelectedDay(null);
   }
 
@@ -137,7 +149,11 @@ export function EventsCalendar({
       </div>
 
       {loading ? (
-        <div className="h-2 w-24 animate-breathe rounded-full bg-accent/30" />
+        <SkeletonList>
+          <Skeleton className="h-3 w-24" />
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+        </SkeletonList>
       ) : selectedDay === null ? (
         <p className="text-center text-sm text-ink-faint">Pick a day to see its events.</p>
       ) : selectedEvents.length === 0 ? (
