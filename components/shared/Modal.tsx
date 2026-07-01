@@ -1,22 +1,35 @@
 'use client';
 
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { cn } from '@/lib/utils';
 import { X } from './Icons';
 
-/** Scale-in modal floating on a dimmed backdrop. Centered on wide screens;
- *  anchored to the bottom on phones so it rides just above the soft keyboard. */
+/**
+ * Scale-in modal floating on a dimmed backdrop. Rendered through a portal on
+ * `document.body` so it covers the whole viewport — the app shell is a fixed,
+ * transformed 430px column, which would otherwise trap the backdrop inside it
+ * (leaving the dim as a "box" within the screen on wider viewports).
+ *
+ * Placement:
+ * - `sheet` (default): bottom-anchored on phones so it rides above the soft
+ *   keyboard, centered on wider screens.
+ * - `center`: always centered on screen — for short, keyboard-light dialogs.
+ */
 export function Modal({
   open,
   onClose,
   title,
   children,
   footer,
+  placement = 'sheet',
 }: {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  placement?: 'sheet' | 'center';
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -48,13 +61,18 @@ export function Modal({
     return () => prev?.focus?.();
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
-    <div className="absolute inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-5">
+  return createPortal(
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex justify-center p-3 sm:p-5',
+        placement === 'center' ? 'items-center' : 'items-end sm:items-center',
+      )}
+    >
       <div className="absolute inset-0 animate-fade-in bg-ink/40" onClick={onClose} aria-hidden />
       <div
-        className="card relative z-10 max-h-[88%] w-full animate-scale-in overflow-hidden"
+        className="card relative z-10 max-h-[88%] w-full max-w-[430px] animate-scale-in overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -75,6 +93,7 @@ export function Modal({
         <div className="no-scrollbar max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="border-t border-line px-5 py-4">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,29 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/shared/Modal';
 import { TextField } from '@/components/shared/Field';
 import { apiFetch } from '@/lib/api-client';
 import type { CallDTO } from '@/lib/serialize';
 
-// Cycled through the name field's placeholder as gentle examples.
-const PLACEHOLDERS = ['Prayer Call', 'Quick Check-In', 'Rehearsal Sync', 'Team Huddle'];
-
 export function StartCallModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [placeholder, setPlaceholder] = useState(PLACEHOLDERS[0]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  // Rotate the placeholder examples while the field is empty.
-  useEffect(() => {
-    const t = setInterval(() => {
-      setPlaceholder((p) => PLACEHOLDERS[(PLACEHOLDERS.indexOf(p) + 1) % PLACEHOLDERS.length]);
-    }, 2200);
-    return () => clearInterval(t);
-  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +32,7 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Start a call">
+    <Modal open onClose={onClose} title="Start a call" placement="center">
       <form onSubmit={submit} className="space-y-4">
         <TextField
           label="Call name"
@@ -52,7 +40,7 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={placeholder}
+          placeholder="Quick Check-In"
           enterKeyHint="go"
         />
 
