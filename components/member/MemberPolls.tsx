@@ -6,8 +6,7 @@ import { apiFetch } from '@/lib/api-client';
 import { haptics } from '@/lib/haptics';
 import { PollResults } from '@/components/shared/PollResults';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { ChevronDown, ChevronRight, Check, Pencil, Poll as PollIcon } from '@/components/shared/Icons';
+import { ChevronDown, ChevronRight, Check, Pencil } from '@/components/shared/Icons';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -98,7 +97,7 @@ export function MemberPolls() {
           <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
         </SkeletonList>
       ) : polls.length === 0 ? (
-        <EmptyState icon={PollIcon} message="No polls yet. They’ll show up here once your team posts one." />
+        <div className="card p-5 text-center text-sm text-ink-faint">No polls right now — check back when your team posts one.</div>
       ) : (
         polls.map((p) => {
           const open = openId === p.id;
