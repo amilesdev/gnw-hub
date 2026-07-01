@@ -67,6 +67,12 @@ enum GameMode {
   survival
 }
 
+// Lifecycle of a leader-initiated group call.
+enum CallStatus {
+  active
+  ended
+}
+
 enum SessionStatus {
   lobby
   active
@@ -107,6 +113,8 @@ model User {
   gamePlayers    GamePlayer[] // this user's seats across sessions
 
   announcements Announcement[] // announcements this user authored
+
+  startedCalls Call[] // group calls this user (a leader) started
 }
 
 // A single device's Web Push subscription. One user can have several (phone,
@@ -437,4 +445,27 @@ model GameTeam {
   teamPoints Int         @default(0)
 
   @@index([sessionId])
+}
+
+// ===========================================================================
+// Calls — leader-initiated live voice/video rooms (LiveKit Cloud). First pass:
+// a leader starts a named call, everyone may join (no invite gating yet), and
+// a push notification fans out to the whole team. Room media itself lives in
+// LiveKit; this row is the discoverable record + audit trail.
+// ===========================================================================
+model Call {
+  id       String     @id @default(cuid())
+  name     String // leader-entered call name (free text)
+  roomName String     @unique // LiveKit room identifier (unique slug)
+  status   CallStatus @default(active)
+
+  // The leader who started the call. Kept as a required FK (the starter always
+  // has the leader role, verified server-side at creation).
+  startedById String
+  startedBy   User   @relation(fields: [startedById], references: [id])
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([status])
 }

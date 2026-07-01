@@ -1,4 +1,4 @@
-import type { Event, Announcement, PrayerRequest, Poll, PollChoice } from '@prisma/client';
+import type { Event, Announcement, PrayerRequest, Poll, PollChoice, Call } from '@prisma/client';
 
 // Shapes sent to the client (Dates → ISO strings).
 export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt'> & {
@@ -122,5 +122,20 @@ export function serializePrayerRequest(p: PrayerRequest): PrayerRequestDTO {
     ...p,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+  };
+}
+
+export type CallDTO = Omit<Call, 'startedAt' | 'endedAt'> & {
+  startedAt: string;
+  endedAt: string | null;
+  startedByName?: string;
+};
+
+export function serializeCall(c: Call & { startedBy?: { name: string } | null }): CallDTO {
+  return {
+    ...c,
+    startedAt: c.startedAt.toISOString(),
+    endedAt: c.endedAt ? c.endedAt.toISOString() : null,
+    ...(c.startedBy ? { startedByName: c.startedBy.name } : {}),
   };
 }

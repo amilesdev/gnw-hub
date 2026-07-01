@@ -17,7 +17,8 @@ import { VerseRibbon } from '@/components/shared/VerseRibbon';
 import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
-import { Calendar, Bell, Music, ChevronRight, Poll, Users } from '@/components/shared/Icons';
+import { StartCallModal } from '@/components/leader/StartCallModal';
+import { Calendar, Bell, Music, ChevronRight, Poll, Users, Phone } from '@/components/shared/Icons';
 
 export function LeaderHome({
   name,
@@ -40,6 +41,7 @@ export function LeaderHome({
   const [addEvent, setAddEvent] = useState(false);
   const [addAnnouncement, setAddAnnouncement] = useState(false);
   const [addPoll, setAddPoll] = useState(false);
+  const [startCall, setStartCall] = useState(false);
   const firstName = name.split(' ')[0] || name;
 
   const refresh = () => router.refresh();
@@ -78,10 +80,10 @@ export function LeaderHome({
         </button>
         <button
           type="button"
-          disabled
-          className="inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink-faint shadow-card opacity-60"
+          onClick={() => setStartCall(true)}
+          className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
         >
-          Coming Soon
+          <Phone width={18} height={18} className="text-accent" /> Start Call
         </button>
       </div>
 
@@ -180,6 +182,7 @@ export function LeaderHome({
       {song && <SongDetail song={song} onClose={() => setSong(null)} />}
       {addEvent && <EventForm mode="create" onClose={() => setAddEvent(false)} onSaved={() => { setAddEvent(false); refresh(); }} />}
       {addAnnouncement && <AnnouncementForm onClose={() => setAddAnnouncement(false)} onSaved={() => { setAddAnnouncement(false); refresh(); }} />}
+      {startCall && <StartCallModal onClose={() => setStartCall(false)} />}
     </div>
   );
 }

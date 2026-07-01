@@ -157,3 +157,8 @@ export const announcementSchema = z
   );
 
 export const ANNOUNCEMENT_MAX_DAYS = MAX_ANNOUNCE_DAYS;
+
+// Starting a call: just the free-text name the leader typed.
+export const callCreateSchema = z.object({
+  name: z.string().trim().min(1, 'Call name required').max(120),
+});
