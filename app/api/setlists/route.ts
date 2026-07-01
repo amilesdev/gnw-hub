@@ -5,6 +5,7 @@ import { requireUser, requireLeader } from '@/lib/session';
 import { serializeSetlist } from '@/lib/setlist-serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { monthKey } from '@/lib/dates';
+import { revalidateSetlists } from '@/lib/cache-tags';
 
 const setlistInclude = {
   songs: true,
@@ -93,5 +94,6 @@ export async function POST(req: Request) {
     include: setlistInclude,
   });
 
+  revalidateSetlists();
   return NextResponse.json({ setlist: serializeSetlist(setlist) }, { status: 201 });
 }

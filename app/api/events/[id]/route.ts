@@ -5,6 +5,7 @@ import { eventSchema } from '@/lib/validation';
 import { serializeEvent } from '@/lib/serialize';
 import { parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
+import { revalidateEvents } from '@/lib/cache-tags';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -74,6 +75,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   try {
     const event = await prisma.event.update({ where: { id }, data });
+    revalidateEvents();
     return NextResponse.json({ event: serializeEvent(event) });
   } catch (err) {
     // Unique [seriesId, date]: this occurrence was moved onto a sibling's date.
@@ -117,6 +119,7 @@ export async function DELETE(req: Request, { params }: Ctx) {
       prisma.seriesSkip.deleteMany({ where: { seriesId: existing.seriesId } }),
     ]);
 
+    revalidateEvents();
     return NextResponse.json({ ok: true, deleted: siblings.length });
   }
 
@@ -135,5 +138,6 @@ export async function DELETE(req: Request, { params }: Ctx) {
   }
 
   await prisma.event.delete({ where: { id } });
+  revalidateEvents();
   return NextResponse.json({ ok: true });
 }

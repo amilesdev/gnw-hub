@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { announcementSchema } from '@/lib/validation';
 import { serializeAnnouncement } from '@/lib/serialize';
+import { revalidateAnnouncements } from '@/lib/cache-tags';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,6 +31,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     },
     include: { author: { select: { name: true } } },
   });
+  revalidateAnnouncements();
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) });
 }
 
@@ -43,5 +45,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (!existing) return NextResponse.json({ error: 'Announcement not found' }, { status: 404 });
 
   await prisma.announcement.delete({ where: { id } });
+  revalidateAnnouncements();
   return NextResponse.json({ ok: true });
 }

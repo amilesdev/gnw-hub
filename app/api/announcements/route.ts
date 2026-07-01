@@ -4,6 +4,7 @@ import { requireUser, requireLeader } from '@/lib/session';
 import { announcementSchema } from '@/lib/validation';
 import { serializeAnnouncement } from '@/lib/serialize';
 import { sendPush } from '@/lib/push';
+import { revalidateAnnouncements } from '@/lib/cache-tags';
 
 // GET /api/announcements — active (unexpired) announcements, newest first.
 // Auto-expiry: anything past expiresAt is excluded from the query.
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
     },
     include: { author: { select: { name: true } } },
   });
+
+  revalidateAnnouncements();
 
   // Optionally fan out as a push notification to the whole team. `notify` is a
   // transport flag (not part of the announcement record); zod strips it, so we

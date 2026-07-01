@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { editMemberSchema } from '@/lib/validation';
+import { revalidateMembers } from '@/lib/cache-tags';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,6 +27,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     data: parsed.data,
     select: { id: true, name: true, email: true, role: true, section: true, part: true, status: true, inviteExpiry: true },
   });
+  revalidateMembers();
   return NextResponse.json({ member });
 }
 
@@ -42,5 +44,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   }
 
   await prisma.user.delete({ where: { id } });
+  revalidateMembers();
   return NextResponse.json({ ok: true });
 }

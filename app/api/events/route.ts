@@ -7,6 +7,7 @@ import { generateOccurrences, parseCalendarDate, startOfToday, upcomingWindowEnd
 import { ensureRecurringWindow } from '@/lib/recurrence';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { randomToken } from '@/lib/utils';
+import { revalidateEvents } from '@/lib/cache-tags';
 
 // GET /api/events?scope=upcoming|all|month&month=YYYY-MM
 export async function GET(req: Request) {
@@ -111,5 +112,6 @@ export async function POST(req: Request) {
     ),
   );
 
+  revalidateEvents();
   return NextResponse.json({ events: created.map(serializeEvent), count: created.length }, { status: 201 });
 }

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { claimSchema } from '@/lib/validation';
 import { isInviteExpired } from '@/lib/invites';
+import { revalidateMembers } from '@/lib/cache-tags';
 
 // POST /api/invite/claim — public; sets password, activates account, clears token.
 export async function POST(req: Request) {
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
       inviteExpiry: null,
     },
   });
+
+  // A pending invite just became active — refresh the leader's pending-invite count.
+  revalidateMembers();
 
   // Client signs in with credentials after this resolves.
   return NextResponse.json({ ok: true, email: user.email });

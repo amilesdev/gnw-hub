@@ -4,6 +4,7 @@ import { requireLeader } from '@/lib/session';
 import { inviteSchema } from '@/lib/validation';
 import { newInviteToken, inviteUrl } from '@/lib/invites';
 import { sendInviteEmail } from '@/lib/email';
+import { revalidateMembers } from '@/lib/cache-tags';
 
 // GET /api/members — full member + pending-invite list (leader only).
 export async function GET() {
@@ -72,6 +73,8 @@ export async function POST(req: Request) {
     },
     select: { id: true, name: true, email: true, role: true, section: true, part: true, status: true, inviteExpiry: true },
   });
+
+  revalidateMembers();
 
   const emailResult = await sendInviteEmail({ to: emailNorm, name, inviteUrl: inviteUrl(inviteToken) });
 

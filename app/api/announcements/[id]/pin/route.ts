@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { serializeAnnouncement } from '@/lib/serialize';
+import { revalidateAnnouncements } from '@/lib/cache-tags';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,5 +27,6 @@ export async function POST(req: Request, { params }: Ctx) {
     data: { pinned },
     include: { author: { select: { name: true } } },
   });
+  revalidateAnnouncements();
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) });
 }

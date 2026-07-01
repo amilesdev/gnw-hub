@@ -5,6 +5,7 @@ import { requireUser, requireLeader } from '@/lib/session';
 import { serializeSetlist, AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { monthKey } from '@/lib/dates';
+import { revalidateSetlists } from '@/lib/cache-tags';
 import type { Song } from '@prisma/client';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -119,6 +120,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   });
 
   const updated = await prisma.setlist.findUnique({ where: { id }, include: setlistInclude });
+  revalidateSetlists();
   return NextResponse.json({ setlist: serializeSetlist(updated!) });
 }
 
@@ -135,5 +137,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (paths.length) await deleteObjects(paths);
 
   await prisma.setlist.delete({ where: { id } }); // songs cascade
+  revalidateSetlists();
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
+import { revalidateSetlists } from '@/lib/cache-tags';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -78,5 +79,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
     },
   });
 
+  revalidateSetlists();
   return NextResponse.json({ song });
 }
