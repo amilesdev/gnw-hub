@@ -72,14 +72,14 @@ export function UpNextHero({ event, onOpen }: { event: EventDTO; onOpen: () => v
         <button
           type="button"
           onClick={onOpen}
-          className="row-press inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-accent-ink"
+          className="row-press inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-accent-ink"
         >
           <ActionIcon width={16} height={16} /> {label}
         </button>
         <button
           type="button"
           onClick={() => downloadEventICS(event)}
-          className="row-press inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white"
+          className="row-press inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold text-white"
         >
           <Calendar width={16} height={16} /> Add to calendar
         </button>
