@@ -283,3 +283,42 @@ export const Phone = (p: P) => (
     <path d="M6.5 3.5H9l1.5 4.5-2 1.3a11 11 0 0 0 5.2 5.2l1.3-2 4.5 1.5v2.5a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z" />
   </Base>
 );
+
+export const PhoneOff = (p: P) => (
+  <Base {...p}>
+    <path d="M6.5 3.5H9l1.5 4.5-2 1.3a11 11 0 0 0 5.2 5.2l1.3-2 4.5 1.5v2.5a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z" />
+    <path d="M3.5 3.5l17 17" />
+  </Base>
+);
+
+export const Video = (p: P) => (
+  <Base {...p}>
+    <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+    <path d="M15.5 10 21 7v10l-5.5-3" />
+  </Base>
+);
+
+export const VideoOff = (p: P) => (
+  <Base {...p}>
+    <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+    <path d="M15.5 10 21 7v10l-5.5-3" />
+    <path d="M3 3l18 18" />
+  </Base>
+);
+
+export const Mic = (p: P) => (
+  <Base {...p}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0" />
+    <path d="M12 17.5V21" />
+  </Base>
+);
+
+export const MicOff = (p: P) => (
+  <Base {...p}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0" />
+    <path d="M12 17.5V21" />
+    <path d="M4 4l16 16" />
+  </Base>
+);
