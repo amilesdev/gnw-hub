@@ -34,5 +34,8 @@ yarn-error.log*
 # prisma
 /prisma/*.db
 
+# database backups (contain user data — keep out of git)
+/backups/
+
 # claude code (local subagents, settings, skills — not shared)
 /.claude/

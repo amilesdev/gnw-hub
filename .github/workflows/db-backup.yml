@@ -1,0 +1,42 @@
+name: Database Backup
+
+# Always-on, cloud-side backup of the Supabase database — independent of any
+# local machine. Runs daily and can also be triggered by hand. The dump is
+# stored as a downloadable workflow artifact (90-day retention).
+#
+# Requires two repository secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL  — the pooled Supabase URL (port 6543)
+#   DIRECT_URL    — the direct Supabase URL   (port 5432)
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # daily at 07:00 UTC (~02:00–03:00 US Eastern)
+  workflow_dispatch: {} # lets you run it manually from the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run database backup
+        run: node scripts/db-backup.mjs
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnw-db-backup-${{ github.run_id }}
+          path: backups/*.json
+          retention-days: 90
+          if-no-files-found: error

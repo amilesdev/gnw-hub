@@ -11,7 +11,9 @@
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
     "db:deploy": "dotenv -e .env.local -- prisma migrate deploy",
     "db:studio": "dotenv -e .env.local -- prisma studio",
-    "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts"
+    "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "db:backup": "dotenv -e .env.local -- node scripts/db-backup.mjs",
+    "db:restore": "dotenv -e .env.local -- node scripts/db-restore.mjs"
   },
   "prisma": {
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts"
