@@ -14,8 +14,8 @@ import { useCall, useElapsed, formatElapsed } from './CallProvider';
 export function MiniCallBar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { callId, callName, status, muted, connectedAt, toggleMute } = useCall();
-  const elapsed = useElapsed(connectedAt);
+  const { callId, callName, status, muted, callStartedAt, toggleMute } = useCall();
+  const elapsed = useElapsed(callStartedAt);
 
   const live = status === 'connected' || status === 'connecting';
   if (!callId || !live) return null;

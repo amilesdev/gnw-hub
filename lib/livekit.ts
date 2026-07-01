@@ -21,6 +21,14 @@ export function newRoomName(): string {
   return `gnw-call-${randomUUID()}`;
 }
 
+/**
+ * Seconds LiveKit keeps a room alive after the last participant leaves before it
+ * tears the room down. This is the "auto-end" buffer: once everyone's gone the
+ * room (and the call) closes ~this long later, and the DB row gets reconciled to
+ * `ended` on the next `active` poll. Short, per the "immediately-ish is fine" ask.
+ */
+export const CALL_EMPTY_TIMEOUT_SEC = 15;
+
 // Server-side admin client (REST). RoomServiceClient wants an http(s) host, so
 // convert the wss:// realtime URL. Lazily built and reused across requests.
 let roomService: RoomServiceClient | null = null;
@@ -40,6 +48,20 @@ function getRoomService(): RoomServiceClient {
 export async function roomParticipantCounts(): Promise<Map<string, number>> {
   const rooms = await getRoomService().listRooms();
   return new Map(rooms.map((r) => [r.name, r.numParticipants]));
+}
+
+/**
+ * Pre-create the LiveKit room with a short `emptyTimeout` so it auto-closes
+ * shortly after the last participant leaves (rather than lingering for LiveKit's
+ * multi-minute default). Best-effort: LiveKit still lazily creates the room on
+ * first connect if this fails, just without our custom timeout.
+ */
+export async function ensureCallRoom(roomName: string): Promise<void> {
+  if (!livekitConfigured) return;
+  await getRoomService().createRoom({
+    name: roomName,
+    emptyTimeout: CALL_EMPTY_TIMEOUT_SEC,
+  });
 }
 
 /**

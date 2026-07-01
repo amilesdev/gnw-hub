@@ -29,5 +29,12 @@ export async function POST(_req: Request, { params }: Ctx) {
     name: guard.user.name ?? 'Member',
   });
 
-  return NextResponse.json({ token, serverUrl: livekitUrl(), name: call.name });
+  // startedAt lets the client show the *total* call duration (since the leader
+  // started it), not just how long this participant has been connected.
+  return NextResponse.json({
+    token,
+    serverUrl: livekitUrl(),
+    name: call.name,
+    startedAt: call.startedAt.toISOString(),
+  });
 }

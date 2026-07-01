@@ -18,7 +18,7 @@ import { apiFetch } from '@/lib/api-client';
 // scrolling the Hub while still connected, exactly like the audio MiniPlayer.
 // The full call screen and the MiniCallBar are just two views onto this one room.
 
-type TokenResponse = { token: string; serverUrl: string; name: string };
+type TokenResponse = { token: string; serverUrl: string; name: string; startedAt: string };
 
 export type CallStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -30,8 +30,11 @@ type CallContextValue = {
   muted: boolean;
   /** Whether the local camera is publishing. Off by default — video is opt-in. */
   cameraOn: boolean;
-  /** Epoch ms when the call connected — drives the live timer. */
+  /** Epoch ms when *this participant* connected. */
   connectedAt: number | null;
+  /** Epoch ms when the leader started the call — drives the shared "total call
+   *  time" timer, so everyone sees the same elapsed clock. */
+  callStartedAt: number | null;
   /** Join a call (or return to the one already in progress). */
   join: (callId: string) => void;
   /** Hang up: disconnect and clear. */
@@ -66,6 +69,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  const [callStartedAt, setCallStartedAt] = useState<number | null>(null);
 
   // Which call we're currently joining. A slow token fetch for an abandoned join
   // must not connect us to a call we've since left.
@@ -84,6 +88,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setStatus('idle');
     setError(null);
     setConnectedAt(null);
+    setCallStartedAt(null);
     setMuted(false);
     setCameraOn(false);
   }, []);
@@ -144,6 +149,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
           setMuted(false);
           setCameraOn(false); // join voice-first; camera is opt-in
           setConnectedAt(Date.now());
+          const started = Date.parse(conn.startedAt);
+          setCallStartedAt(Number.isNaN(started) ? Date.now() : started);
           setStatus('connected');
         } catch (err) {
           if (joiningRef.current !== nextCallId) return;
@@ -190,6 +197,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     muted,
     cameraOn,
     connectedAt,
+    callStartedAt,
     join,
     leave,
     toggleMute,

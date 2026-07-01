@@ -37,7 +37,7 @@ function initials(name: string): string {
 // video the moment that person turns their camera on.
 export function CallRoom({ callId }: { callId: string }) {
   const router = useRouter();
-  const { callName, status, error, muted, cameraOn, connectedAt, join, leave, toggleMute, toggleCamera, stopCamera } =
+  const { callName, status, error, muted, cameraOn, callStartedAt, join, leave, toggleMute, toggleCamera, stopCamera } =
     useCall();
   const participants = useCallParticipants();
   // One camera track reference per participant (placeholder when their camera is
@@ -45,7 +45,7 @@ export function CallRoom({ callId }: { callId: string }) {
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], {
     onlySubscribed: false,
   });
-  const elapsed = useElapsed(connectedAt);
+  const elapsed = useElapsed(callStartedAt);
 
   // Which participant is enlarged (Zoom-style), if any. Only camera-on tiles can
   // be spotlighted; if that person's video ends, the overlay closes itself.
@@ -236,7 +236,13 @@ function ParticipantTile({
       {hasVideo ? (
         <VideoTrack
           trackRef={trackRef}
-          className={cn('h-full w-full object-cover', isLocal && 'scale-x-[-1]')}
+          // rounded-[inherit] + its own GPU layer make the <video> clip to the
+          // tile's corners on iOS Safari, where overflow-hidden on the parent
+          // alone leaves remote video square (only the flipped local tile clipped).
+          className={cn(
+            'h-full w-full rounded-[inherit] object-cover transform-gpu',
+            isLocal && 'scale-x-[-1]',
+          )}
         />
       ) : (
         <div className="grid h-full w-full place-items-center">
@@ -315,7 +321,10 @@ function SpotlightOverlay({
       >
         <VideoTrack
           trackRef={trackRef}
-          className={cn('h-full w-full object-cover', isLocal && 'scale-x-[-1]')}
+          className={cn(
+            'h-full w-full rounded-[inherit] object-cover transform-gpu',
+            isLocal && 'scale-x-[-1]',
+          )}
         />
 
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/55 to-transparent px-4 pb-3 pt-9">

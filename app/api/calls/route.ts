@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { callCreateSchema } from '@/lib/validation';
 import { serializeCall } from '@/lib/serialize';
-import { createJoinToken, livekitConfigured, livekitUrl, newRoomName } from '@/lib/livekit';
+import { createJoinToken, ensureCallRoom, livekitConfigured, livekitUrl, newRoomName } from '@/lib/livekit';
 import { sendPush } from '@/lib/push';
 
 // POST /api/calls — leader starts a new call. Creates the Call row + a LiveKit
@@ -31,6 +31,11 @@ export async function POST(req: Request) {
       startedById: guard.user.id,
     },
   });
+
+  // Provision the room up front with a short empty-timeout so it auto-closes
+  // soon after the last person leaves. Best-effort — the room is also created
+  // lazily on first connect if this fails.
+  await ensureCallRoom(call.roomName).catch(() => {});
 
   const token = await createJoinToken({
     room: call.roomName,
