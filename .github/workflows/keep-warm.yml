@@ -1,0 +1,40 @@
+name: Keep Warm
+
+# Pings the app's /api/warm probe on a schedule so the Vercel serverless function
+# and the Supabase free-tier database never go fully cold. This kills the slow
+# "first load after idle" (function boot + Prisma init + DB waking).
+#
+# Requires one repository variable (Settings → Secrets and variables → Actions →
+# Variables tab):
+#   APP_URL — the deployed base URL, e.g. https://gnw-hub.vercel.app  (no trailing slash)
+#
+# Note: GitHub cron granularity is ~5 min and firings can be delayed under load;
+# and scheduled workflows auto-disable after 60 days without repo activity — same
+# caveat as the backup workflow. Good enough to keep things warm during active use.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes
+  workflow_dispatch: {} # manual trigger from the Actions tab
+
+# Never pile up overlapping pings.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping warm endpoint
+        run: |
+          if [ -z "${{ vars.APP_URL }}" ]; then
+            echo "APP_URL repository variable is not set — skipping. Add it under Settings → Secrets and variables → Actions → Variables."
+            exit 0
+          fi
+          echo "Pinging ${{ vars.APP_URL }}/api/warm"
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 2 "${{ vars.APP_URL }}/api/warm")
+          echo "HTTP $code"
+          # A 5xx means the app/DB answered but errored; anything is fine for keeping warm,
+          # but fail on a hard connection error (000) so a broken URL is visible.
+          [ "$code" != "000" ]

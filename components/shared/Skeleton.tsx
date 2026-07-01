@@ -49,3 +49,86 @@ export function SkeletonList({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+/* ── Route-level skeletons ────────────────────────────────────────────────────
+ * Rendered by each segment's loading.tsx so a navigation paints instantly (the
+ * AppShell/nav stays mounted from the layout) while the async server page
+ * streams in. Shapes mirror the real screens to keep layout shift minimal. */
+
+/** Full Home / Dashboard screen placeholder (greeting → verse → events → setlist). */
+export function HomeSkeleton() {
+  return (
+    <SkeletonList>
+      <header className="space-y-2 pt-2">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-8 w-52" />
+      </header>
+      <Skeleton className="h-16 w-full rounded-2xl" />
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-32" />
+        <EventCardSkeleton />
+        <EventCardSkeleton />
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-40" />
+        <SetlistSkeleton />
+      </div>
+    </SkeletonList>
+  );
+}
+
+/** Setlist screen placeholder (title + month chips + song rows). */
+export function SetlistScreenSkeleton() {
+  return (
+    <div className="space-y-5 pt-2">
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-8 w-36" />
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-24 rounded-full" />
+        <Skeleton className="h-9 w-24 rounded-full" />
+      </div>
+      <SkeletonList>
+        <Skeleton className="h-6 w-44" />
+        <SetlistSkeleton />
+      </SkeletonList>
+    </div>
+  );
+}
+
+/** Events screen placeholder (title + list/month toggle + event cards). */
+export function EventsScreenSkeleton() {
+  return (
+    <div className="space-y-5 pt-2">
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-8 w-40" />
+      </div>
+      <Skeleton className="h-9 w-40 rounded-full" />
+      <SkeletonList>
+        <EventCardSkeleton />
+        <EventCardSkeleton />
+        <EventCardSkeleton />
+      </SkeletonList>
+    </div>
+  );
+}
+
+/** Profile screen placeholder (avatar + fields). */
+export function ProfileScreenSkeleton() {
+  return (
+    <div className="space-y-5 pt-2">
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-8 w-32" />
+      </div>
+      <div className="card space-y-4 p-5">
+        <Skeleton className="h-14 w-14 rounded-full" />
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+    </div>
+  );
+}

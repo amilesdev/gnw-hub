@@ -16,9 +16,15 @@ import { formatEventDate } from '@/lib/dates';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; event: EventDTO } | null;
 
-export function EventsScreen({ canManage }: { canManage: boolean }) {
-  const [events, setEvents] = useState<EventDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+export function EventsScreen({
+  canManage,
+  initialEvents,
+}: {
+  canManage: boolean;
+  initialEvents?: EventDTO[];
+}) {
+  const [events, setEvents] = useState<EventDTO[]>(initialEvents ?? []);
+  const [loading, setLoading] = useState(initialEvents === undefined);
   const [view, setView] = useState<'list' | 'month'>('list');
   const [refreshSignal, setRefreshSignal] = useState(0);
   const [detail, setDetail] = useState<EventDTO | null>(null);
@@ -43,6 +49,7 @@ export function EventsScreen({ canManage }: { canManage: boolean }) {
   }
 
   useEffect(() => {
+    if (initialEvents !== undefined) return; // already seeded on the server — skip the initial fetch
     load();
   }, []);
 

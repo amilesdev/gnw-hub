@@ -9,13 +9,20 @@ import { Music, ChevronRight, Clock } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
 
-export function SetlistScreen() {
-  const [setlists, setSetlists] = useState<SetlistDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeMonth, setActiveMonth] = useState<string>(monthKey());
+export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDTO[] } = {}) {
+  const [setlists, setSetlists] = useState<SetlistDTO[]>(initialSetlists ?? []);
+  const [loading, setLoading] = useState(initialSetlists === undefined);
+  const [activeMonth, setActiveMonth] = useState<string>(() =>
+    // When seeded from the server and the current month has no setlist, open the
+    // newest one — the same fallback the fetch path applies below.
+    initialSetlists?.length && !initialSetlists.some((s) => s.month === monthKey())
+      ? initialSetlists[0].month
+      : monthKey(),
+  );
   const [song, setSong] = useState<SongDTO | null>(null);
 
   useEffect(() => {
+    if (initialSetlists !== undefined) return; // already seeded on the server — skip the fetch
     (async () => {
       try {
         const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
@@ -27,6 +34,7 @@ export function SetlistScreen() {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const months = useMemo(() => Array.from(new Set(setlists.map((s) => s.month))).sort().reverse(), [setlists]);
