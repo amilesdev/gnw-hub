@@ -8,7 +8,7 @@ import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Bell, Plus, Pencil, Trash, ChevronRight } from './Icons';
 import { apiFetch } from '@/lib/api-client';
-import { formatExpiry, expiringSoon } from '@/lib/announcement-ui';
+import { formatExpiry, expiringSoon, formatPosted } from '@/lib/announcement-ui';
 
 /**
  * Bell with a dot badge (shown when active announcements exist). Tapping opens
@@ -79,20 +79,18 @@ export function AnnouncementBell({
           <p className="py-4 text-center text-ink-faint">No active announcements right now.</p>
         ) : (
           <ul className="space-y-2.5">
-            {items.map((a) => (
-              <li key={a.id} className="rounded-2xl border border-line bg-surface p-3">
-                <button type="button" className="row-press flex w-full items-center gap-2 text-left" onClick={() => setDetail(a)}>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{a.title}</span>
-                    {canManage && (
+            {items.map((a, i) =>
+              canManage ? (
+                <li key={a.id} className="rounded-2xl border border-line bg-surface p-3">
+                  <button type="button" className="row-press flex w-full items-center gap-2 text-left" onClick={() => setDetail(a)}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">{a.title}</span>
                       <span className={expiringSoon(a.expiresAt) ? 'text-xs font-semibold text-warn' : 'text-xs text-ink-faint'}>
                         Expires {formatExpiry(a.expiresAt)}
                       </span>
-                    )}
-                  </span>
-                  <ChevronRight width={18} height={18} className="text-ink-faint" />
-                </button>
-                {canManage && (
+                    </span>
+                    <ChevronRight width={18} height={18} className="text-ink-faint" />
+                  </button>
                   <div className="mt-2 flex gap-2">
                     <button className="btn-ghost !py-1.5 text-xs" onClick={() => setEditing(a)} type="button">
                       <Pencil width={14} height={14} /> Edit
@@ -101,9 +99,24 @@ export function AnnouncementBell({
                       <Trash width={14} height={14} /> Delete
                     </button>
                   </div>
-                )}
-              </li>
-            ))}
+                </li>
+              ) : (
+                <li key={a.id} className={`rounded-2xl border border-line p-3.5 ${i % 2 === 0 ? 'bg-surface-2' : 'bg-surface'}`}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="min-w-0 flex-1 font-semibold text-ink">{a.title}</p>
+                    {a.authorName && (
+                      <p className="shrink-0 font-display text-sm italic text-ink-soft">{a.authorName}</p>
+                    )}
+                  </div>
+                  {a.body.trim() && (
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{a.body}</p>
+                  )}
+                  <p className="mt-3 text-right text-[11px] font-light tracking-wide text-ink-faint">
+                    {formatPosted(a.createdAt)}
+                  </p>
+                </li>
+              )
+            )}
           </ul>
         )}
       </Modal>

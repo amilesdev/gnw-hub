@@ -8,7 +8,7 @@ import type { Verse } from '@/lib/bible';
 export function VerseRibbon({ verse }: { verse: Verse }) {
   if (!verse?.text) return null;
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-accent/20 bg-gradient-to-br from-accent-soft to-surface px-4 py-3.5">
+    <div className="relative overflow-hidden rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3.5">
       <blockquote className="font-display text-[0.95rem] font-medium italic leading-snug text-ink">
         “{verse.text}”
       </blockquote>
