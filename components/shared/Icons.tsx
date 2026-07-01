@@ -322,3 +322,12 @@ export const MicOff = (p: P) => (
     <path d="M4 4l16 16" />
   </Base>
 );
+
+export const Maximize = (p: P) => (
+  <Base {...p}>
+    <path d="M9 4H4v5" />
+    <path d="M15 4h5v5" />
+    <path d="M15 20h5v-5" />
+    <path d="M9 20H4v-5" />
+  </Base>
+);

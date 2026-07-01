@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useTracks,
   VideoTrack,
   isTrackReference,
+  type TrackReference,
   type TrackReferenceOrPlaceholder,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { cn } from '@/lib/utils';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, ChevronDown } from '@/components/shared/Icons';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, ChevronDown, Maximize, X } from '@/components/shared/Icons';
 import {
   useCall,
   useCallParticipants,
@@ -36,7 +37,7 @@ function initials(name: string): string {
 // video the moment that person turns their camera on.
 export function CallRoom({ callId }: { callId: string }) {
   const router = useRouter();
-  const { callName, status, error, muted, cameraOn, connectedAt, join, leave, toggleMute, toggleCamera } =
+  const { callName, status, error, muted, cameraOn, connectedAt, join, leave, toggleMute, toggleCamera, stopCamera } =
     useCall();
   const participants = useCallParticipants();
   // One camera track reference per participant (placeholder when their camera is
@@ -46,9 +47,26 @@ export function CallRoom({ callId }: { callId: string }) {
   });
   const elapsed = useElapsed(connectedAt);
 
+  // Which participant is enlarged (Zoom-style), if any. Only camera-on tiles can
+  // be spotlighted; if that person's video ends, the overlay closes itself.
+  const [spotlightId, setSpotlightId] = useState<string | null>(null);
+  const spotlightRef = spotlightId
+    ? cameraTracks.find(
+        (r) => r.participant.identity === spotlightId && isTrackReference(r) && !r.publication.isMuted,
+      )
+    : undefined;
+  useEffect(() => {
+    if (spotlightId && !spotlightRef) setSpotlightId(null);
+  }, [spotlightId, spotlightRef]);
+
   useEffect(() => {
     join(callId);
   }, [callId, join]);
+
+  // Leaving the call *screen* (minimize, back, or navigating away) should stop
+  // broadcasting video immediately — the call stays live under the MiniCallBar,
+  // but there's no camera control there, so we never leave it running unseen.
+  useEffect(() => stopCamera, [stopCamera]);
 
   const minimize = () => router.push('/');
   const hangUp = async () => {
@@ -111,14 +129,18 @@ export function CallRoom({ callId }: { callId: string }) {
               count <= 1 ? 'grid-cols-1' : 'grid-cols-2',
             )}
           >
-            {cameraTracks.map((ref) => (
-              <ParticipantTile
-                key={ref.participant.identity}
-                trackRef={ref}
-                meta={metaById.get(ref.participant.identity)}
-                solo={count <= 1}
-              />
-            ))}
+            {cameraTracks.map((ref) => {
+              const hasVideo = isTrackReference(ref) && !ref.publication.isMuted;
+              return (
+                <ParticipantTile
+                  key={ref.participant.identity}
+                  trackRef={ref}
+                  meta={metaById.get(ref.participant.identity)}
+                  solo={count <= 1}
+                  onOpen={hasVideo ? () => setSpotlightId(ref.participant.identity) : undefined}
+                />
+              );
+            })}
           </div>
         ) : (
           <div
@@ -149,6 +171,14 @@ export function CallRoom({ callId }: { callId: string }) {
           <PhoneOff width={25} height={25} />
         </ControlButton>
       </div>
+
+      {spotlightRef && isTrackReference(spotlightRef) && (
+        <SpotlightOverlay
+          trackRef={spotlightRef}
+          meta={metaById.get(spotlightRef.participant.identity)}
+          onClose={() => setSpotlightId(null)}
+        />
+      )}
     </CallShell>
   );
 }
@@ -178,10 +208,13 @@ function ParticipantTile({
   trackRef,
   meta,
   solo,
+  onOpen,
 }: {
   trackRef: TrackReferenceOrPlaceholder;
   meta: CallParticipant | undefined;
   solo: boolean;
+  /** Tap-to-enlarge. Present only when this tile is showing live video. */
+  onOpen?: () => void;
 }) {
   const participant = trackRef.participant;
   const hasVideo = isTrackReference(trackRef) && !trackRef.publication.isMuted;
@@ -193,7 +226,9 @@ function ParticipantTile({
   return (
     <div
       className={cn(
-        'grain-block relative overflow-hidden rounded-3xl bg-accent-soft transition-shadow',
+        // transform-gpu forces the rounded corners to clip the <video> on iOS
+        // Safari, where overflow-hidden alone leaves square corners.
+        'grain-block relative transform-gpu overflow-hidden rounded-3xl bg-accent-soft transition-shadow',
         solo ? 'aspect-[4/5]' : 'aspect-square',
         speaking ? 'ring-4 ring-accent' : 'ring-1 ring-line',
       )}
@@ -222,6 +257,82 @@ function ParticipantTile({
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/50 to-transparent px-3 pb-2 pt-7">
         {!micOn && <MicOff width={14} height={14} className="shrink-0 text-white" aria-hidden />}
         <span className="truncate text-sm font-semibold text-white">{isLocal ? 'You' : name}</span>
+      </div>
+
+      {/* Tap-to-enlarge — only when this tile is live video. Covers the tile so a
+          tap anywhere opens the spotlight; a corner glyph hints it's tappable. */}
+      {onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Enlarge ${isLocal ? 'your' : `${name}'s`} video`}
+          className="absolute inset-0 grid place-items-start justify-end p-2 transition active:bg-black/10"
+        >
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm">
+            <Maximize width={15} height={15} />
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The Zoom-style enlarged view: a centered card that covers most of the screen
+// with one person's live video, dimming the call behind it. Tap the backdrop,
+// the close button, or Escape to return to the grid.
+function SpotlightOverlay({
+  trackRef,
+  meta,
+  onClose,
+}: {
+  trackRef: TrackReference;
+  meta: CallParticipant | undefined;
+  onClose: () => void;
+}) {
+  const participant = trackRef.participant;
+  const name = meta?.name ?? participant.name ?? 'Member';
+  const isLocal = meta?.isLocal ?? participant.isLocal;
+  const micOn = meta?.micOn ?? true;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5 backdrop-blur-sm animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="grain-block relative h-[78vh] w-[86%] max-w-[560px] transform-gpu overflow-hidden rounded-3xl bg-accent-soft shadow-pop"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <VideoTrack
+          trackRef={trackRef}
+          className={cn('h-full w-full object-cover', isLocal && 'scale-x-[-1]')}
+        />
+
+        <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/55 to-transparent px-4 pb-3 pt-9">
+          {!micOn && <MicOff width={16} height={16} className="shrink-0 text-white" aria-hidden />}
+          <span className="truncate text-base font-semibold text-white">
+            {isLocal ? 'You' : name}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close enlarged video"
+          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition active:scale-95"
+        >
+          <X width={18} height={18} />
+        </button>
       </div>
     </div>
   );

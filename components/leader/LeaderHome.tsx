@@ -18,6 +18,7 @@ import { EventForm } from '@/components/leader/EventForm';
 import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
 import { StartCallModal } from '@/components/leader/StartCallModal';
+import { ActiveCallBanner } from '@/components/call/ActiveCallBanner';
 import { Calendar, Bell, Music, ChevronRight, Poll, Users, Phone } from '@/components/shared/Icons';
 
 export function LeaderHome({
@@ -56,6 +57,8 @@ export function LeaderHome({
         </div>
         <AnnouncementBell initial={announcements} canManage onChange={refresh} />
       </header>
+
+      <ActiveCallBanner />
 
       <VerseRibbon verse={verse} />
 

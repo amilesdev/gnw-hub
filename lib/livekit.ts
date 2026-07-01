@@ -1,4 +1,4 @@
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { randomUUID } from 'crypto';
 
 // LiveKit Cloud (voice/video). Mirrors lib/push.ts / lib/email.ts: if the keys
@@ -19,6 +19,27 @@ export function livekitUrl(): string {
 /** A fresh, unique LiveKit room identifier for a new call. */
 export function newRoomName(): string {
   return `gnw-call-${randomUUID()}`;
+}
+
+// Server-side admin client (REST). RoomServiceClient wants an http(s) host, so
+// convert the wss:// realtime URL. Lazily built and reused across requests.
+let roomService: RoomServiceClient | null = null;
+function getRoomService(): RoomServiceClient {
+  if (!livekitConfigured) throw new Error('LiveKit is not configured');
+  if (!roomService) {
+    roomService = new RoomServiceClient(url!.replace(/^ws/, 'http'), apiKey!, apiSecret!);
+  }
+  return roomService;
+}
+
+/**
+ * Live participant counts keyed by LiveKit room name, for every room the server
+ * currently knows about. A room absent from the map (or with count 0) has no one
+ * connected — used to tell a genuinely-live call from a stale `active` DB row.
+ */
+export async function roomParticipantCounts(): Promise<Map<string, number>> {
+  const rooms = await getRoomService().listRooms();
+  return new Map(rooms.map((r) => [r.name, r.numParticipants]));
 }
 
 /**

@@ -38,6 +38,9 @@ type CallContextValue = {
   leave: () => Promise<void>;
   toggleMute: () => void;
   toggleCamera: () => void;
+  /** Turn the local camera off if it's on. No-op otherwise. Used when leaving
+   *  the call screen so video never keeps broadcasting from the background. */
+  stopCamera: () => void;
 };
 
 const CallCtx = createContext<CallContextValue | null>(null);
@@ -173,6 +176,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
     room.localParticipant.setCameraEnabled(next).catch(() => setCameraOn(!next));
   }, [room]);
 
+  const stopCamera = useCallback(() => {
+    if (!room || !room.localParticipant.isCameraEnabled) return;
+    setCameraOn(false); // optimistic; the RoomEvent listener reconciles
+    room.localParticipant.setCameraEnabled(false).catch(() => {});
+  }, [room]);
+
   const value: CallContextValue = {
     callId,
     callName,
@@ -185,6 +194,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     leave,
     toggleMute,
     toggleCamera,
+    stopCamera,
   };
 
   // Expose the LiveKit room to @livekit/components-react hooks below (participant

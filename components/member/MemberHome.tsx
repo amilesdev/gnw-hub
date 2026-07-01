@@ -15,6 +15,7 @@ import { UpNextHero } from '@/components/shared/UpNextHero';
 import { VerseRibbon } from '@/components/shared/VerseRibbon';
 import { MemberPolls } from '@/components/member/MemberPolls';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ActiveCallBanner } from '@/components/call/ActiveCallBanner';
 import { Music, ChevronRight } from '@/components/shared/Icons';
 
 export function MemberHome({
@@ -43,6 +44,8 @@ export function MemberHome({
         </div>
         <AnnouncementBell initial={announcements} />
       </header>
+
+      <ActiveCallBanner />
 
       <VerseRibbon verse={verse} />
 
