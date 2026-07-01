@@ -35,7 +35,7 @@ export function SetlistScreen() {
   return (
     <div className="space-y-5 pt-2">
       <header>
-        <div className="eyebrow">GNW</div>
+        <div className="eyebrow">GNW Hub</div>
         <h1 className="page-title mt-2">Setlist</h1>
       </header>
 

@@ -31,6 +31,20 @@ export async function uploadObject(
   return publicUrl(path);
 }
 
+/**
+ * Create a short-lived signed URL the browser can PUT a file to directly,
+ * bypassing the serverless request-body limit (~4.5 MB on Vercel). `upsert`
+ * lets an existing object be replaced. Returns the signed URL plus the eventual
+ * public URL of the object.
+ */
+export async function createSignedUpload(path: string): Promise<{ signedUrl: string; publicUrl: string }> {
+  const { data, error } = await supabaseAdmin.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUploadUrl(path, { upsert: true });
+  if (error) throw new Error(`Could not create upload URL: ${error.message}`);
+  return { signedUrl: data.signedUrl, publicUrl: publicUrl(path) };
+}
+
 /** Delete one or more objects by storage path (best-effort). */
 export async function deleteObjects(paths: string[]): Promise<void> {
   if (!paths.length) return;

@@ -61,7 +61,7 @@ export function MemberHome({
 
           {events.length > 1 && (
             <section className="space-y-3">
-              <h2 className="eyebrow">Later this week</h2>
+              <h2 className="eyebrow">Coming up</h2>
               {events.slice(1).map((e) => (
                 <EventCard key={e.id} event={e} onClick={() => setDetail(e)} />
               ))}

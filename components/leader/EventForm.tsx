@@ -6,6 +6,7 @@ import { Overlay } from '@/components/shared/Overlay';
 import { TextField, TextArea, SelectField, FieldLabel } from '@/components/shared/Field';
 import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
+import { uploadFile } from '@/lib/upload-client';
 import { cn, randomToken } from '@/lib/utils';
 
 const TYPES = [
@@ -145,11 +146,8 @@ export function EventForm({
     try {
       const uploaded: string[] = [];
       for (const file of Array.from(files)) {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('path', `attire/${folderKey.current}/${Date.now()}-${file.name}`);
-        const res = await apiFetch<{ url: string }>('/api/upload', { method: 'POST', body: form });
-        uploaded.push(res.url);
+        const path = `attire/${folderKey.current}/${Date.now()}-${file.name}`;
+        uploaded.push(await uploadFile(path, file));
       }
       setAttirePhotos((prev) => [...prev, ...uploaded]);
     } catch (e) {

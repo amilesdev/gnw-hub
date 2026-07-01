@@ -5,6 +5,7 @@ import type { SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS, PART_LABELS, PART_SLUG, type AudioPart } from '@/lib/setlist-serialize';
 import { Upload, Check, Trash } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
+import { uploadFile } from '@/lib/upload-client';
 
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'song';
@@ -30,10 +31,7 @@ export function SongAudioSlots({
       const ext = file.name.split('.').pop() || 'mp3';
       // Suffix with the song id so two songs sharing a title don't collide.
       const path = `audio/${month}/${slug(song.songTitle)}-${song.id.slice(-6)}/${PART_SLUG[part]}.${ext}`;
-      const form = new FormData();
-      form.append('file', file);
-      form.append('path', path);
-      const { url } = await apiFetch<{ url: string }>('/api/upload', { method: 'POST', body: form });
+      const url = await uploadFile(path, file);
       const { song: updated } = await apiFetch<{ song: SongDTO }>(`/api/songs/${song.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ [part]: url }),
