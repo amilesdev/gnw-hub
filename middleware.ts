@@ -1,19 +1,12 @@
 import { withAuth } from 'next-auth/middleware';
-import { NextResponse } from 'next/server';
 
-// NextAuth middleware guards all app routes. Members who try to reach
-// /dashboard are bounced to /home. Unauthenticated users are sent to /login.
+// NextAuth middleware guards all app routes: unauthenticated users are sent to
+// /login. Role gating is NOT done here — the JWT no longer carries `role` (it's
+// re-read live in the session callback), so the /dashboard/* layout is the
+// authoritative leader gate. Checking token.role here would always fail
+// (undefined !== 'leader') and wrongly bounce every leader, superadmin included,
+// to /home.
 export default withAuth(
-  function middleware(req) {
-    const { token } = req.nextauth;
-    const { pathname } = req.nextUrl;
-
-    // Leader-only area.
-    if (pathname.startsWith('/dashboard') && token?.role !== 'leader') {
-      return NextResponse.redirect(new URL('/home', req.url));
-    }
-    return NextResponse.next();
-  },
   {
     callbacks: {
       // Returning true => authorized. Only gate the protected app areas here;
