@@ -112,7 +112,7 @@ export function SetlistManager() {
                               onClick={() => setSong(song)}
                               className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
                             >
-                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink">
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink dark:text-accent-on">
                                 {i + 1}
                               </span>
                               <span className="min-w-0 flex-1">

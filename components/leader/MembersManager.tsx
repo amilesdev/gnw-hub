@@ -106,7 +106,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
       </header>
 
       {notice && (
-        <div className="card flex items-start gap-2 bg-accent/5 p-4 text-sm text-accent-ink">
+        <div className="card flex items-start gap-2 bg-accent/5 p-4 text-sm text-accent-ink dark:text-accent-on">
           <Check width={16} height={16} className="mt-0.5 shrink-0" />
           <span>{notice}</span>
           <button className="row-press ml-auto rounded-lg px-1.5 py-0.5 text-ink-faint" onClick={() => setNotice(null)} type="button">

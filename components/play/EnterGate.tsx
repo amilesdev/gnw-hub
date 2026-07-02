@@ -52,7 +52,7 @@ export function EnterGate({ variant, onEnter }: { variant: 'member' | 'leader'; 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
         <div className="mb-14">
           <h1 className="font-display text-[3.25rem] font-semibold leading-[0.95] tracking-tight text-ink">
-            GNW <span className="text-accent">Play</span>
+            GNW <span className="text-accent dark:text-accent-on">Play</span>
           </h1>
           <p className="mx-auto mt-4 max-w-[17rem] text-base leading-snug text-ink-soft">
             Tap and hold for head-to-head Bible trivia.

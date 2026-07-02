@@ -34,6 +34,10 @@ type Row = {
   lyric?: Pick<SongDTO, 'lyricChart' | 'lyricDocUrl' | 'lyricChartUpdatedAt'>;
 };
 
+// Only these event types can carry a setlist — Prayer and Holy Talks never do,
+// so they're excluded from the picker.
+const SETLIST_EVENT_TYPES = ['service', 'rehearsal', 'other'] as const;
+
 function toRows(setlist?: SetlistDTO): Row[] {
   if (!setlist) return [];
   return setlist.songs.map((s) => ({
@@ -66,9 +70,6 @@ export function SetlistForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Only these event types can carry a setlist — Prayer and Holy Talks never do,
-  // so they're excluded from the picker.
-  const SETLIST_EVENT_TYPES = ['service', 'rehearsal', 'other'] as const;
 
   // Pickable events: upcoming ones of a setlist-eligible type, plus any
   // already-linked events (which may be in the past) so they can be unlinked.
@@ -297,7 +298,7 @@ function SortableSong({
         <button type="button" className="cursor-grab touch-none text-ink-faint active:cursor-grabbing" {...attributes} {...listeners} aria-label="Drag to reorder">
           <Grip width={20} height={20} />
         </button>
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink">{index + 1}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink dark:text-accent-on">{index + 1}</span>
         <input
           className="field !py-2.5"
           value={row.songTitle}

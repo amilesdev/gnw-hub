@@ -40,7 +40,7 @@ export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
                 replace
                 className={cn(
                   'row-press flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5',
-                  active ? 'text-accent' : 'text-ink-faint',
+                  active ? 'text-accent dark:text-accent-on' : 'text-ink-faint',
                 )}
               >
                 <Icon width={23} height={23} />

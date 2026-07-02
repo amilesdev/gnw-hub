@@ -64,7 +64,7 @@ export function ActiveCallBanner() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 shrink-0 rounded-full bg-good animate-pulse" aria-hidden />
-            <span className="eyebrow text-accent">Live call</span>
+            <span className="eyebrow text-accent dark:text-accent-on">Live call</span>
           </div>
           <p className="truncate text-[15px] font-bold text-ink">{active.name}</p>
           <p className="text-xs font-semibold text-ink-soft">

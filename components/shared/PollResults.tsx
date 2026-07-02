@@ -41,7 +41,7 @@ export function PollResults({ results }: { results: PollResultsDTO }) {
             />
             <div className="relative flex items-center justify-between gap-3">
               <span className="flex min-w-0 items-center gap-2 font-semibold">
-                {mine && <Check width={16} height={16} className="shrink-0 text-accent" />}
+                {mine && <Check width={16} height={16} className="shrink-0 text-accent dark:text-accent-on" />}
                 <span className="truncate">{c.text}</span>
               </span>
               <span className="shrink-0 text-sm font-semibold text-ink-soft">

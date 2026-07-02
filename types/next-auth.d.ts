@@ -9,6 +9,7 @@ declare module 'next-auth' {
     section?: MemberSection | null;
     part?: MemberPart | null;
     isSuperAdmin: boolean;
+    tokenVersion: number;
   }
 
   interface Session {
@@ -27,9 +28,6 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     uid: string;
-    role: Role;
-    section?: MemberSection | null;
-    part?: MemberPart | null;
-    isSuperAdmin: boolean;
+    tokenVersion: number;
   }
 }

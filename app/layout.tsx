@@ -3,6 +3,7 @@ import { Inter, Fraunces } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
+import { ThemeScript } from '@/components/shared/ThemeProvider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body>
+        <ThemeScript />
         <Providers>{children}</Providers>
         <ServiceWorkerRegistrar />
       </body>

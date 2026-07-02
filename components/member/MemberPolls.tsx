@@ -118,7 +118,7 @@ export function MemberPolls() {
                     {p.ended ? 'Ended' : 'Active'} · {formatEnds(p.endsAt)} · {p.totalVoters} voted
                   </span>
                 </span>
-                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent/15 text-accent-ink'}`}>
+                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent/15 text-accent-ink dark:text-accent-on'}`}>
                   {p.ended ? 'Ended' : 'Live'}
                 </span>
                 {open ? (

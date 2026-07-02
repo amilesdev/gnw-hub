@@ -127,7 +127,7 @@ export function EventsCalendar({
                   (isSelected
                     ? 'bg-accent text-white'
                     : isToday
-                    ? 'bg-accent/10 text-accent-ink'
+                    ? 'bg-accent/10 text-accent-ink dark:text-accent-on'
                     : 'text-ink hover:bg-surface-2')
                 }
               >

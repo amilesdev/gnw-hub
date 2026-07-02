@@ -5,7 +5,8 @@ import { signOut } from 'next-auth/react';
 import { PasswordField } from './PasswordField';
 import { LogOut, Lock, Check, Moon } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
-import { Switch } from './Switch';
+import { SegmentedControl } from './SegmentedControl';
+import { useTheme, type ThemePreference } from './ThemeProvider';
 import { apiFetch } from '@/lib/api-client';
 
 type Props = {
@@ -60,7 +61,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
 
       <section className="card p-5">
         <div className="flex items-center gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 font-display text-2xl font-semibold text-accent-ink">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 font-display text-2xl font-semibold text-accent-ink dark:text-accent-on">
             {name.slice(0, 1).toUpperCase()}
           </div>
           <div>
@@ -83,7 +84,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
             </span>
             <div>
               <p className="font-semibold">Password</p>
-              <p className="text-sm text-ink-faint">Change your password.<br />This can&apos;t be undone.</p>
+              <p className="text-sm text-ink-faint">Change your password.<br />At least 8 characters.</p>
             </div>
           </div>
           {!open && (
@@ -140,27 +141,7 @@ export function ProfileView({ name, email, role, section, part }: Props) {
 
       <NotificationSettings />
 
-      {/* Dark mode — not built yet; shown to gauge interest. The toggle is inert
-          and a "Coming soon" chip inside the card explains why. */}
-      <section className="card p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
-              <Moon width={18} height={18} />
-            </span>
-            <div>
-              <p className="flex items-center gap-2 font-semibold">
-                Dark mode
-                <span className="chip bg-accent/10 text-[10px] font-bold uppercase tracking-wide text-accent-ink dark:text-accent-on">
-                  Coming soon
-                </span>
-              </p>
-              <p className="text-sm text-ink-faint">Easier on the eyes at night. We&apos;re working on it.</p>
-            </div>
-          </div>
-          <Switch checked={false} onChange={() => {}} disabled aria-label="Dark mode (coming soon)" />
-        </div>
-      </section>
+      <AppearanceCard />
 
       <button
         type="button"
@@ -170,6 +151,30 @@ export function ProfileView({ name, email, role, section, part }: Props) {
         <LogOut width={19} height={19} /> Sign out
       </button>
     </div>
+  );
+}
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'Auto' },
+  { value: 'dark', label: 'Dark' },
+];
+
+function AppearanceCard() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <section className="card p-5">
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+          <Moon width={18} height={18} />
+        </span>
+        <div>
+          <p className="font-semibold">Appearance</p>
+          <p className="text-sm text-ink-faint">Auto follows your device setting.</p>
+        </div>
+      </div>
+      <SegmentedControl className="mt-4" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+    </section>
   );
 }
 

@@ -17,13 +17,27 @@ export function AuthCard({
   return (
     <div className="app-shell justify-center px-6">
       <div className="card grain-block animate-enter-home p-7">
+        {/* Sage wordmark for light, cream for dark — swapped purely in CSS so it
+            tracks the theme with no client JS. */}
         <Image
           src="/wordmark-sage.png"
           alt="Grace Nation Worship"
           width={1242}
           height={448}
           priority
-          className={`mb-2 h-auto ${
+          className={`mb-2 h-auto dark:hidden ${
+            logoSize === 'lg'
+              ? 'relative left-1/2 w-[88vw] max-w-[460px] -translate-x-1/2'
+              : 'mx-auto w-[200px] max-w-full'
+          }`}
+        />
+        <Image
+          src="/wordmark-cream.png"
+          alt="Grace Nation Worship"
+          width={1242}
+          height={448}
+          priority
+          className={`mb-2 hidden h-auto dark:block ${
             logoSize === 'lg'
               ? 'relative left-1/2 w-[88vw] max-w-[460px] -translate-x-1/2'
               : 'mx-auto w-[200px] max-w-full'

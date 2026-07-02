@@ -60,7 +60,7 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
                 >
                   <span>{PART_LABELS[p]}</span>
                   {available ? (
-                    <Play width={18} height={18} className={active ? 'text-white' : 'text-accent'} />
+                    <Play width={18} height={18} className={active ? 'text-white' : 'text-accent dark:text-accent-on'} />
                   ) : (
                     <span className="text-[11px] font-bold uppercase tracking-wide">Soon</span>
                   )}

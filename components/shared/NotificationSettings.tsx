@@ -51,7 +51,7 @@ export function NotificationSettings() {
 
       {status === 'unsupported' && (
         <p className="mt-3 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-ink-soft">
-          This browser doesn't support push notifications.
+          This browser doesn&apos;t support push notifications.
         </p>
       )}
 

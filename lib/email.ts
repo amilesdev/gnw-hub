@@ -33,6 +33,35 @@ export async function sendInviteEmail(opts: {
   }
 }
 
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  name: string;
+  resetUrl: string;
+  ttlMinutes: number;
+}): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const { to, name, resetUrl, ttlMinutes } = opts;
+
+  if (!resend) {
+    // No API key configured (e.g. local dev) — log the link instead of failing.
+    console.warn(`[email] RESEND_API_KEY not set. Password reset link for ${to}:\n${resetUrl}`);
+    return { ok: true, skipped: true };
+  }
+
+  try {
+    await resend.emails.send({
+      from,
+      to,
+      subject: 'Reset your GNW Hub password',
+      html: resetEmailHtml({ name, resetUrl, ttlMinutes }),
+    });
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown email error';
+    console.error('[email] password reset send failed:', message);
+    return { ok: false, error: message };
+  }
+}
+
 function inviteEmailHtml({ name, inviteUrl }: { name: string; inviteUrl: string }): string {
   // Inline styles echo the GNW palette (cream page, sage accent, white card).
   return `
@@ -47,6 +76,26 @@ function inviteEmailHtml({ name, inviteUrl }: { name: string; inviteUrl: string 
       <p style="font-size:13px;line-height:1.6;color:#96908A;margin:24px 0 0;">
         If the button doesn't work, paste this link into your browser:<br />
         <span style="color:#4A5938;word-break:break-all;">${inviteUrl}</span>
+      </p>
+    </div>
+  </div>`;
+}
+
+function resetEmailHtml({ name, resetUrl, ttlMinutes }: { name: string; resetUrl: string; ttlMinutes: number }): string {
+  // Same GNW palette as the invite email (cream page, sage accent, white card).
+  return `
+  <div style="background:#FAF7F2;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1C1A22;">
+    <div style="max-width:430px;margin:0 auto;background:#FFFFFF;border:1px solid #EAE4DB;border-radius:28px;padding:32px;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#96908A;margin-bottom:8px;">GNW Hub</div>
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:26px;margin:0 0 16px;color:#1C1A22;">Reset your password</h1>
+      <p style="font-size:15px;line-height:1.6;color:#68635C;margin:0 0 24px;">
+        Hi ${escapeHtml(name)}, we got a request to reset your GNW Hub password. Tap the button below to choose a new one. This link expires in <strong>${ttlMinutes} minutes</strong>.
+      </p>
+      <a href="${resetUrl}" style="display:inline-block;background:#5E7048;color:#FFFFFF;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:18px;">Reset password</a>
+      <p style="font-size:13px;line-height:1.6;color:#96908A;margin:24px 0 0;">
+        Didn't request this? You can safely ignore this email — your password won't change.<br /><br />
+        If the button doesn't work, paste this link into your browser:<br />
+        <span style="color:#4A5938;word-break:break-all;">${resetUrl}</span>
       </p>
     </div>
   </div>`;

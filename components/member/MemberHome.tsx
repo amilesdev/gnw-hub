@@ -92,7 +92,7 @@ export function MemberHome({
                   onClick={() => setSong(s)}
                   className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-0"
                 >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink dark:text-accent-on">
                     {i + 1}
                   </span>
                   <span className="min-w-0 flex-1">

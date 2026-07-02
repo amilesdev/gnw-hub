@@ -48,27 +48,32 @@ export async function ensureRecurringWindow(): Promise<void> {
   const today = startOfToday();
   const horizonEnd = seriesHorizonEnd(today);
 
-  const recurring = await prisma.event.findMany({
+  // Only the latest (anchor) occurrence of each series is needed to extend the
+  // window, so ask the DB for the max date per series instead of loading every
+  // historical occurrence. This scales with the number of series, not the total
+  // number of past events. The @@unique([seriesId, date]) constraint guarantees
+  // each (seriesId, maxDate) pair resolves to exactly one row.
+  const groups = await prisma.event.groupBy({
+    by: ['seriesId'],
     where: { seriesId: { not: null } },
-    orderBy: { date: 'asc' },
+    _max: { date: true },
   });
-  if (recurring.length === 0) return;
+  if (groups.length === 0) return;
+
+  const anchorKeys = groups
+    .filter((g): g is { seriesId: string; _max: { date: Date } } => !!g.seriesId && !!g._max.date)
+    .map((g) => ({ seriesId: g.seriesId, date: g._max.date }));
+  if (anchorKeys.length === 0) return;
+
+  const anchors = await prisma.event.findMany({ where: { OR: anchorKeys } });
 
   // Dates a leader deleted on purpose — never re-create these. Only future ones
   // matter (past slots are skipped anyway), so keep the lookup small.
   const skips = await prisma.seriesSkip.findMany({ where: { date: { gte: today } } });
   const skipped = new Set(skips.map((s) => `${s.seriesId}|${s.date.getTime()}`));
 
-  const bySeries = new Map<string, Event[]>();
-  for (const e of recurring) {
-    const arr = bySeries.get(e.seriesId!) ?? [];
-    arr.push(e);
-    bySeries.set(e.seriesId!, arr);
-  }
-
   const toCreate: Prisma.EventCreateManyInput[] = [];
-  for (const events of bySeries.values()) {
-    const anchor = events[events.length - 1]; // latest (sorted asc)
+  for (const anchor of anchors) {
     if (anchor.repeats === 'once') continue; // defensive — series shouldn't be `once`
 
     const cursor = new Date(anchor.date);

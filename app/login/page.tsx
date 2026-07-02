@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { AuthCard } from '@/components/shared/AuthCard';
 import { TextField } from '@/components/shared/Field';
 import { PasswordField } from '@/components/shared/PasswordField';
@@ -57,7 +58,12 @@ function LoginForm() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <p className="mt-5 text-center text-sm text-ink-faint">
+      <p className="mt-4 text-center text-sm">
+        <Link href="/forgot-password" className="font-semibold text-accent-ink dark:text-accent-on">
+          Forgot password?
+        </Link>
+      </p>
+      <p className="mt-3 text-center text-sm text-ink-faint">
         Joining the team? You’ll need an invite from a leader.
       </p>
     </AuthCard>

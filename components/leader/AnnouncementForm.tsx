@@ -72,7 +72,7 @@ export function AnnouncementForm({
         {!initial && (
           <label className="flex items-center justify-between gap-3 rounded-2xl bg-surface-2 px-4 py-3">
             <span className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface text-accent">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface text-accent dark:text-accent-on">
                 <Bell width={18} height={18} />
               </span>
               <span>

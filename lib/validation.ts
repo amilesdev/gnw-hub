@@ -65,6 +65,21 @@ export const claimSchema = z
     path: ['confirm'],
   });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Valid email required'),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirm: z.string().min(8),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: 'Passwords do not match',
+    path: ['confirm'],
+  });
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1),

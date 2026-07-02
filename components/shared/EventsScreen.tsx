@@ -51,6 +51,7 @@ export function EventsScreen({
   useEffect(() => {
     if (initialEvents !== undefined) return; // already seeded on the server — skip the initial fetch
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function remove(scope: 'occurrence' | 'series' = 'occurrence') {

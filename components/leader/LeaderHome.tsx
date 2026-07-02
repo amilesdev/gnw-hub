@@ -72,21 +72,21 @@ export function LeaderHome({
           onClick={() => setAddAnnouncement(true)}
           className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
         >
-          <Bell width={18} height={18} className="text-accent" /> Post Update
+          <Bell width={18} height={18} className="text-accent dark:text-accent-on" /> Post Update
         </button>
         <button
           type="button"
           onClick={() => setAddPoll(true)}
           className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
         >
-          <Poll width={18} height={18} className="text-accent" /> Add Poll
+          <Poll width={18} height={18} className="text-accent dark:text-accent-on" /> Add Poll
         </button>
         <button
           type="button"
           onClick={() => setStartCall(true)}
           className="row-press inline-flex items-center justify-center gap-2 rounded-3xl border border-line bg-surface px-4 py-4 font-semibold text-ink shadow-card"
         >
-          <Phone width={18} height={18} className="text-accent" /> Start Call
+          <Phone width={18} height={18} className="text-accent dark:text-accent-on" /> Start Call
         </button>
       </div>
 
@@ -151,7 +151,7 @@ export function LeaderHome({
                   onClick={() => setSong(s)}
                   className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-0"
                 >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink">{i + 1}</span>
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink dark:text-accent-on">{i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{s.songTitle}</span>
                     <span className="flex items-center gap-1 truncate text-xs text-ink-faint">

@@ -99,6 +99,13 @@ model User {
   isSuperAdmin Boolean        @default(false)
   inviteToken  String?        @unique
   inviteExpiry DateTime?
+  // Bumped to invalidate every existing JWT for this user at once (password
+  // reset, "sign out everywhere"). The live session check compares the token's
+  // copy against this; a mismatch forces re-login. See lib/auth.ts.
+  tokenVersion Int            @default(0)
+  // Self-serve password reset (active users only). Short-lived, single-use.
+  resetToken   String?        @unique
+  resetExpiry  DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 

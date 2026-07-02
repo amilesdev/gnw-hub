@@ -356,7 +356,7 @@ export function EventForm({
             className="row-press flex w-full items-center justify-between px-4 py-3.5 text-left"
           >
             <span className="inline-flex items-center gap-2 font-semibold">
-              <Shirt width={18} height={18} className="text-accent" /> Attire (optional)
+              <Shirt width={18} height={18} className="text-accent dark:text-accent-on" /> Attire (optional)
             </span>
             <ChevronDown width={20} height={20} className={cn('text-ink-faint transition', attireOpen && 'rotate-180')} />
           </button>

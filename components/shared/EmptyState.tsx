@@ -16,7 +16,7 @@ export function EmptyState({
 }) {
   return (
     <div className="card grain-block flex flex-col items-center px-6 py-8 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent dark:text-accent-on">
         <Icon width={24} height={24} className="animate-breathe" />
       </div>
       <p className="mt-4 font-semibold text-ink">{message}</p>
