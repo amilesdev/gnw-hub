@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { eventSchema } from '@/lib/validation';
-import { serializeEvent } from '@/lib/serialize';
+import { serializeEvent, eventInclude } from '@/lib/serialize';
 import { generateOccurrences, parseCalendarDate, startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { ensureRecurringWindow } from '@/lib/recurrence';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
@@ -37,6 +37,7 @@ export async function GET(req: Request) {
   const events = await prisma.event.findMany({
     where,
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
+    include: eventInclude,
   });
 
   return NextResponse.json({ events: events.map(serializeEvent) });
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
   const seriesId = d.repeats === 'once' ? null : randomToken(12);
 
   const isHolyTalks = d.type === 'holy_talks';
+  // Singing assignments are a Service-only concept.
+  const assignments = d.type === 'service' ? d.assignments ?? [] : [];
 
   const common = {
     eventName: d.eventName,
@@ -89,8 +92,8 @@ export async function POST(req: Request) {
 
   // The seed occurrence keeps everything entered on the form. The other
   // occurrences in the initial window carry only the structural identity and
-  // start blank for all per-occurrence content (attire, notes, topic), matching
-  // how the rolling top-up materializes future ones.
+  // start blank for all per-occurrence content (attire, notes, topic,
+  // assignments), matching how the rolling top-up materializes future ones.
   const extraDefaults = {
     notes: null,
     attirePrimary: null,
@@ -108,7 +111,15 @@ export async function POST(req: Request) {
 
   const created = await prisma.$transaction(
     dates.map((date, i) =>
-      prisma.event.create({ data: { ...common, ...(i === 0 ? {} : extraDefaults), date } }),
+      prisma.event.create({
+        data: {
+          ...common,
+          ...(i === 0 ? {} : extraDefaults),
+          date,
+          ...(i === 0 && assignments.length ? { assignments: { create: assignments } } : {}),
+        },
+        include: eventInclude,
+      }),
     ),
   );
 

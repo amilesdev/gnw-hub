@@ -8,8 +8,8 @@ import { Overlay } from './Overlay';
 import { ScriptureSheet } from './ScriptureSheet';
 import { SongDetail } from './SongDetail';
 import { EventTypeBadge } from './EventTypeBadge';
-import { hasAttire } from './EventCard';
-import { Calendar, Clock, MapPin, Shirt, Book, Music, Pray, Trash, ChevronRight, X } from './Icons';
+import { hasAttire, assignmentsByPart } from './EventCard';
+import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 
@@ -175,6 +175,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const [openScripture, setOpenScripture] = useState<string | null>(null);
   const isHolyTalks = event.type === 'holy_talks';
   const isPrayer = event.type === 'prayer';
+  const assignedParts = assignmentsByPart(event);
 
   // Pull in the setlist tied to this event (if any) so it lives on the card.
   useEffect(() => {
@@ -281,6 +282,28 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                 <p className="whitespace-pre-wrap text-ink-soft">{event.holyTalksNotes}</p>
               </div>
             )}
+          </section>
+        )}
+
+        {assignedParts.length > 0 && (
+          <section className="card space-y-3 p-4">
+            <p className="eyebrow inline-flex items-center gap-1.5">
+              <Mic width={14} height={14} /> Singing
+            </p>
+            <div className="space-y-2.5">
+              {assignedParts.map(({ part, names }) => (
+                <div key={part} className="flex items-start gap-3">
+                  <span className="label mt-1 w-16 shrink-0 !mb-0">{part}</span>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {names.map((name) => (
+                      <li key={name} className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 

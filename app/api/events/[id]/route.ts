@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { eventSchema } from '@/lib/validation';
-import { serializeEvent } from '@/lib/serialize';
+import { serializeEvent, eventInclude } from '@/lib/serialize';
 import { parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateEvents } from '@/lib/cache-tags';
@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
-  const event = await prisma.event.findUnique({ where: { id } });
+  const event = await prisma.event.findUnique({ where: { id }, include: eventInclude });
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
   return NextResponse.json({ event: serializeEvent(event) });
 }
@@ -73,8 +73,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
     if (paths.length) await deleteObjects(paths);
   }
 
+  // Singing assignments are Service-only: the form sends the full set for a
+  // service (so saving replaces it wholesale), and switching an event away from
+  // Service drops whatever was assigned.
+  const isService = resultingType === 'service';
+  const nextAssignments = isService ? d.assignments : d.type !== undefined ? [] : undefined;
+
   try {
-    const event = await prisma.event.update({ where: { id }, data });
+    const event = await prisma.$transaction(async (tx) => {
+      if (nextAssignments !== undefined) {
+        await tx.eventAssignment.deleteMany({ where: { eventId: id } });
+        if (nextAssignments.length) {
+          await tx.eventAssignment.createMany({
+            data: nextAssignments.map((a) => ({ eventId: id, userId: a.userId, part: a.part })),
+          });
+        }
+      }
+      return tx.event.update({ where: { id }, data, include: eventInclude });
+    });
     revalidateEvents();
     return NextResponse.json({ event: serializeEvent(event) });
   } catch (err) {

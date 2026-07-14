@@ -53,6 +53,14 @@ enum RepeatCadence {
   monthly
 }
 
+// The three vocal parts a singer can be assigned to on a service. A subset of
+// MemberPart (which also covers band instruments) — assignments are singing-only.
+enum VocalPart {
+  Soprano
+  Alto
+  Tenor
+}
+
 // === GNW Play ===
 // True/False is stored as a degenerate multiple-choice (options ["True","False"]),
 // so `type` only distinguishes how the builder/play UI renders it.
@@ -122,6 +130,8 @@ model User {
   announcements Announcement[] // announcements this user authored
 
   startedCalls Call[] // group calls this user (a leader) started
+
+  eventAssignments EventAssignment[] // singing parts this user is assigned on services
 }
 
 // A single device's Web Push subscription. One user can have several (phone,
@@ -172,6 +182,10 @@ model Event {
   // and they're visible to everyone. Removed with the event.
   prayerRequests PrayerRequest[]
 
+  // Who sings which part (service events only). Set by a leader on the event
+  // form; each occurrence of a series is assigned independently.
+  assignments EventAssignment[]
+
   // The setlist for this event, if any. One setlist can be shared by several
   // events (e.g. a rehearsal and the service it leads into), but each event has
   // at most one — keeping "This Week's Setlist" unambiguous.
@@ -185,6 +199,25 @@ model Event {
   @@index([date])
   @@index([seriesId])
   @@index([setlistId])
+}
+
+// One member singing one part on one service. A person holds at most one part
+// per event (@@unique on [eventId, userId]) — you can't sing soprano and tenor
+// at once — and several people can share a part. Removed with the event or the
+// member; only `service` events carry these.
+model EventAssignment {
+  id      String    @id @default(cuid())
+  eventId String
+  event   Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  part    VocalPart
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
 }
 
 // Records a recurring-series occurrence that a leader deleted on purpose, so the

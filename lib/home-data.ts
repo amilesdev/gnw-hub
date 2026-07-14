@@ -1,6 +1,12 @@
 import { unstable_cache } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { serializeEvent, serializeAnnouncement, type EventDTO, type AnnouncementDTO } from '@/lib/serialize';
+import {
+  serializeEvent,
+  serializeAnnouncement,
+  eventInclude,
+  type EventDTO,
+  type AnnouncementDTO,
+} from '@/lib/serialize';
 import type { LyricChart, SongDTO } from '@/lib/setlist-serialize';
 import { startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from '@/lib/cache-tags';
@@ -38,11 +44,14 @@ export const getUpcomingEvents = unstable_cache(
     const events = await prisma.event.findMany({
       where: { date: { gte: startOfToday(), lte: upcomingWindowEnd() } },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
+      include: eventInclude,
     });
     return events.map(serializeEvent);
   },
   ['home:upcoming-events'],
-  { tags: [CACHE_TAGS.events], revalidate: CACHE_TTL_SECONDS },
+  // Also tagged with members: assignment names are resolved from the member
+  // list, so a rename/removal has to bust this cache too.
+  { tags: [CACHE_TAGS.events, CACHE_TAGS.members], revalidate: CACHE_TTL_SECONDS },
 );
 
 export const getActiveAnnouncements = unstable_cache(

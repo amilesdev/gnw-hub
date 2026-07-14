@@ -5,6 +5,7 @@ import type { EventDTO } from '@/lib/serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { TextField, TextArea, SelectField, FieldLabel } from '@/components/shared/Field';
 import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock } from '@/components/shared/Icons';
+import { AssignmentsSection, toAssignmentMap, type AssignmentMap } from './AssignmentsSection';
 import { apiFetch } from '@/lib/api-client';
 import { uploadFile } from '@/lib/upload-client';
 import { cn, randomToken } from '@/lib/utils';
@@ -108,6 +109,9 @@ export function EventForm({
   const [scriptureDraft, setScriptureDraft] = useState('');
   const [holyTalksNotes, setHolyTalksNotes] = useState(initial?.holyTalksNotes ?? '');
 
+  // Singing assignments (service only)
+  const [assignments, setAssignments] = useState<AssignmentMap>(toAssignmentMap(initial?.assignments));
+
   // Attire
   const [attireOpen, setAttireOpen] = useState(
     Boolean(initial?.attirePrimary || initial?.attireNotes || initial?.attirePhotos?.length),
@@ -131,6 +135,8 @@ export function EventForm({
   const isHolyTalks = type === 'holy_talks';
   // Attire only applies to Service and Other events.
   const showAttire = type === 'service' || type === 'other';
+  // Singing assignments only apply to Service events.
+  const showAssignments = type === 'service';
 
   function addScripture() {
     const s = scriptureDraft.trim();
@@ -189,6 +195,9 @@ export function EventForm({
       topic: isHolyTalks ? topic || null : null,
       scriptures: isHolyTalks ? scriptures : [],
       holyTalksNotes: isHolyTalks ? holyTalksNotes || null : null,
+      assignments: showAssignments
+        ? Object.entries(assignments).map(([userId, part]) => ({ userId, part }))
+        : [],
     };
     try {
       if (mode === 'create') {
@@ -345,6 +354,15 @@ export function EventForm({
             </div>
             <TextArea label="Holy Talks notes" value={holyTalksNotes} onChange={(e) => setHolyTalksNotes(e.target.value)} />
           </section>
+        )}
+
+        {/* Assignments — collapsible; only for Service events */}
+        {showAssignments && (
+          <AssignmentsSection
+            value={assignments}
+            onChange={setAssignments}
+            initialAssignments={initial?.assignments}
+          />
         )}
 
         {/* Attire — collapsible; only for Service and Other events */}

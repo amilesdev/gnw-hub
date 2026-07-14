@@ -1,18 +1,49 @@
-import type { Event, Announcement, PrayerRequest, Poll, PollChoice, Call } from '@prisma/client';
+import type {
+  Event,
+  EventAssignment,
+  Announcement,
+  PrayerRequest,
+  Poll,
+  PollChoice,
+  Call,
+  VocalPart,
+} from '@prisma/client';
+
+// One assigned singer. The display name is resolved at read time, so renaming a
+// member updates every event without touching the assignment rows.
+export type EventAssignmentDTO = { userId: string; name: string; part: VocalPart };
+
+// Spread onto every event read so the serialized event always carries its
+// assignments (an event read without it just serializes to an empty list).
+export const eventInclude = {
+  assignments: { include: { user: { select: { name: true } } } },
+} as const;
+
+type EventWithAssignments = Event & {
+  assignments?: (EventAssignment & { user: { name: string } })[];
+};
+
+// Sopranos, then altos, then tenors; alphabetical within a part.
+const PART_ORDER: Record<VocalPart, number> = { Soprano: 0, Alto: 1, Tenor: 2 };
 
 // Shapes sent to the client (Dates → ISO strings).
 export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt'> & {
   date: string;
   createdAt: string;
   updatedAt: string;
+  assignments: EventAssignmentDTO[];
 };
 
-export function serializeEvent(e: Event): EventDTO {
+export function serializeEvent(e: EventWithAssignments): EventDTO {
+  const { assignments, ...rest } = e;
   return {
-    ...e,
+    ...rest,
     date: e.date.toISOString(),
     createdAt: e.createdAt.toISOString(),
     updatedAt: e.updatedAt.toISOString(),
+    assignments: (assignments ?? [])
+      .map((a) => ({ userId: a.userId, name: a.user.name, part: a.part }))
+      .sort((a, b) => PART_ORDER[a.part] - PART_ORDER[b.part] || a.name.localeCompare(b.name)),
   };
 }
 

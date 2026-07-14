@@ -108,6 +108,16 @@ const hexColor = z
   .string()
   .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Color must be a hex value like #D4AF37');
 
+export const vocalPartEnum = z.enum(VOCALIST_PARTS);
+
+/** Singing assignments for a service — who sings which part. One part per person. */
+export const assignmentsSchema = z
+  .array(z.object({ userId: z.string().min(1), part: vocalPartEnum }))
+  .max(60)
+  .refine((rows) => new Set(rows.map((r) => r.userId)).size === rows.length, {
+    message: 'A member can only be assigned to one part.',
+  });
+
 export const eventSchema = z.object({
   eventName: z.string().min(1, 'Event name required').max(200),
   type: eventTypeEnum,
@@ -127,6 +137,7 @@ export const eventSchema = z.object({
   topic: z.string().max(200).optional().nullable(),
   scriptures: z.array(z.string()).optional().default([]),
   holyTalksNotes: z.string().max(2000).optional().nullable(),
+  assignments: assignmentsSchema.optional().default([]),
 });
 
 export const prayerRequestSchema = z.object({

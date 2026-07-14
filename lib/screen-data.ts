@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeSetlist, type SetlistDTO } from '@/lib/setlist-serialize';
-import { serializeEvent, type EventDTO } from '@/lib/serialize';
+import { serializeEvent, eventInclude, type EventDTO } from '@/lib/serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { ensureRecurringWindow } from '@/lib/recurrence';
 import { startOfToday } from '@/lib/dates';
@@ -33,6 +33,7 @@ export async function getAllEvents(): Promise<EventDTO[]> {
   const events = await prisma.event.findMany({
     where: { date: { gte: startOfToday() } },
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
+    include: eventInclude,
   });
   return events.map(serializeEvent);
 }
