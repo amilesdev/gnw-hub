@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
-import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
 import { EmptyState } from './EmptyState';
 import { Skeleton, SkeletonList } from './Skeleton';
-import { Music, FileText, ChevronRight, ChevronLeft, Book } from './Icons';
+import { Music, ChevronRight, ChevronLeft, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 
 /** Strip library-only metadata so a song can feed the read-only SongDetail view. */
@@ -76,37 +75,23 @@ export function SongLibraryBrowser({ backHref }: { backHref: string }) {
             <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No songs match that search.</p>
           ) : (
             <div className="card overflow-hidden">
-              {filtered.map((s) => {
-                const partCount = AUDIO_PARTS.filter((p) => s[p]).length;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setOpen(libToSong(s))}
-                    className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
-                      <Music width={16} height={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{s.songTitle}</span>
-                      <span className="flex items-center gap-2 text-xs text-ink-faint">
-                        {s.artist && <span className="truncate">{s.artist}</span>}
-                        <span className="inline-flex items-center gap-1">
-                          <Music width={11} height={11} />
-                          {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''}` : 'No parts yet'}
-                        </span>
-                        {s.lyricChart && (
-                          <span className="inline-flex items-center gap-1">
-                            <FileText width={11} height={11} /> Chart
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    <ChevronRight width={20} height={20} className="text-ink-faint" />
-                  </button>
-                );
-              })}
+              {filtered.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setOpen(libToSong(s))}
+                  className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
+                    <Music width={16} height={16} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{s.songTitle}</span>
+                    {s.artist && <span className="block truncate text-xs text-ink-faint">{s.artist}</span>}
+                  </span>
+                  <ChevronRight width={20} height={20} className="text-ink-faint" />
+                </button>
+              ))}
             </div>
           )}
         </>

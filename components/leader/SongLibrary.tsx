@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
-import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -12,7 +11,7 @@ import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from './LyricChartImport';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { Plus, Music, FileText, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
+import { Plus, Music, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import Link from 'next/link';
 
@@ -93,47 +92,32 @@ export function SongLibrary() {
             <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No songs match that search.</p>
           ) : (
             <div className="card overflow-hidden">
-              {filtered.map((s) => {
-                const partCount = AUDIO_PARTS.filter((p) => s[p]).length;
-                return (
-                  <div key={s.id} className="flex items-center border-b border-line last:border-0">
-                    {/* Tap the row to view the song read-only; pencil opens the editor. */}
-                    <button
-                      type="button"
-                      onClick={() => setViewing(libToSong(s))}
-                      className="row-press flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
-                    >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
-                        <Music width={16} height={16} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold">{s.songTitle}</span>
-                        <span className="flex items-center gap-2 text-xs text-ink-faint">
-                          {s.artist && <span className="truncate">{s.artist}</span>}
-                          <span className="inline-flex items-center gap-1">
-                            <Music width={11} height={11} />
-                            {partCount}/4
-                          </span>
-                          {s.lyricChart && (
-                            <span className="inline-flex items-center gap-1">
-                              <FileText width={11} height={11} /> Chart
-                            </span>
-                          )}
-                          <span>{s.usageCount > 0 ? `In ${s.usageCount} setlist${s.usageCount > 1 ? 's' : ''}` : 'Unused'}</span>
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditing(s)}
-                      className="row-press mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-soft"
-                      aria-label={`Edit ${s.songTitle}`}
-                    >
-                      <Pencil width={16} height={16} />
-                    </button>
-                  </div>
-                );
-              })}
+              {filtered.map((s) => (
+                <div key={s.id} className="flex items-center border-b border-line last:border-0">
+                  {/* Tap the row to view the song read-only; pencil opens the editor. */}
+                  <button
+                    type="button"
+                    onClick={() => setViewing(libToSong(s))}
+                    className="row-press flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
+                      <Music width={16} height={16} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">{s.songTitle}</span>
+                      {s.artist && <span className="block truncate text-xs text-ink-faint">{s.artist}</span>}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(s)}
+                    className="row-press mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-soft"
+                    aria-label={`Edit ${s.songTitle}`}
+                  >
+                    <Pencil width={16} height={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </>
