@@ -36,6 +36,8 @@ const createSchema = z.object({
   songs: z
     .array(
       z.object({
+        // Present → link this existing library song; absent → create a new one.
+        id: z.string().optional(),
         songTitle: z.string().min(1).max(200),
         artist: z.string().max(200).optional().nullable(),
         youtubeLink: z.string().optional().nullable(),
@@ -76,19 +78,21 @@ export async function POST(req: Request) {
       name: name?.trim() || null,
       month: monthKey(earliest.date),
       events: { connect: eventIds.map((id) => ({ id })) },
-      // Each song is created fresh in the library and linked in at its position.
-      // (A future "add from library" path can instead connect an existing songId.)
+      // Each song is either linked from the library (id present) or created
+      // fresh in the library and linked in — both at its position in the order.
       songs: {
         create: songs.map((s, i) => ({
           position: i,
-          song: {
-            create: {
-              songTitle: s.songTitle,
-              artist: s.artist || null,
-              youtubeLink: s.youtubeLink || null,
-              driveLink: s.driveLink || null,
-            },
-          },
+          song: s.id
+            ? { connect: { id: s.id } }
+            : {
+                create: {
+                  songTitle: s.songTitle,
+                  artist: s.artist || null,
+                  youtubeLink: s.youtubeLink || null,
+                  driveLink: s.driveLink || null,
+                },
+              },
         })),
       },
     },

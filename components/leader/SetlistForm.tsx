@@ -12,13 +12,14 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
+import type { SetlistDTO, SongDTO, LibrarySongDTO } from '@/lib/setlist-serialize';
 import type { EventDTO } from '@/lib/serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
-import { Plus, Trash, Grip, Check } from '@/components/shared/Icons';
+import { Plus, Trash, Grip, Check, Book } from '@/components/shared/Icons';
 import { SongAudioSlots } from './SongAudioSlots';
 import { LyricChartImport } from './LyricChartImport';
+import { LibraryPicker } from './LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
 import { cn, randomToken } from '@/lib/utils';
 import { formatEventDate, monthKey } from '@/lib/dates';
@@ -69,7 +70,11 @@ export function SetlistForm({
   const [events, setEvents] = useState<EventDTO[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
+  // Library songs already in this setlist — hidden from the picker so the same
+  // song can't be added twice.
+  const usedSongIds = useMemo(() => new Set(rows.map((r) => r.id).filter((id): id is string => !!id)), [rows]);
 
   // Pickable events: upcoming ones of a setlist-eligible type, plus any
   // already-linked events (which may be in the past) so they can be unlinked.
@@ -101,6 +106,25 @@ export function SetlistForm({
 
   function addSong() {
     setRows((r) => [...r, { key: `new-${randomToken(6)}`, songTitle: '', artist: '', youtubeLink: '', driveLink: '' }]);
+  }
+
+  // Append library songs as reference rows — they carry the library `id`, so
+  // saving links the existing entry (with its parts/chart) rather than copying.
+  function addFromLibrary(songs: LibrarySongDTO[]) {
+    setRows((r) => [
+      ...r,
+      ...songs.map((s) => ({
+        key: `lib-${s.id}`,
+        id: s.id,
+        songTitle: s.songTitle,
+        artist: s.artist ?? '',
+        youtubeLink: s.youtubeLink ?? '',
+        driveLink: s.driveLink ?? '',
+        audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
+        lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
+      })),
+    ]);
+    setShowLibrary(false);
   }
 
   function updateRow(key: string, patch: Partial<Row>) {
@@ -136,7 +160,9 @@ export function SetlistForm({
     try {
       const setlistName = name.trim() || null;
       if (mode === 'create') {
-        await apiFetch('/api/setlists', { method: 'POST', body: JSON.stringify({ name: setlistName, eventIds, songs: songs.map(({ id: _id, ...s }) => s) }) });
+        // Send ids too: a library-picked song carries its id so the API links the
+        // existing library entry instead of duplicating it.
+        await apiFetch('/api/setlists', { method: 'POST', body: JSON.stringify({ name: setlistName, eventIds, songs }) });
       } else {
         await apiFetch(`/api/setlists/${initial!.id}`, { method: 'PATCH', body: JSON.stringify({ name: setlistName, eventIds, songs }) });
       }
@@ -217,11 +243,16 @@ export function SetlistForm({
         </div>
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <FieldLabel>Songs (drag to reorder)</FieldLabel>
-            <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={addSong}>
-              <Plus width={15} height={15} /> Add song
-            </button>
+            <div className="flex shrink-0 gap-1.5">
+              <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={() => setShowLibrary(true)}>
+                <Book width={15} height={15} /> Library
+              </button>
+              <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={addSong}>
+                <Plus width={15} height={15} /> New
+              </button>
+            </div>
           </div>
 
           {rows.length === 0 ? (
@@ -252,6 +283,10 @@ export function SetlistForm({
           {busy ? 'Saving…' : mode === 'create' ? 'Create setlist' : 'Save changes'}
         </button>
       </form>
+
+      {showLibrary && (
+        <LibraryPicker excludeIds={usedSongIds} onAdd={addFromLibrary} onClose={() => setShowLibrary(false)} />
+      )}
     </Overlay>
   );
 }

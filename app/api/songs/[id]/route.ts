@@ -23,6 +23,7 @@ const lyricChartSchema = z.object({
 
 const patchSchema = z.object({
   songTitle: z.string().min(1).max(200).optional(),
+  artist: z.string().max(200).nullable().optional(),
   youtubeLink: z.string().nullable().optional(),
   driveLink: z.string().nullable().optional(),
   audioSoprano: z.string().nullable().optional(),
@@ -65,6 +66,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     where: { id },
     data: {
       ...(d.songTitle !== undefined ? { songTitle: d.songTitle } : {}),
+      ...(d.artist !== undefined ? { artist: d.artist || null } : {}),
       ...(d.youtubeLink !== undefined ? { youtubeLink: d.youtubeLink || null } : {}),
       ...(d.driveLink !== undefined ? { driveLink: d.driveLink || null } : {}),
       ...(d.audioSoprano !== undefined ? { audioSoprano: d.audioSoprano || null } : {}),
@@ -81,4 +83,27 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   revalidateSetlists();
   return NextResponse.json({ song });
+}
+
+// DELETE /api/songs/[id] — retire a song from the library. Leader only.
+// This is the one place a song's audio is deleted from storage: freeing the
+// bucket files is the point of retiring. Any SetlistSong links cascade away, so
+// the song also disappears from every setlist that still used it.
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const guard = await requireLeader();
+  if ('error' in guard) return guard.error;
+  const { id } = await params;
+
+  const existing = await prisma.song.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: 'Song not found' }, { status: 404 });
+
+  const paths = AUDIO_PARTS.map((p) => existing[p])
+    .filter((u): u is string => !!u)
+    .map(pathFromPublicUrl)
+    .filter((p): p is string => !!p);
+  if (paths.length) await deleteObjects(paths);
+
+  await prisma.song.delete({ where: { id } }); // SetlistSong links cascade
+  revalidateSetlists();
+  return NextResponse.json({ ok: true });
 }

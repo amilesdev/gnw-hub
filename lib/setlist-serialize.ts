@@ -34,6 +34,15 @@ export type SongDTO = {
   lyricChartUpdatedAt: string | null;
 };
 
+// A library song as shown on the Song Library screen: the reusable content plus
+// how many setlists currently reference it (so a leader can tell what's in
+// rotation vs. safe to retire). It's a SongDTO without the per-setlist
+// `position`, and with library-only metadata.
+export type LibrarySongDTO = Omit<SongDTO, 'position'> & {
+  usageCount: number;
+  updatedAt: string;
+};
+
 export type LinkedEventDTO = { id: string; eventName: string; date: string; time: string };
 
 export type SetlistDTO = {

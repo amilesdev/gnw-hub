@@ -8,7 +8,8 @@ import { SongDetail } from '@/components/shared/SongDetail';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Plus, Pencil, Trash, Music, ChevronRight } from '@/components/shared/Icons';
+import Link from 'next/link';
+import { Plus, Pencil, Trash, Music, ChevronRight, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, formatEventDate } from '@/lib/dates';
 
@@ -66,9 +67,14 @@ export function SetlistManager() {
           <div className="eyebrow">Leader tools</div>
           <h1 className="page-title mt-2">Setlists</h1>
         </div>
-        <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
-          <Plus width={18} height={18} /> Add
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/library" className="btn-ghost !px-3 !py-3">
+            <Book width={17} height={17} /> Library
+          </Link>
+          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
+            <Plus width={18} height={18} /> Add
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -155,7 +161,7 @@ export function SetlistManager() {
       <ConfirmDialog
         open={!!confirmDelete}
         title="Delete setlist?"
-        message="This deletes the setlist, its songs, and all uploaded audio for that month."
+        message="This removes the setlist and its song order. The songs themselves stay in your library — their parts and charts aren't deleted."
         busy={busy}
         onConfirm={remove}
         onClose={() => setConfirmDelete(null)}
