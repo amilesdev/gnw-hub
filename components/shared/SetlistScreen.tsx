@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
 import { EmptyState } from './EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
-import { Music, ChevronRight, Clock } from './Icons';
+import { Music, ChevronRight, Clock, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
 
@@ -42,9 +43,14 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
 
   return (
     <div className="space-y-5 pt-2">
-      <header>
-        <div className="eyebrow">GNW Hub</div>
-        <h1 className="page-title mt-2">Setlist</h1>
+      <header className="flex items-end justify-between">
+        <div>
+          <div className="eyebrow">GNW Hub</div>
+          <h1 className="page-title mt-2">Setlist</h1>
+        </div>
+        <Link href="/home/library" className="btn-ghost !px-4 !py-3 border border-line">
+          <Book width={18} height={18} /> Library
+        </Link>
       </header>
 
       {months.length > 1 && (

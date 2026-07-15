@@ -68,8 +68,8 @@ export function SetlistManager() {
           <h1 className="page-title mt-2">Setlists</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/library" className="btn-ghost !px-3 !py-3">
-            <Book width={17} height={17} /> Library
+          <Link href="/dashboard/library" className="btn-ghost !px-4 !py-3 border border-line">
+            <Book width={18} height={18} /> Library
           </Link>
           <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
             <Plus width={18} height={18} /> Add

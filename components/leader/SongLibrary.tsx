@@ -10,8 +10,9 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { SongAudioSlots } from './SongAudioSlots';
 import { LyricChartImport } from './LyricChartImport';
-import { Plus, Music, FileText, ChevronRight, Trash, Book } from '@/components/shared/Icons';
+import { Plus, Music, FileText, ChevronRight, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
+import Link from 'next/link';
 
 /** Strip library-only metadata so the song can feed SongDTO-shaped components. */
 function libToSong(s: LibrarySongDTO): SongDTO {
@@ -50,17 +51,19 @@ export function SongLibrary() {
     <div className="space-y-5 pt-2">
       <header className="flex items-end justify-between">
         <div>
-          <div className="eyebrow">Leader tools</div>
-          <h1 className="page-title mt-2">Song library</h1>
+          <Link
+            href="/dashboard/setlist"
+            className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+            aria-label="Back to setlists"
+          >
+            <ChevronLeft width={18} height={18} />
+          </Link>
+          <h1 className="page-title">Song library</h1>
         </div>
         <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
           <Plus width={18} height={18} /> New
         </button>
       </header>
-
-      <p className="text-sm text-ink-faint">
-        Every song you do, in one place. Upload parts and import a chart once — then add it to any setlist without redoing the work.
-      </p>
 
       {songs === null ? (
         <SkeletonList>
