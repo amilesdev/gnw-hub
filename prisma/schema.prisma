@@ -256,19 +256,25 @@ model Setlist {
   name      String? // optional display name; falls back to linked event names when empty.
   month     String // "YYYY-MM" — grouping key, derived from the earliest linked event's date.
   // A setlist can be linked to multiple events (see Event.setlist).
-  events    Event[]  @relation("EventSetlist")
-  songs     Song[]
-  createdAt DateTime @default(now())
+  events    Event[]       @relation("EventSetlist")
+  // Songs are referenced from the library via the SetlistSong join, not owned
+  // outright — so the same library Song (chart, vocal parts) can appear in many
+  // setlists without duplicating storage. Order lives on the join's `position`.
+  songs     SetlistSong[]
+  createdAt DateTime      @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([month])
 }
 
+// A library song — the reusable catalog entity. Entered/uploaded once and
+// referenced by any number of setlists through SetlistSong. Heavy assets
+// (audio parts, lyric doc) are stored as URLs into the Supabase bucket, so a
+// row is only a few KB of text and the audio is stored once regardless of how
+// many setlists use the song. Retiring a song (and freeing its bucket files) is
+// a deliberate delete; setlists coming and going never touch it.
 model Song {
   id                  String    @id @default(cuid())
-  setlistId           String
-  setlist             Setlist   @relation(fields: [setlistId], references: [id], onDelete: Cascade)
-  position            Int // ordering within the setlist
   songTitle           String
   artist              String? // original artist / arranger
   youtubeLink         String?
@@ -286,7 +292,26 @@ model Song {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  setlistSongs SetlistSong[] // placements of this song across setlists
+
+  @@index([songTitle]) // library browse/search by title
+}
+
+// Join between a Setlist and a library Song: where the song sits (and in what
+// order) within one setlist. Deleting the setlist or the library song removes
+// the link; the library Song — and its audio in storage — otherwise persists.
+model SetlistSong {
+  id        String   @id @default(cuid())
+  setlistId String
+  setlist   Setlist  @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  songId    String
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  position  Int // ordering within the setlist
+  createdAt DateTime @default(now())
+
+  @@unique([setlistId, songId]) // a song appears at most once per setlist
   @@index([setlistId, position])
+  @@index([songId])
 }
 
 model Announcement {

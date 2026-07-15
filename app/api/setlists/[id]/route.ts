@@ -2,25 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
-import { serializeSetlist, AUDIO_PARTS } from '@/lib/setlist-serialize';
-import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
+import { serializeSetlist, setlistInclude } from '@/lib/setlist-serialize';
 import { monthKey } from '@/lib/dates';
 import { revalidateSetlists } from '@/lib/cache-tags';
-import type { Song } from '@prisma/client';
 
 type Ctx = { params: Promise<{ id: string }> };
-
-const setlistInclude = {
-  songs: true,
-  events: { select: { id: true, eventName: true, date: true, time: true } },
-} as const;
-
-function audioPathsOf(song: Song): string[] {
-  return AUDIO_PARTS.map((p) => song[p])
-    .filter((u): u is string => !!u)
-    .map(pathFromPublicUrl)
-    .filter((p): p is string => !!p);
-}
 
 export async function GET(_req: Request, { params }: Ctx) {
   const guard = await requireUser();
@@ -53,7 +39,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
-  const existing = await prisma.setlist.findUnique({ where: { id }, include: { songs: true } });
+  const existing = await prisma.setlist.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
 
   const body = await req.json().catch(() => null);
@@ -93,26 +79,37 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
 
     if (songs) {
-      const keepIds = new Set(songs.filter((s) => s.id).map((s) => s.id!));
-      // Delete removed songs (and their audio from storage).
-      const removed = existing.songs.filter((s) => !keepIds.has(s.id));
-      const paths = removed.flatMap(audioPathsOf);
-      if (paths.length) await deleteObjects(paths);
-      if (removed.length) {
-        await tx.song.deleteMany({ where: { id: { in: removed.map((s) => s.id) } } });
-      }
+      // Songs are library rows now. Removing a song from a setlist drops only the
+      // *link* (SetlistSong) — the library Song and its audio in storage persist,
+      // so they're still available to other setlists and re-usable next time.
+      const keepSongIds = songs.filter((s) => s.id).map((s) => s.id!);
+      await tx.setlistSong.deleteMany({
+        where: { setlistId: id, ...(keepSongIds.length ? { songId: { notIn: keepSongIds } } : {}) },
+      });
 
-      // Upsert in order; position = array index. Audio fields untouched here.
+      // Reconcile in order; position = array index.
       for (let i = 0; i < songs.length; i++) {
         const s = songs[i];
         if (s.id) {
+          // Existing library song: update its shared fields (propagates to every
+          // setlist using it) and (re)place it in this setlist at position i.
           await tx.song.update({
             where: { id: s.id },
-            data: { position: i, songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null },
+            data: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null },
+          });
+          await tx.setlistSong.upsert({
+            where: { setlistId_songId: { setlistId: id, songId: s.id } },
+            create: { setlistId: id, songId: s.id, position: i },
+            update: { position: i },
           });
         } else {
-          await tx.song.create({
-            data: { setlistId: id, position: i, songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null },
+          // New song: add it to the library and link it in.
+          await tx.setlistSong.create({
+            data: {
+              setlist: { connect: { id } },
+              position: i,
+              song: { create: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null } },
+            },
           });
         }
       }
@@ -124,19 +121,19 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return NextResponse.json({ setlist: serializeSetlist(updated!) });
 }
 
-// DELETE /api/setlists/[id] — delete setlist + all song audio in storage. Leader only.
+// DELETE /api/setlists/[id] — delete the setlist. Leader only.
+// Only the song *links* (SetlistSong) cascade away; the library Songs and their
+// audio in storage stay put, ready for the next setlist. Freeing a song's files
+// is a separate, deliberate "retire from library" action.
 export async function DELETE(_req: Request, { params }: Ctx) {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
-  const existing = await prisma.setlist.findUnique({ where: { id }, include: { songs: true } });
+  const existing = await prisma.setlist.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
 
-  const paths = existing.songs.flatMap(audioPathsOf);
-  if (paths.length) await deleteObjects(paths);
-
-  await prisma.setlist.delete({ where: { id } }); // songs cascade
+  await prisma.setlist.delete({ where: { id } }); // SetlistSong links cascade
   revalidateSetlists();
   return NextResponse.json({ ok: true });
 }

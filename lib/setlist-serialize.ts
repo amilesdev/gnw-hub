@@ -1,4 +1,4 @@
-import type { Setlist, Song, Event } from '@prisma/client';
+import type { Setlist, Song, SetlistSong, Event } from '@prisma/client';
 
 // A single line of a parsed lyric chart. `section` lines are verse/chorus/etc.
 // labels; `lyric` lines are sung text; `blank` lines are spacers.
@@ -14,6 +14,10 @@ export type LyricChart = {
   parsedAt: string; // ISO timestamp
 };
 
+// `id` is the library Song's id — the stable identity used for audio/lyric
+// edits (PATCH /api/songs/[id]) and for reconciling a setlist's membership.
+// `position` comes from the SetlistSong join (a song can sit at a different
+// spot in each setlist that uses it).
 export type SongDTO = {
   id: string;
   position: number;
@@ -42,7 +46,38 @@ export type SetlistDTO = {
 };
 
 type LinkedEvent = Pick<Event, 'id' | 'eventName' | 'date' | 'time'>;
-type FullSetlist = Setlist & { songs: Song[]; events: LinkedEvent[] };
+
+// A setlist's song as read from the DB: the join row (carrying its position)
+// with the library Song it points at.
+export type SongJoin = SetlistSong & { song: Song };
+type FullSetlist = Setlist & { songs: SongJoin[]; events: LinkedEvent[] };
+
+// The Prisma `include` every setlist read should use, so the DTO always has the
+// joined library songs (ordered) and linked events to serialize from.
+export const setlistInclude = {
+  songs: { include: { song: true }, orderBy: { position: 'asc' } },
+  events: { select: { id: true, eventName: true, date: true, time: true } },
+} as const;
+
+/** Flatten a SetlistSong join (+ its library Song) into the wire DTO. */
+export function serializeSong(row: SongJoin): SongDTO {
+  const { song } = row;
+  return {
+    id: song.id,
+    position: row.position,
+    songTitle: song.songTitle,
+    artist: song.artist,
+    youtubeLink: song.youtubeLink,
+    driveLink: song.driveLink,
+    audioSoprano: song.audioSoprano,
+    audioAlto: song.audioAlto,
+    audioTenor: song.audioTenor,
+    audioAllParts: song.audioAllParts,
+    lyricChart: (song.lyricChart as LyricChart | null) ?? null,
+    lyricDocUrl: song.lyricDocUrl,
+    lyricChartUpdatedAt: song.lyricChartUpdatedAt?.toISOString() ?? null,
+  };
+}
 
 export function serializeSetlist(s: FullSetlist): SetlistDTO {
   return {
@@ -50,23 +85,7 @@ export function serializeSetlist(s: FullSetlist): SetlistDTO {
     name: s.name,
     month: s.month,
     createdAt: s.createdAt.toISOString(),
-    songs: [...s.songs]
-      .sort((a, b) => a.position - b.position)
-      .map((song) => ({
-        id: song.id,
-        position: song.position,
-        songTitle: song.songTitle,
-        artist: song.artist,
-        youtubeLink: song.youtubeLink,
-        driveLink: song.driveLink,
-        audioSoprano: song.audioSoprano,
-        audioAlto: song.audioAlto,
-        audioTenor: song.audioTenor,
-        audioAllParts: song.audioAllParts,
-        lyricChart: (song.lyricChart as LyricChart | null) ?? null,
-        lyricDocUrl: song.lyricDocUrl,
-        lyricChartUpdatedAt: song.lyricChartUpdatedAt?.toISOString() ?? null,
-      })),
+    songs: [...s.songs].sort((a, b) => a.position - b.position).map(serializeSong),
     events: [...s.events]
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .map((e) => ({ id: e.id, eventName: e.eventName, date: e.date.toISOString(), time: e.time })),

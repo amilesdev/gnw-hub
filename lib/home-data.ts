@@ -7,10 +7,9 @@ import {
   type EventDTO,
   type AnnouncementDTO,
 } from '@/lib/serialize';
-import type { LyricChart, SongDTO } from '@/lib/setlist-serialize';
+import { serializeSong, setlistInclude, type SongDTO } from '@/lib/setlist-serialize';
 import { startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from '@/lib/cache-tags';
-import type { Song } from '@prisma/client';
 
 // The home & dashboard screens are the most-visited surfaces, so their reads are
 // cached in Next's Data Cache. Everything here is GLOBAL team data (identical for
@@ -18,24 +17,6 @@ import type { Song } from '@prisma/client';
 // The pages stay dynamic (auth runs per request); only these DB reads are cached.
 // Each cache is busted immediately by the matching revalidate* helper on write
 // (see lib/cache-tags.ts) and, as a backstop, expires after CACHE_TTL_SECONDS.
-
-function toSongDTO(s: Song): SongDTO {
-  return {
-    id: s.id,
-    position: s.position,
-    songTitle: s.songTitle,
-    artist: s.artist,
-    youtubeLink: s.youtubeLink,
-    driveLink: s.driveLink,
-    audioSoprano: s.audioSoprano,
-    audioAlto: s.audioAlto,
-    audioTenor: s.audioTenor,
-    audioAllParts: s.audioAllParts,
-    lyricChart: (s.lyricChart as LyricChart | null) ?? null,
-    lyricDocUrl: s.lyricDocUrl,
-    lyricChartUpdatedAt: s.lyricChartUpdatedAt?.toISOString() ?? null,
-  };
-}
 
 export type ThisWeekSetlist = { month: string; songs: SongDTO[] } | null;
 
@@ -75,11 +56,11 @@ export const getThisWeekSetlist = unstable_cache(
     const event = await prisma.event.findFirst({
       where: { date: { gte: startOfToday(), lte: upcomingWindowEnd() }, setlistId: { not: null } },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
-      include: { setlist: { include: { songs: { orderBy: { position: 'asc' } } } } },
+      include: { setlist: { include: setlistInclude } },
     });
     if (!event?.setlist) return null;
 
-    return { month: event.setlist.month, songs: event.setlist.songs.map(toSongDTO) };
+    return { month: event.setlist.month, songs: event.setlist.songs.map(serializeSong) };
   },
   ['home:this-week-setlist'],
   { tags: [CACHE_TAGS.events, CACHE_TAGS.setlists], revalidate: CACHE_TTL_SECONDS },

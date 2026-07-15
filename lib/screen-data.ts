@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { serializeSetlist, type SetlistDTO } from '@/lib/setlist-serialize';
+import { serializeSetlist, setlistInclude, type SetlistDTO } from '@/lib/setlist-serialize';
 import { serializeEvent, eventInclude, type EventDTO } from '@/lib/serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { ensureRecurringWindow } from '@/lib/recurrence';
@@ -10,11 +10,6 @@ import { startOfToday } from '@/lib/dates';
 // client component that fetches the same data in a useEffect after it mounts.
 // Kept identical to the GET handlers in app/api/setlists and app/api/events —
 // including the maintenance side-effects — so first paint matches later refetches.
-
-const setlistInclude = {
-  songs: true,
-  events: { select: { id: true, eventName: true, date: true, time: true } },
-} as const;
 
 /** All setlists, newest month first — mirror of GET /api/setlists (no filters). */
 export async function getAllSetlists(): Promise<SetlistDTO[]> {

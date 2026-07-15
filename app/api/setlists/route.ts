@@ -2,15 +2,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
-import { serializeSetlist } from '@/lib/setlist-serialize';
+import { serializeSetlist, setlistInclude } from '@/lib/setlist-serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { monthKey } from '@/lib/dates';
 import { revalidateSetlists } from '@/lib/cache-tags';
-
-const setlistInclude = {
-  songs: true,
-  events: { select: { id: true, eventName: true, date: true, time: true } },
-} as const;
 
 // GET /api/setlists?month=YYYY-MM&eventId=...  (omit filters → all, newest month first)
 export async function GET(req: Request) {
@@ -81,13 +76,19 @@ export async function POST(req: Request) {
       name: name?.trim() || null,
       month: monthKey(earliest.date),
       events: { connect: eventIds.map((id) => ({ id })) },
+      // Each song is created fresh in the library and linked in at its position.
+      // (A future "add from library" path can instead connect an existing songId.)
       songs: {
         create: songs.map((s, i) => ({
           position: i,
-          songTitle: s.songTitle,
-          artist: s.artist || null,
-          youtubeLink: s.youtubeLink || null,
-          driveLink: s.driveLink || null,
+          song: {
+            create: {
+              songTitle: s.songTitle,
+              artist: s.artist || null,
+              youtubeLink: s.youtubeLink || null,
+              driveLink: s.driveLink || null,
+            },
+          },
         })),
       },
     },
