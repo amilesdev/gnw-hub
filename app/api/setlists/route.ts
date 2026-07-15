@@ -41,7 +41,6 @@ const createSchema = z.object({
         songTitle: z.string().min(1).max(200),
         artist: z.string().max(200).optional().nullable(),
         youtubeLink: z.string().optional().nullable(),
-        driveLink: z.string().optional().nullable(),
       }),
     )
     .default([]),
@@ -90,7 +89,6 @@ export async function POST(req: Request) {
                   songTitle: s.songTitle,
                   artist: s.artist || null,
                   youtubeLink: s.youtubeLink || null,
-                  driveLink: s.driveLink || null,
                 },
               },
         })),

@@ -94,7 +94,6 @@ export const changePasswordSchema = z
 const songInput = z.object({
   songTitle: z.string().min(1, 'Song title required').max(200),
   youtubeLink: z.string().url().optional().or(z.literal('')).transform((v) => v || null),
-  driveLink: z.string().url().optional().or(z.literal('')).transform((v) => v || null),
 });
 
 export const setlistSchema = z.object({

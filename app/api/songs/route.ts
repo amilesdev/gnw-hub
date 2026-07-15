@@ -13,7 +13,6 @@ function toLibraryDTO(s: Song, usageCount: number): LibrarySongDTO {
     songTitle: s.songTitle,
     artist: s.artist,
     youtubeLink: s.youtubeLink,
-    driveLink: s.driveLink,
     audioSoprano: s.audioSoprano,
     audioAlto: s.audioAlto,
     audioTenor: s.audioTenor,
@@ -56,7 +55,6 @@ const createSchema = z.object({
   songTitle: z.string().min(1, 'Song title required').max(200),
   artist: z.string().max(200).optional().nullable(),
   youtubeLink: z.string().optional().nullable(),
-  driveLink: z.string().optional().nullable(),
 });
 
 // POST /api/songs — add a new song to the library (no setlist attached). Leader only.
@@ -76,7 +74,6 @@ export async function POST(req: Request) {
       songTitle: d.songTitle,
       artist: d.artist || null,
       youtubeLink: d.youtubeLink || null,
-      driveLink: d.driveLink || null,
     },
   });
 

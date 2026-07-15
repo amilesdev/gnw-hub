@@ -24,7 +24,6 @@ export type SongDTO = {
   songTitle: string;
   artist: string | null;
   youtubeLink: string | null;
-  driveLink: string | null;
   audioSoprano: string | null;
   audioAlto: string | null;
   audioTenor: string | null;
@@ -80,7 +79,6 @@ export function serializeSong(row: SongJoin): SongDTO {
     songTitle: song.songTitle,
     artist: song.artist,
     youtubeLink: song.youtubeLink,
-    driveLink: song.driveLink,
     audioSoprano: song.audioSoprano,
     audioAlto: song.audioAlto,
     audioTenor: song.audioTenor,

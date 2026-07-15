@@ -278,7 +278,6 @@ model Song {
   songTitle           String
   artist              String? // original artist / arranger
   youtubeLink         String?
-  driveLink           String? // Google Drive vocal parts fallback
   audioSoprano        String?
   audioAlto           String?
   audioTenor          String?

@@ -18,6 +18,7 @@ import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
 import { Plus, Trash, Grip, Check, Book } from '@/components/shared/Icons';
 import { SongAudioSlots } from './SongAudioSlots';
+import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from './LyricChartImport';
 import { LibraryPicker } from './LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
@@ -30,9 +31,11 @@ type Row = {
   songTitle: string;
   artist: string;
   youtubeLink: string;
-  driveLink: string;
   audio?: Pick<SongDTO, 'audioSoprano' | 'audioAlto' | 'audioTenor' | 'audioAllParts'>;
   lyric?: Pick<SongDTO, 'lyricChart' | 'lyricDocUrl' | 'lyricChartUpdatedAt'>;
+  arrangementAudio?: string | null;
+  songKey?: string | null;
+  bpm?: string | null;
 };
 
 // Only these event types can carry a setlist — Prayer and Holy Talks never do,
@@ -47,9 +50,11 @@ function toRows(setlist?: SetlistDTO): Row[] {
     songTitle: s.songTitle,
     artist: s.artist ?? '',
     youtubeLink: s.youtubeLink ?? '',
-    driveLink: s.driveLink ?? '',
     audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
     lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
+    arrangementAudio: s.arrangementAudio,
+    songKey: s.songKey,
+    bpm: s.bpm,
   }));
 }
 
@@ -105,7 +110,7 @@ export function SetlistForm({
   }, []);
 
   function addSong() {
-    setRows((r) => [...r, { key: `new-${randomToken(6)}`, songTitle: '', artist: '', youtubeLink: '', driveLink: '' }]);
+    setRows((r) => [...r, { key: `new-${randomToken(6)}`, songTitle: '', artist: '', youtubeLink: '' }]);
   }
 
   // Append library songs as reference rows — they carry the library `id`, so
@@ -119,9 +124,11 @@ export function SetlistForm({
         songTitle: s.songTitle,
         artist: s.artist ?? '',
         youtubeLink: s.youtubeLink ?? '',
-        driveLink: s.driveLink ?? '',
         audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
         lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
+        arrangementAudio: s.arrangementAudio,
+        songKey: s.songKey,
+        bpm: s.bpm,
       })),
     ]);
     setShowLibrary(false);
@@ -150,7 +157,7 @@ export function SetlistForm({
     setError(null);
     const songs = rows
       .filter((r) => r.songTitle.trim())
-      .map((r) => ({ id: r.id, songTitle: r.songTitle.trim(), artist: r.artist.trim() || null, youtubeLink: r.youtubeLink || null, driveLink: r.driveLink || null }));
+      .map((r) => ({ id: r.id, songTitle: r.songTitle.trim(), artist: r.artist.trim() || null, youtubeLink: r.youtubeLink || null }));
 
     if (eventIds.length === 0) {
       setError('Pick at least one event for this setlist.');
@@ -316,16 +323,13 @@ function SortableSong({
         songTitle: row.songTitle,
         artist: row.artist || null,
         youtubeLink: row.youtubeLink || null,
-        driveLink: row.driveLink || null,
         audioSoprano: row.audio?.audioSoprano ?? null,
         audioAlto: row.audio?.audioAlto ?? null,
         audioTenor: row.audio?.audioTenor ?? null,
         audioAllParts: row.audio?.audioAllParts ?? null,
-        // Band content (arrangement/key/BPM) is edited from the song card, not
-        // this vocals+lyrics inline editor — carry nulls to satisfy the DTO.
-        arrangementAudio: null,
-        songKey: null,
-        bpm: null,
+        arrangementAudio: row.arrangementAudio ?? null,
+        songKey: row.songKey ?? null,
+        bpm: row.bpm ?? null,
         lyricChart: row.lyric?.lyricChart ?? null,
         lyricDocUrl: row.lyric?.lyricDocUrl ?? null,
         lyricChartUpdatedAt: row.lyric?.lyricChartUpdatedAt ?? null,
@@ -358,19 +362,16 @@ function SortableSong({
           onChange={(e) => onUpdate({ youtubeLink: e.target.value })}
           placeholder="YouTube link"
           inputMode="url"
-          enterKeyHint="next"
-        />
-        <input
-          className="field !py-2.5 text-sm"
-          value={row.driveLink}
-          onChange={(e) => onUpdate({ driveLink: e.target.value })}
-          placeholder="Drive link (optional)"
-          inputMode="url"
           enterKeyHint="done"
         />
       </div>
       {songForEdit && (
         <div className="space-y-3 pl-9">
+          {/* Key/BPM + arrangement sit right after the YouTube link. */}
+          <SongBandFields
+            song={songForEdit}
+            onChanged={(s) => onUpdate({ songKey: s.songKey, bpm: s.bpm, arrangementAudio: s.arrangementAudio })}
+          />
           <SongAudioSlots song={songForEdit} month={month} onChanged={(s) => onUpdate({ audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts } })} />
           <LyricChartImport song={songForEdit} onChanged={(s) => onUpdate({ lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt } })} />
         </div>

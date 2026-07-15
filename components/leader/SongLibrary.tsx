@@ -9,8 +9,10 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { SongAudioSlots } from './SongAudioSlots';
+import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from './LyricChartImport';
-import { Plus, Music, FileText, ChevronRight, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
+import { SongDetail } from '@/components/shared/SongDetail';
+import { Plus, Music, FileText, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import Link from 'next/link';
 
@@ -24,6 +26,7 @@ export function SongLibrary() {
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<LibrarySongDTO | 'new' | null>(null);
+  const [viewing, setViewing] = useState<SongDTO | null>(null);
 
   async function load() {
     try {
@@ -93,39 +96,50 @@ export function SongLibrary() {
               {filtered.map((s) => {
                 const partCount = AUDIO_PARTS.filter((p) => s[p]).length;
                 return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setEditing(s)}
-                    className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
-                      <Music width={16} height={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{s.songTitle}</span>
-                      <span className="flex items-center gap-2 text-xs text-ink-faint">
-                        {s.artist && <span className="truncate">{s.artist}</span>}
-                        <span className="inline-flex items-center gap-1">
-                          <Music width={11} height={11} />
-                          {partCount}/4
-                        </span>
-                        {s.lyricChart && (
-                          <span className="inline-flex items-center gap-1">
-                            <FileText width={11} height={11} /> Chart
-                          </span>
-                        )}
-                        <span>{s.usageCount > 0 ? `In ${s.usageCount} setlist${s.usageCount > 1 ? 's' : ''}` : 'Unused'}</span>
+                  <div key={s.id} className="flex items-center border-b border-line last:border-0">
+                    {/* Tap the row to view the song read-only; pencil opens the editor. */}
+                    <button
+                      type="button"
+                      onClick={() => setViewing(libToSong(s))}
+                      className="row-press flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
+                        <Music width={16} height={16} />
                       </span>
-                    </span>
-                    <ChevronRight width={20} height={20} className="text-ink-faint" />
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{s.songTitle}</span>
+                        <span className="flex items-center gap-2 text-xs text-ink-faint">
+                          {s.artist && <span className="truncate">{s.artist}</span>}
+                          <span className="inline-flex items-center gap-1">
+                            <Music width={11} height={11} />
+                            {partCount}/4
+                          </span>
+                          {s.lyricChart && (
+                            <span className="inline-flex items-center gap-1">
+                              <FileText width={11} height={11} /> Chart
+                            </span>
+                          )}
+                          <span>{s.usageCount > 0 ? `In ${s.usageCount} setlist${s.usageCount > 1 ? 's' : ''}` : 'Unused'}</span>
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(s)}
+                      className="row-press mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-soft"
+                      aria-label={`Edit ${s.songTitle}`}
+                    >
+                      <Pencil width={16} height={16} />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           )}
         </>
       )}
+
+      {viewing && <SongDetail song={viewing} onClose={() => setViewing(null)} />}
 
       {editing && (
         <LibraryEditor
@@ -159,7 +173,6 @@ function LibraryEditor({
   const [title, setTitle] = useState(initial?.songTitle ?? '');
   const [artist, setArtist] = useState(initial?.artist ?? '');
   const [youtube, setYoutube] = useState(initial?.youtubeLink ?? '');
-  const [drive, setDrive] = useState(initial?.driveLink ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRetire, setConfirmRetire] = useState(false);
@@ -170,7 +183,6 @@ function LibraryEditor({
     songTitle: title.trim(),
     artist: artist.trim() || null,
     youtubeLink: youtube.trim() || null,
-    driveLink: drive.trim() || null,
   };
 
   async function saveDetails() {
@@ -233,15 +245,14 @@ function LibraryEditor({
           </div>
           <div>
             <FieldLabel>YouTube link</FieldLabel>
-            <input className="field mt-1.5 text-sm" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" inputMode="url" enterKeyHint="next" />
-          </div>
-          <div>
-            <FieldLabel>Drive link</FieldLabel>
-            <input className="field mt-1.5 text-sm" value={drive} onChange={(e) => setDrive(e.target.value)} placeholder="https://drive.google.com/… (optional)" inputMode="url" enterKeyHint="done" />
+            <input className="field mt-1.5 text-sm" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" inputMode="url" enterKeyHint="done" />
           </div>
         </div>
 
         {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+
+        {/* Key/BPM + arrangement sit right after the YouTube link (once saved). */}
+        {song && <SongBandFields song={song} onChanged={(s) => setSong({ ...song, ...s })} />}
 
         {song ? (
           <div className="space-y-4">

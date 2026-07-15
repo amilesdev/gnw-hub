@@ -1,94 +1,33 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { SongDTO } from '@/lib/setlist-serialize';
 import { useAudio } from './AudioProvider';
-import { Play, Upload, Check, Trash, FileText, Music } from './Icons';
-import { apiFetch } from '@/lib/api-client';
-import { uploadFile } from '@/lib/upload-client';
+import { Play, FileText, Music } from './Icons';
 import { cn } from '@/lib/utils';
 
-function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'song';
-}
-
 /**
- * Band view of a song: the single arrangement audio file (behaves exactly like a
- * vocal part — uploaded to storage, played in-app), key + BPM, and a Chart slot.
- * Leaders (`canEdit`) get inline upload + editable key/BPM; band members without
- * the leader role see it read-only. Chart is intentionally inert for now.
+ * Band view of a song: the single arrangement audio file (played in-app, just
+ * like a vocal part) and a Chart slot. Read-only — arrangement, key, and BPM are
+ * edited by leaders from the Edit Setlist / Library editors, and key/BPM show in
+ * the card header. `canEdit` only tunes the Chart placeholder's wording. Chart is
+ * intentionally inert until an upload system is chosen.
  */
 export function BandSongSection({ song, canEdit }: { song: SongDTO; canEdit: boolean }) {
   const { play } = useAudio();
-  const fileRef = useRef<HTMLInputElement | null>(null);
-  // Local copies so a leader's inline edits show immediately without a refetch.
-  const [arrangement, setArrangement] = useState(song.arrangementAudio);
-  const [songKey, setSongKey] = useState(song.songKey ?? '');
-  const [bpm, setBpm] = useState(song.bpm ?? '');
   const [playing, setPlaying] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function patch(body: Record<string, string | null>) {
-    const { song: updated } = await apiFetch<{ song: SongDTO }>(`/api/songs/${song.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    });
-    return updated;
-  }
-
-  async function uploadArrangement(file: File) {
-    setBusy(true);
-    setError(null);
-    try {
-      const ext = file.name.split('.').pop() || 'mp3';
-      const path = `audio/library/${slug(song.songTitle)}-${song.id.slice(-6)}/arrangement.${ext}`;
-      const url = await uploadFile(path, file);
-      const updated = await patch({ arrangementAudio: url });
-      setArrangement(updated.arrangementAudio);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function clearArrangement() {
-    setBusy(true);
-    try {
-      const updated = await patch({ arrangementAudio: null });
-      setArrangement(updated.arrangementAudio);
-      setPlaying(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not remove.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Persist key/BPM on blur, only when the value actually changed.
-  async function saveField(field: 'songKey' | 'bpm', value: string) {
-    const trimmed = value.trim();
-    if (trimmed === ((field === 'songKey' ? song.songKey : song.bpm) ?? '')) return;
-    try {
-      await patch({ [field]: trimmed || null });
-      song[field] = trimmed || null; // keep the baseline in sync for repeat edits
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save.');
-    }
-  }
 
   return (
     <div className="space-y-5">
       {/* Arrangement — a single audio file, played like a vocal part. */}
       <div>
         <p className="label mb-2">Arrangement</p>
-        {arrangement ? (
+        {song.arrangementAudio ? (
           <button
             type="button"
             onClick={() => {
               setPlaying(true);
-              play({ src: arrangement, title: song.songTitle, part: 'Arrangement' });
+              play({ src: song.arrangementAudio!, title: song.songTitle, part: 'Arrangement' });
             }}
             className={cn(
               'row-press flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left font-semibold',
@@ -101,93 +40,10 @@ export function BandSongSection({ song, canEdit }: { song: SongDTO; canEdit: boo
         ) : (
           <div className="card flex items-center gap-3 p-4 text-ink-faint">
             <Music width={20} height={20} />
-            <span className="text-sm">
-              {canEdit ? 'No arrangement uploaded yet.' : 'Arrangement will appear here once your leaders add it.'}
-            </span>
-          </div>
-        )}
-
-        {canEdit && (
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              className="btn-ghost !px-3 !py-1.5 text-xs"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload width={14} height={14} /> {busy ? 'Uploading…' : arrangement ? 'Replace' : 'Upload'}
-            </button>
-            {arrangement && (
-              <button
-                type="button"
-                className="row-press rounded-lg p-1.5 text-bad"
-                disabled={busy}
-                onClick={clearArrangement}
-                aria-label="Remove arrangement"
-              >
-                <Trash width={16} height={16} />
-              </button>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="audio/*"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadArrangement(f);
-                e.target.value = '';
-              }}
-            />
+            <span className="text-sm">Arrangement will appear here once your leaders add it.</span>
           </div>
         )}
       </div>
-
-      {/* Key + BPM — editable text for leaders, plain read-out otherwise. */}
-      {canEdit ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="label mb-1.5">Key</p>
-            <input
-              className="field"
-              value={songKey}
-              onChange={(e) => setSongKey(e.target.value)}
-              onBlur={(e) => saveField('songKey', e.target.value)}
-              placeholder="e.g. G"
-              enterKeyHint="done"
-            />
-          </div>
-          <div>
-            <p className="label mb-1.5">BPM</p>
-            <input
-              className="field"
-              value={bpm}
-              onChange={(e) => setBpm(e.target.value)}
-              onBlur={(e) => saveField('bpm', e.target.value)}
-              placeholder="e.g. 72"
-              inputMode="numeric"
-              enterKeyHint="done"
-            />
-          </div>
-        </div>
-      ) : (
-        (songKey || bpm) && (
-          <div className="flex gap-6">
-            {songKey && (
-              <div>
-                <p className="label mb-0.5">Key</p>
-                <p className="font-display text-lg font-semibold">{songKey}</p>
-              </div>
-            )}
-            {bpm && (
-              <div>
-                <p className="label mb-0.5">BPM</p>
-                <p className="font-display text-lg font-semibold">{bpm}</p>
-              </div>
-            )}
-          </div>
-        )
-      )}
 
       {/* Chart — styled like the lyrics section but inert until an upload system
           is chosen. Kept backend-free on purpose. */}
@@ -205,8 +61,6 @@ export function BandSongSection({ song, canEdit }: { song: SongDTO; canEdit: boo
           <span className="text-[11px] font-bold uppercase tracking-wide">Coming soon</span>
         </button>
       </div>
-
-      {error && <p className="text-xs font-semibold text-bad">{error}</p>}
     </div>
   );
 }

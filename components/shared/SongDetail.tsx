@@ -33,17 +33,32 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
   return (
     <Overlay title={song.songTitle} onClose={onClose}>
       <div className="space-y-5">
-        {(song.youtubeLink || song.driveLink) && (
-          <div className="flex flex-wrap gap-2">
-            {song.youtubeLink && (
-              <a href={song.youtubeLink} target="_blank" rel="noreferrer" className="btn-ghost text-sm">
-                ▶ YouTube
-              </a>
-            )}
-            {song.driveLink && (
-              <a href={song.driveLink} target="_blank" rel="noreferrer" className="btn-ghost text-sm">
-                Drive parts
-              </a>
+        {(song.youtubeLink || song.songKey || song.bpm) && (
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {song.youtubeLink && (
+                <a href={song.youtubeLink} target="_blank" rel="noreferrer" className="btn-ghost text-sm">
+                  ▶ YouTube
+                </a>
+              )}
+            </div>
+
+            {/* Key + BPM — read-only for everyone; edited by leaders in Edit Setlist. */}
+            {(song.songKey || song.bpm) && (
+              <div className="shrink-0 space-y-1.5 text-right">
+                {song.songKey && (
+                  <div className="flex items-baseline justify-end gap-2">
+                    <span className="label !mb-0">Key</span>
+                    <span className="font-display text-lg font-semibold leading-none text-ink">{song.songKey}</span>
+                  </div>
+                )}
+                {song.bpm && (
+                  <div className="flex items-baseline justify-end gap-2">
+                    <span className="label !mb-0">BPM</span>
+                    <span className="font-display text-lg font-semibold leading-none text-ink">{song.bpm}</span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

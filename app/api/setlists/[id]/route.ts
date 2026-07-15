@@ -27,7 +27,6 @@ const patchSchema = z.object({
         songTitle: z.string().min(1).max(200),
         artist: z.string().max(200).optional().nullable(),
         youtubeLink: z.string().optional().nullable(),
-        driveLink: z.string().optional().nullable(),
       }),
     )
     .optional(),
@@ -95,7 +94,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
           // setlist using it) and (re)place it in this setlist at position i.
           await tx.song.update({
             where: { id: s.id },
-            data: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null },
+            data: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null },
           });
           await tx.setlistSong.upsert({
             where: { setlistId_songId: { setlistId: id, songId: s.id } },
@@ -108,7 +107,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
             data: {
               setlist: { connect: { id } },
               position: i,
-              song: { create: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null, driveLink: s.driveLink || null } },
+              song: { create: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null } },
             },
           });
         }
