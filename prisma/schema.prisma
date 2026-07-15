@@ -283,6 +283,12 @@ model Song {
   audioAlto           String?
   audioTenor          String?
   audioAllParts       String?
+  // Band content. `arrangementAudio` is a single audio file that behaves exactly
+  // like a vocal part (uploaded to storage, played in-app); `songKey`/`bpm` are
+  // free-text, leader-editable from the band song card.
+  arrangementAudio    String?
+  songKey             String?
+  bpm                 String?
   // Lyric chart imported from a Google Doc. `lyricChart` holds the parsed
   // structured chart (see lib/parseGoogleDoc.ts); `lyricDocUrl` remembers the
   // source doc for re-imports; `lyricChartUpdatedAt` tracks the last import.

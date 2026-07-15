@@ -30,6 +30,11 @@ const patchSchema = z.object({
   audioAlto: z.string().nullable().optional(),
   audioTenor: z.string().nullable().optional(),
   audioAllParts: z.string().nullable().optional(),
+  // Band content: an uploaded arrangement file (cleaned up like the audio parts)
+  // plus free-text key/BPM.
+  arrangementAudio: z.string().nullable().optional(),
+  songKey: z.string().nullable().optional(),
+  bpm: z.string().nullable().optional(),
   // Lyric chart import: set both together, or null both to clear.
   lyricChart: lyricChartSchema.nullable().optional(),
   lyricDocUrl: z.string().nullable().optional(),
@@ -52,13 +57,18 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
   const d = parsed.data;
 
-  // Clean up any audio file that's being replaced or cleared.
+  // Clean up any uploaded audio file that's being replaced or cleared — the four
+  // vocal parts plus the single band arrangement.
   const stale: string[] = [];
   for (const part of AUDIO_PARTS) {
     if (d[part] !== undefined && existing[part] && d[part] !== existing[part]) {
       const p = pathFromPublicUrl(existing[part]!);
       if (p) stale.push(p);
     }
+  }
+  if (d.arrangementAudio !== undefined && existing.arrangementAudio && d.arrangementAudio !== existing.arrangementAudio) {
+    const p = pathFromPublicUrl(existing.arrangementAudio);
+    if (p) stale.push(p);
   }
   if (stale.length) await deleteObjects(stale);
 
@@ -73,6 +83,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
       ...(d.audioAlto !== undefined ? { audioAlto: d.audioAlto || null } : {}),
       ...(d.audioTenor !== undefined ? { audioTenor: d.audioTenor || null } : {}),
       ...(d.audioAllParts !== undefined ? { audioAllParts: d.audioAllParts || null } : {}),
+      ...(d.arrangementAudio !== undefined ? { arrangementAudio: d.arrangementAudio || null } : {}),
+      ...(d.songKey !== undefined ? { songKey: d.songKey || null } : {}),
+      ...(d.bpm !== undefined ? { bpm: d.bpm || null } : {}),
       // Stamp the import time whenever a chart is set; clear it when removed.
       ...(d.lyricChart !== undefined
         ? { lyricChart: d.lyricChart ?? Prisma.DbNull, lyricChartUpdatedAt: d.lyricChart ? new Date() : null }
@@ -97,7 +110,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const existing = await prisma.song.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'Song not found' }, { status: 404 });
 
-  const paths = AUDIO_PARTS.map((p) => existing[p])
+  const paths = [...AUDIO_PARTS.map((p) => existing[p]), existing.arrangementAudio]
     .filter((u): u is string => !!u)
     .map(pathFromPublicUrl)
     .filter((p): p is string => !!p);

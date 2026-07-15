@@ -321,6 +321,11 @@ function SortableSong({
         audioAlto: row.audio?.audioAlto ?? null,
         audioTenor: row.audio?.audioTenor ?? null,
         audioAllParts: row.audio?.audioAllParts ?? null,
+        // Band content (arrangement/key/BPM) is edited from the song card, not
+        // this vocals+lyrics inline editor — carry nulls to satisfy the DTO.
+        arrangementAudio: null,
+        songKey: null,
+        bpm: null,
         lyricChart: row.lyric?.lyricChart ?? null,
         lyricDocUrl: row.lyric?.lyricDocUrl ?? null,
         lyricChartUpdatedAt: row.lyric?.lyricChartUpdatedAt ?? null,

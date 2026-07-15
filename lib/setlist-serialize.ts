@@ -29,6 +29,9 @@ export type SongDTO = {
   audioAlto: string | null;
   audioTenor: string | null;
   audioAllParts: string | null;
+  arrangementAudio: string | null;
+  songKey: string | null;
+  bpm: string | null;
   lyricChart: LyricChart | null;
   lyricDocUrl: string | null;
   lyricChartUpdatedAt: string | null;
@@ -82,6 +85,9 @@ export function serializeSong(row: SongJoin): SongDTO {
     audioAlto: song.audioAlto,
     audioTenor: song.audioTenor,
     audioAllParts: song.audioAllParts,
+    arrangementAudio: song.arrangementAudio,
+    songKey: song.songKey,
+    bpm: song.bpm,
     lyricChart: (song.lyricChart as LyricChart | null) ?? null,
     lyricDocUrl: song.lyricDocUrl,
     lyricChartUpdatedAt: song.lyricChartUpdatedAt?.toISOString() ?? null,

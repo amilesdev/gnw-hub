@@ -1,20 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import type { SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS, PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
+import { canSeeVocals, canSeeBandCharts } from '@/lib/access';
 import { Overlay } from './Overlay';
 import { AudioPlayer } from './AudioPlayer';
 import { useAudio } from './AudioProvider';
 import { LyricChartPreview } from './LyricChartPreview';
+import { BandSongSection } from './BandSongSection';
 import { Play, Music, FileText } from './Icons';
 import { cn } from '@/lib/utils';
 
-/** Member song view: four equally-presented part buttons → in-app player. */
+/**
+ * Song view. Vocalists (and any leader) get the four vocal part buttons + an
+ * in-app player + lyrics. Band-section members (and any leader) get the band
+ * section instead/as well: arrangement, key, BPM, and a chart slot.
+ */
 export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => void }) {
   const [part, setPart] = useState<AudioPart | null>(null);
   const activeSrc = part ? song[part] : null;
   const { play } = useAudio();
+  const { data: session } = useSession();
+  const viewer = session?.user;
+  // Default to showing vocals until the session resolves, so a vocalist never
+  // flashes the band section; only a confirmed Band member hides the vocals.
+  const showVocals = !viewer || canSeeVocals(viewer);
+  const showBand = viewer ? canSeeBandCharts(viewer) : false;
+  const canEditBand = viewer?.role === 'leader';
 
   return (
     <Overlay title={song.songTitle} onClose={onClose}>
@@ -34,6 +48,7 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
           </div>
         )}
 
+        {showVocals && (
         <div>
           <p className="label mb-2">Vocal parts</p>
           <div className="grid grid-cols-2 gap-2.5">
@@ -69,17 +84,19 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
             })}
           </div>
         </div>
-
-        {activeSrc ? (
-          <AudioPlayer />
-        ) : (
-          <div className="card flex items-center gap-3 p-4 text-ink-faint">
-            <Music width={20} height={20} />
-            <span className="text-sm">Pick a part above to start listening.</span>
-          </div>
         )}
 
-        {song.lyricChart && (
+        {showVocals &&
+          (activeSrc ? (
+            <AudioPlayer />
+          ) : (
+            <div className="card flex items-center gap-3 p-4 text-ink-faint">
+              <Music width={20} height={20} />
+              <span className="text-sm">Pick a part above to start listening.</span>
+            </div>
+          ))}
+
+        {showVocals && song.lyricChart && (
           <div>
             <div className="mb-2 flex items-center gap-2">
               <FileText width={16} height={16} className="text-ink-soft" />
@@ -91,6 +108,10 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
             <p className="mt-2 text-center text-[11px] text-ink-faint">Imported from Google Docs</p>
           </div>
         )}
+
+        {/* Band section: arrangement, key, BPM, chart. Shown to band members and
+            any leader; leaders can edit inline. */}
+        {showBand && <BandSongSection song={song} canEdit={canEditBand} />}
       </div>
     </Overlay>
   );
