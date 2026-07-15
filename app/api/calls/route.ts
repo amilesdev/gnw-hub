@@ -5,6 +5,7 @@ import { callCreateSchema } from '@/lib/validation';
 import { serializeCall } from '@/lib/serialize';
 import { createJoinToken, ensureCallRoom, livekitConfigured, livekitUrl, newRoomName } from '@/lib/livekit';
 import { sendPush } from '@/lib/push';
+import { callLeaderIds } from '@/lib/calls';
 
 // POST /api/calls — leader starts a new call. Creates the Call row + a LiveKit
 // room name, fans out a push notification to the whole team, and returns a join
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
   const call = await prisma.call.create({
     data: {
       name: parsed.data.name,
+      audience: parsed.data.audience,
       roomName: newRoomName(),
       startedById: guard.user.id,
     },
@@ -43,13 +45,21 @@ export async function POST(req: Request) {
     name: guard.user.name ?? 'Leader',
   });
 
-  // Broadcast to everyone. Best-effort — a push failure shouldn't fail the call.
-  await sendPush({
-    title: 'Started a Call',
-    body: call.name,
-    url: `/call/${call.id}`,
-    tag: `call-${call.id}`,
-  }).catch(() => {});
+  // Notify the audience. An all-members call fans out to the whole team; a
+  // leaders-only call goes only to the designated call leaders (an empty list
+  // until any are assigned, so no one is pinged until then). Best-effort — a
+  // push failure shouldn't fail the call.
+  const pushTargets =
+    call.audience === 'leaders_only' ? await callLeaderIds().catch(() => []) : undefined;
+  await sendPush(
+    {
+      title: 'Started a Call',
+      body: call.name,
+      url: `/call/${call.id}`,
+      tag: `call-${call.id}`,
+    },
+    pushTargets,
+  ).catch(() => {});
 
   return NextResponse.json(
     { call: serializeCall(call), token, serverUrl: livekitUrl() },

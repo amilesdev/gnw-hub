@@ -4,12 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/shared/Modal';
 import { TextField } from '@/components/shared/Field';
+import { SegmentedControl } from '@/components/shared/SegmentedControl';
 import { apiFetch } from '@/lib/api-client';
 import type { CallDTO } from '@/lib/serialize';
+
+type Audience = 'all_members' | 'leaders_only';
 
 export function StartCallModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState('');
+  const [audience, setAudience] = useState<Audience>('all_members');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +25,7 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
     try {
       const { call } = await apiFetch<{ call: CallDTO }>('/api/calls', {
         method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), audience }),
       });
       // Hand off to the call page, which requests its own token and connects.
       router.push(`/call/${call.id}`);
@@ -43,6 +47,18 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
           placeholder="Quick Check-In"
           enterKeyHint="go"
         />
+
+        <div className="space-y-1.5">
+          <span className="text-sm font-semibold text-ink-soft">Who can join</span>
+          <SegmentedControl<Audience>
+            value={audience}
+            onChange={setAudience}
+            options={[
+              { value: 'all_members', label: 'All Members' },
+              { value: 'leaders_only', label: 'Leaders Only' },
+            ]}
+          />
+        </div>
 
         <div className="flex items-center gap-3">
           <button

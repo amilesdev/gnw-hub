@@ -183,7 +183,10 @@ export const announcementSchema = z
 
 export const ANNOUNCEMENT_MAX_DAYS = MAX_ANNOUNCE_DAYS;
 
-// Starting a call: just the free-text name the leader typed.
+// Starting a call: the free-text name the leader typed, plus who it's open to.
+// Audience defaults to the whole team, preserving the original behavior when the
+// client doesn't send it.
 export const callCreateSchema = z.object({
   name: z.string().trim().min(1, 'Call name required').max(120),
+  audience: z.enum(['all_members', 'leaders_only']).default('all_members'),
 });

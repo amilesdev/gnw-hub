@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 import { createJoinToken, livekitConfigured, livekitUrl } from '@/lib/livekit';
+import { canAccessCall } from '@/lib/calls';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,11 @@ export async function POST(_req: Request, { params }: Ctx) {
   if (!call) return NextResponse.json({ error: 'Call not found' }, { status: 404 });
   if (call.status !== 'active') {
     return NextResponse.json({ error: 'This call has ended.' }, { status: 410 });
+  }
+
+  // Leaders-only calls are limited to designated call leaders (+ the starter).
+  if (!(await canAccessCall(call, guard.user.id))) {
+    return NextResponse.json({ error: 'This call is for leaders only.' }, { status: 403 });
   }
 
   const token = await createJoinToken({

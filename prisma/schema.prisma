@@ -81,6 +81,14 @@ enum CallStatus {
   ended
 }
 
+// Who a call is open to. `all_members` = the whole team (default, original
+// behavior). `leaders_only` = restricted to explicitly-designated call leaders
+// (see User.callLeader) plus whoever started it.
+enum CallAudience {
+  all_members
+  leaders_only
+}
+
 enum SessionStatus {
   lobby
   active
@@ -105,6 +113,10 @@ model User {
   status       UserStatus     @default(pending)
   // Only one super-admin exists; they alone may grant the leader role.
   isSuperAdmin Boolean        @default(false)
+  // Whether this user may join "Leaders Only" calls. DELIBERATELY separate from
+  // `role` / the leader tag — it's an explicit, opt-in designation assigned only
+  // for the call feature, and defaults to off for everyone until set.
+  callLeader   Boolean        @default(false)
   inviteToken  String?        @unique
   inviteExpiry DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
@@ -526,8 +538,9 @@ model GameTeam {
 model Call {
   id       String     @id @default(cuid())
   name     String // leader-entered call name (free text)
-  roomName String     @unique // LiveKit room identifier (unique slug)
-  status   CallStatus @default(active)
+  roomName String       @unique // LiveKit room identifier (unique slug)
+  status   CallStatus   @default(active)
+  audience CallAudience @default(all_members) // who may join (see CallAudience)
 
   // The leader who started the call. Kept as a required FK (the starter always
   // has the leader role, verified server-side at creation).

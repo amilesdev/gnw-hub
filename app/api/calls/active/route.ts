@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 import { serializeCall } from '@/lib/serialize';
 import { livekitConfigured, roomParticipantCounts } from '@/lib/livekit';
+import { isCallLeader } from '@/lib/calls';
 
 // Grace period after a call starts before an empty room counts as "over" — long
 // enough for the leader to actually connect after creating it, so we don't end a
@@ -52,8 +53,22 @@ export async function GET() {
       .catch(() => {});
   }
 
+  // Discovery gating: everyone sees all-members calls; a leaders-only call only
+  // surfaces to designated call leaders (or whoever started it). The lookup runs
+  // once, and only when a leaders-only call is actually live.
+  const hasLeadersOnly = withCounts.some(
+    (c) => c.participants > 0 && c.call.audience === 'leaders_only',
+  );
+  const iAmCallLeader = hasLeadersOnly ? await isCallLeader(guard.user.id) : false;
+
   const live = withCounts
     .filter((c) => c.participants > 0)
+    .filter(
+      (c) =>
+        c.call.audience === 'all_members' ||
+        iAmCallLeader ||
+        c.call.startedById === guard.user.id,
+    )
     .map((c) => ({ ...serializeCall(c.call), participants: c.participants }));
 
   return NextResponse.json({ calls: live });
