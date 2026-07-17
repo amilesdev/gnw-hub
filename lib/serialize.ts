@@ -10,22 +10,29 @@ import type {
   Unavailability,
 } from '@prisma/client';
 import { toYmd } from '@/lib/dates';
+import type { RehearsalScheduleItem } from '@/lib/rehearsal-schedule';
 
 // One assigned singer. The display name is resolved at read time, so renaming a
 // member updates every event without touching the assignment rows.
 export type EventAssignmentDTO = { userId: string; name: string; part: VocalPart };
 
-// One row of a rehearsal run-of-show. `time` is an "HH:mm" label (formatted for
-// display with formatTimeLabel), `label` is free text.
-export type RehearsalScheduleItemDTO = { time: string; label: string };
+// One row of a rehearsal run-of-show (see lib/rehearsal-schedule for the full
+// shape: time, label, and an optional setlist-linked songSlot).
+export type RehearsalScheduleItemDTO = RehearsalScheduleItem;
 
 // Coerce the stored JSON (Prisma.JsonValue) into a well-formed schedule array,
-// tolerating legacy nulls / unexpected shapes.
+// tolerating legacy nulls / unexpected shapes. Preserves songSlot so song-review
+// rows stay live-linked to the setlist.
 function parseRehearsalSchedule(value: unknown): RehearsalScheduleItemDTO[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
-    .map((x) => ({ time: String(x.time ?? ''), label: String(x.label ?? '') }));
+    .map((x) => {
+      const item: RehearsalScheduleItemDTO = { time: String(x.time ?? ''), label: String(x.label ?? '') };
+      const slot = x.songSlot;
+      if (typeof slot === 'number' && Number.isFinite(slot) && slot > 0) item.songSlot = Math.trunc(slot);
+      return item;
+    });
 }
 
 // Spread onto every event read so the serialized event always carries its

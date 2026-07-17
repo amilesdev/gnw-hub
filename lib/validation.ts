@@ -125,6 +125,9 @@ export const rehearsalScheduleSchema = z
     z.object({
       time: z.string().max(8).default(''),
       label: z.string().max(200).default(''),
+      // 1-based setlist position for a live-linked "Song Review" row; the song
+      // name is resolved from the setlist at render time (not stored here).
+      songSlot: z.number().int().positive().max(50).optional(),
     }),
   )
   .max(50);

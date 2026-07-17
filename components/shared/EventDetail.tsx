@@ -12,6 +12,7 @@ import { hasAttire, assignmentsByPart } from './EventCard';
 import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
+import { resolveScheduleLabel } from '@/lib/rehearsal-schedule';
 
 function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -177,6 +178,9 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const isPrayer = event.type === 'prayer';
   const isRehearsal = event.type === 'rehearsal';
   const assignedParts = assignmentsByPart(event);
+  // Song-review rows resolve their title from the currently-attached setlist, so
+  // a saved schedule stays in step with setlist changes.
+  const setlistTitles = setlist ? setlist.songs.map((s) => s.songTitle) : [];
 
   // Pull in the setlist tied to this event (if any) so it lives on the card.
   useEffect(() => {
@@ -249,7 +253,9 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                   <span className="w-20 shrink-0 font-display text-sm font-semibold tabular-nums text-accent-ink dark:text-accent-on">
                     {item.time ? formatTimeLabel(item.time) : '—'}
                   </span>
-                  <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">{item.label}</span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">
+                    {resolveScheduleLabel(item, setlistTitles)}
+                  </span>
                 </li>
               ))}
             </ul>

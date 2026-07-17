@@ -1,14 +1,17 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { EventDTO, RehearsalScheduleItemDTO } from '@/lib/serialize';
+import type { SetlistDTO } from '@/lib/setlist-serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { TextField, TextArea, SelectField, FieldLabel } from '@/components/shared/Field';
-import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock } from '@/components/shared/Icons';
+import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock, Music } from '@/components/shared/Icons';
 import { AssignmentsSection, toAssignmentMap, type AssignmentMap } from './AssignmentsSection';
 import { apiFetch } from '@/lib/api-client';
 import { uploadFile } from '@/lib/upload-client';
 import { cn, randomToken } from '@/lib/utils';
+import { parseCalendarDate, startOfToday } from '@/lib/dates';
+import { applyTimeEdit, buildRehearsalPreset, songNameForSlot } from '@/lib/rehearsal-schedule';
 
 const TYPES = [
   { value: 'service', label: 'Service' },
@@ -84,6 +87,15 @@ function toDateInput(iso?: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
+/** True only for a calendar day strictly after today (UTC) — the preset is
+ *  pre-loaded for future rehearsals, never current or past ones. */
+function isFutureDate(dateInput: string): boolean {
+  if (!dateInput) return false;
+  const d = parseCalendarDate(dateInput);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() > startOfToday().getTime();
+}
+
 export function EventForm({
   mode,
   initial,
@@ -110,10 +122,33 @@ export function EventForm({
   const [holyTalksNotes, setHolyTalksNotes] = useState(initial?.holyTalksNotes ?? '');
 
   // Rehearsal schedule (rehearsal only) — an ordered run-of-show the leader edits
-  // by hand. Populated from the event on open; saved only when the form is saved.
-  const [schedule, setSchedule] = useState<RehearsalScheduleItemDTO[]>(
-    initial?.rehearsalSchedule ?? [],
-  );
+  // by hand. A saved schedule loads as-is; otherwise a FUTURE rehearsal pre-loads
+  // the preset (nothing is persisted until the leader saves the form). Song rows
+  // carry a songSlot and resolve their title from the attached setlist below.
+  const [schedule, setSchedule] = useState<RehearsalScheduleItemDTO[]>(() => {
+    if (initial?.rehearsalSchedule && initial.rehearsalSchedule.length > 0) {
+      return initial.rehearsalSchedule;
+    }
+    const startType = initial?.type ?? 'service';
+    return startType === 'rehearsal' && isFutureDate(toDateInput(initial?.date))
+      ? buildRehearsalPreset()
+      : [];
+  });
+  // Setlist titles for this event, so song-review rows show the live song names.
+  const [setlistTitles, setSetlistTitles] = useState<string[]>([]);
+  useEffect(() => {
+    if (!initial?.id) return;
+    let active = true;
+    apiFetch<{ setlists: SetlistDTO[] }>(`/api/setlists?eventId=${initial.id}`)
+      .then(({ setlists }) => {
+        const sl = setlists.find((s) => s.songs.length > 0) ?? null;
+        if (active) setSetlistTitles(sl ? sl.songs.map((s) => s.songTitle) : []);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [initial?.id]);
 
   // Singing assignments (service only)
   const [assignments, setAssignments] = useState<AssignmentMap>(toAssignmentMap(initial?.assignments));
@@ -163,6 +198,34 @@ export function EventForm({
 
   function removeScheduleItem(index: number) {
     setSchedule((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Editing a row's time cascades the delta to all later rows (earlier ones
+  // stay), so extending one block pushes the rest of the evening back.
+  function changeScheduleTime(index: number, newTime: string) {
+    setSchedule((prev) => applyTimeEdit(prev, index, newTime));
+  }
+
+  // Detach a song-review row from the setlist: it becomes a plain, fully-editable
+  // line seeded with the currently-resolved song name.
+  function unlinkSong(index: number) {
+    setSchedule((prev) =>
+      prev.map((it, i) => {
+        if (i !== index || it.songSlot == null) return it;
+        const name = songNameForSlot(it.songSlot, setlistTitles);
+        const label = it.label.trim() ? `${it.label.trim()} ${name}` : name;
+        return { time: it.time, label };
+      }),
+    );
+  }
+
+  function applyPreset() {
+    if (schedule.length > 0 && !window.confirm('Replace the current schedule with the preset?')) return;
+    setSchedule(buildRehearsalPreset());
+  }
+
+  function clearSchedule() {
+    setSchedule([]);
   }
 
   async function handleFiles(files: FileList | null) {
@@ -215,11 +278,13 @@ export function EventForm({
       topic: isHolyTalks ? topic || null : null,
       scriptures: isHolyTalks ? scriptures : [],
       holyTalksNotes: isHolyTalks ? holyTalksNotes || null : null,
-      // Drop fully-empty rows (a leader added a line but left it blank).
+      // Drop fully-empty rows (a leader added a line but left it blank). A song
+      // row counts as filled even with a blank descriptor — it resolves to a
+      // song name — so keep it as long as it has a slot or a time.
       rehearsalSchedule: isRehearsal
         ? schedule
-            .map((s) => ({ time: s.time, label: s.label.trim() }))
-            .filter((s) => s.time || s.label)
+            .map((s) => ({ time: s.time, label: s.label.trim(), ...(s.songSlot != null ? { songSlot: s.songSlot } : {}) }))
+            .filter((s) => s.time || s.label || s.songSlot != null)
         : [],
       assignments: showAssignments
         ? Object.entries(assignments).map(([userId, part]) => ({ userId, part }))
@@ -382,25 +447,33 @@ export function EventForm({
           </section>
         )}
 
-        {/* Rehearsal schedule — only when type is rehearsal. Time on the left,
-            editable label on the right; a plus adds a row. */}
+        {/* Rehearsal schedule — only when type is rehearsal. Time on the left
+            (edits cascade to later rows), an editable label on the right. Song
+            rows fill their name live from the setlist. */}
         {isRehearsal && (
           <section className="card animate-rise space-y-3 bg-surface-2/40 p-4">
-            <p className="eyebrow inline-flex items-center gap-1.5">
-              <Clock width={14} height={14} /> Schedule
-            </p>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="eyebrow inline-flex items-center gap-1.5">
+                <Clock width={14} height={14} /> Schedule
+              </p>
+              <p className="text-[11px] text-ink-faint">Editing a time shifts later items too.</p>
+            </div>
+
             {schedule.length === 0 && (
-              <p className="text-sm text-ink-faint">No schedule yet — add the first item below.</p>
+              <p className="rounded-2xl bg-surface px-4 py-3 text-sm text-ink-faint ring-1 ring-inset ring-line">
+                No schedule yet. Apply the preset or add items below — nothing shows for the team until you save.
+              </p>
             )}
+
             {schedule.length > 0 && (
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {schedule.map((item, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <div className="relative w-32 shrink-0">
+                  <li key={i} className="flex items-start gap-2">
+                    <div className="relative w-28 shrink-0">
                       <input
                         type="time"
                         value={item.time}
-                        onChange={(e) => updateScheduleItem(i, { time: e.target.value })}
+                        onChange={(e) => changeScheduleTime(i, e.target.value)}
                         aria-label={`Item ${i + 1} time`}
                         className={cn('field min-w-0 px-3 pr-9', !item.time && 'text-transparent')}
                       />
@@ -409,19 +482,39 @@ export function EventForm({
                       )}
                       <Clock width={16} height={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
                     </div>
-                    <input
-                      className="field min-w-0 flex-1"
-                      value={item.label}
-                      onChange={(e) => updateScheduleItem(i, { label: e.target.value })}
-                      placeholder="e.g. Warm-up & vocal run"
-                      aria-label={`Item ${i + 1} label`}
-                      enterKeyHint="done"
-                    />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <input
+                        className="field w-full min-w-0"
+                        value={item.label}
+                        onChange={(e) => updateScheduleItem(i, { label: e.target.value })}
+                        placeholder={item.songSlot != null ? 'Song Review:' : 'e.g. Warm-up & vocal run'}
+                        aria-label={`Item ${i + 1} label`}
+                        enterKeyHint="done"
+                      />
+                      {item.songSlot != null && (
+                        <div className="flex flex-wrap items-center gap-1.5 pl-1">
+                          <span className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
+                            <Music width={12} height={12} />
+                            {songNameForSlot(item.songSlot, setlistTitles)}
+                          </span>
+                          <span className="text-[11px] text-ink-faint">
+                            {setlistTitles.length ? 'auto from setlist' : 'no setlist attached yet'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => unlinkSong(i)}
+                            className="text-[11px] font-semibold text-ink-faint underline underline-offset-2 transition hover:text-ink"
+                          >
+                            unlink
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeScheduleItem(i)}
                       aria-label={`Remove item ${i + 1}`}
-                      className="row-press shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-bad"
+                      className="row-press mt-1 shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-bad"
                     >
                       <Trash width={16} height={16} />
                     </button>
@@ -429,9 +522,20 @@ export function EventForm({
                 ))}
               </ul>
             )}
-            <button type="button" onClick={addScheduleItem} className="btn-ghost w-full">
-              <Plus width={16} height={16} /> Add schedule item
-            </button>
+
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={addScheduleItem} className="btn-ghost flex-1">
+                <Plus width={16} height={16} /> Add item
+              </button>
+              <button type="button" onClick={applyPreset} className="btn-ghost flex-1">
+                Apply preset
+              </button>
+              {schedule.length > 0 && (
+                <button type="button" onClick={clearSchedule} className="btn-ghost flex-1 !text-bad">
+                  Clear
+                </button>
+              )}
+            </div>
           </section>
         )}
 
