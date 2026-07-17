@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useGameChannel, sendReaction } from '@/lib/play/realtime-client';
 import { playSfx, stopSfx } from '@/lib/play/audio';
 import { ReactionLayer, EmojiBar, useReactionList } from './Reactions';
+import { Avatar as PhotoAvatar } from '@/components/shared/Avatar';
 import { Link as LinkIcon, Check, Play } from '@/components/shared/Icons';
 import { usePlayActive } from '@/lib/play/use-play-active';
 import type { LobbySnapshot, LobbyPlayer, GameMode } from '@/lib/play/types';
@@ -21,17 +22,19 @@ function initials(name: string): string {
   return name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
-function Avatar({ name, isGuest }: { name: string; isGuest: boolean }) {
+function Avatar({ name, isGuest, image }: { name: string; isGuest: boolean; image?: string | null }) {
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div
+      <PhotoAvatar
+        image={image}
+        alt={name}
         className={cn(
           'grid h-14 w-14 place-items-center rounded-2xl text-lg font-bold',
           isGuest ? 'bg-surface-2 text-ink-soft' : 'bg-accent-soft text-accent-ink',
         )}
       >
         {initials(name)}
-      </div>
+      </PhotoAvatar>
       <span className="max-w-[4.5rem] truncate text-xs font-semibold text-ink-soft">{name}</span>
       {isGuest && <span className="chip bg-surface-2 text-ink-faint">Guest</span>}
     </div>
@@ -235,7 +238,7 @@ export function Lobby({ initial }: { initial: LobbySnapshot }) {
                       disabled={!isHost}
                       className={cn(isHost && 'transition active:scale-95')}
                     >
-                      <Avatar name={p.name} isGuest={p.isGuest} />
+                      <Avatar name={p.name} isGuest={p.isGuest} image={p.image} />
                     </button>
                   ))}
                 </div>
@@ -253,7 +256,7 @@ export function Lobby({ initial }: { initial: LobbySnapshot }) {
                       disabled={!isHost}
                       className={cn(isHost && 'transition active:scale-95')}
                     >
-                      <Avatar name={p.name} isGuest={p.isGuest} />
+                      <Avatar name={p.name} isGuest={p.isGuest} image={p.image} />
                     </button>
                   ))}
                 </div>
@@ -265,7 +268,7 @@ export function Lobby({ initial }: { initial: LobbySnapshot }) {
             <h2 className="eyebrow">Players · {players.length}</h2>
             <div className="grid grid-cols-4 gap-3">
               {players.map((p) => (
-                <Avatar key={p.id} name={p.name} isGuest={p.isGuest} />
+                <Avatar key={p.id} name={p.name} isGuest={p.isGuest} image={p.image} />
               ))}
             </div>
           </section>

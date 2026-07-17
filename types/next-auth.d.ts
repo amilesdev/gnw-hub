@@ -8,6 +8,7 @@ declare module 'next-auth' {
     role: Role;
     section?: MemberSection | null;
     part?: MemberPart | null;
+    image?: string | null;
     isSuperAdmin: boolean;
     tokenVersion: number;
   }
@@ -17,6 +18,7 @@ declare module 'next-auth' {
       id: string;
       name?: string | null;
       email?: string | null;
+      image?: string | null;
       role: Role;
       section?: MemberSection | null;
       part?: MemberPart | null;

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { AnnouncementDTO } from '@/lib/serialize';
 import { AnnouncementDetailModal } from './AnnouncementDetailModal';
+import { Avatar } from './Avatar';
 import { Pin } from './Icons';
 import { formatRelative } from '@/lib/announcement-ui';
 import { apiFetch } from '@/lib/api-client';
@@ -44,6 +45,8 @@ export function AnnouncementCards({
       {announcements.map((a) => {
         const author = a.authorName ?? 'GNW Hub';
         const initial = author.slice(0, 1).toUpperCase();
+        // Only real (named) authors get their photo; the "GNW Hub" fallback keeps its mark.
+        const authorImage = a.authorName ? a.authorImage : null;
         return (
           <div
             key={a.id}
@@ -52,9 +55,13 @@ export function AnnouncementCards({
               a.pinned && 'border-warn/40 bg-gradient-to-br from-warn/[0.07] to-transparent',
             )}
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent-ink font-semibold text-white">
+            <Avatar
+              image={authorImage}
+              alt={author}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent-ink font-semibold text-white"
+            >
               {initial}
-            </span>
+            </Avatar>
 
             <button
               type="button"

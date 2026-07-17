@@ -226,11 +226,24 @@ export function CallProvider({ children }: { children: ReactNode }) {
 export type CallParticipant = {
   id: string;
   name: string;
+  image: string | null;
   isLocal: boolean;
   isSpeaking: boolean;
   micOn: boolean;
   cameraOn: boolean;
 };
+
+// The joiner's profile-picture URL is carried in participant metadata (set on
+// the LiveKit token; see /api/calls/[id]/token). Parse it defensively.
+function participantImage(metadata: string | undefined): string | null {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as { image?: unknown };
+    return typeof parsed.image === 'string' ? parsed.image : null;
+  } catch {
+    return null;
+  }
+}
 
 // A live snapshot of everyone in the room. Rebuilt on any roster / speaking /
 // mute change so orbs light up as people talk and mute. Self-contained (reads
@@ -247,6 +260,7 @@ export function useCallParticipants(): CallParticipant[] {
         all.map((p) => ({
           id: p.identity,
           name: p.name || p.identity || 'Member',
+          image: participantImage(p.metadata),
           isLocal: p.isLocal,
           isSpeaking: p.isSpeaking,
           micOn: p.isMicrophoneEnabled,

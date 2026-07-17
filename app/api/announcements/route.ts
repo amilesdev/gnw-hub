@@ -15,7 +15,7 @@ export async function GET() {
   const announcements = await prisma.announcement.findMany({
     where: { expiresAt: { gt: new Date() } },
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, image: true } } },
   });
   return NextResponse.json({ announcements: announcements.map(serializeAnnouncement) });
 }
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       expiresAt: new Date(parsed.data.expiresAt),
       authorId: guard.user.id,
     },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, image: true } } },
   });
 
   revalidateAnnouncements();

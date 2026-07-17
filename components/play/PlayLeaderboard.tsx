@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from '@/components/shared/Icons';
+import { Avatar } from '@/components/shared/Avatar';
 import { usePlayActive } from '@/lib/play/use-play-active';
 import type { PlayPointsRow } from '@/lib/play/queries';
 
@@ -60,9 +61,13 @@ export function PlayLeaderboard({
                 <div className={cn('w-7 text-center font-display text-lg font-bold', MEDAL[r.rank] ?? 'text-ink-faint')}>
                   {r.rank}
                 </div>
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-bold text-ink-soft">
+                <Avatar
+                  image={r.image}
+                  alt={r.name}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-bold text-ink-soft"
+                >
                   {initials(r.name)}
-                </div>
+                </Avatar>
                 <div className="min-w-0 flex-1 truncate font-semibold text-ink">
                   {r.name}
                   {me && <span className="ml-1.5 text-xs font-normal text-accent-ink dark:text-accent-on">you</span>}

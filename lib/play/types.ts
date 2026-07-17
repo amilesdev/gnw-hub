@@ -44,6 +44,7 @@ export interface LeaderboardEntry {
   playerId: string;
   name: string;
   isGuest: boolean;
+  image?: string | null; // account players' profile picture; null for guests
   score: number;
   rank: number;
   team?: string | null;
@@ -63,6 +64,7 @@ export interface PodiumEntry {
   playerId: string;
   name: string;
   isGuest: boolean;
+  image?: string | null; // account players' profile picture; null for guests
   score: number;
 }
 
@@ -100,6 +102,7 @@ export interface LobbyPlayer {
   id: string;
   name: string;
   isGuest: boolean;
+  image?: string | null; // account players' profile picture; null for guests
   team: string | null;
 }
 

@@ -1,8 +1,25 @@
 // Shared storage-path validation + content-type rules, used by both the
 // (small-file) multipart upload route and the signed-upload-URL route.
 
-// Only these top-level prefixes are writable, matching the spec's storage layout.
-export const ALLOWED_PREFIXES = ['attire/', 'audio/'];
+// Only these top-level prefixes are writable, matching the spec's storage
+// layout. `avatars/` holds member profile pictures; the sign route scopes each
+// member to their own `avatars/<userId>/` subfolder (see AVATAR_PREFIX below).
+export const ALLOWED_PREFIXES = ['attire/', 'audio/', 'avatars/'];
+
+// Profile pictures live here, one subfolder per user. Kept separate because,
+// unlike attire/audio (leader-only), any authenticated member may write their
+// own avatar — the sign route enforces the `<userId>/` scoping.
+export const AVATAR_PREFIX = 'avatars/';
+
+/** Build the storage path for a member's avatar upload. */
+export function avatarPath(userId: string, filename: string): string {
+  return sanitizePath(`${AVATAR_PREFIX}${userId}/${filename}`);
+}
+
+/** Whether `path` is an avatar owned by `userId` (i.e. under `avatars/<userId>/`). */
+export function isOwnAvatarPath(path: string, userId: string): boolean {
+  return path.startsWith(`${AVATAR_PREFIX}${sanitizeSegment(userId)}/`);
+}
 
 export function sanitizeSegment(s: string): string {
   return s.replace(/[^a-zA-Z0-9._-]/g, '_');

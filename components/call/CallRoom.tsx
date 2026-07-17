@@ -11,6 +11,7 @@ import {
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/shared/Avatar';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, ChevronDown, Maximize, X } from '@/components/shared/Icons';
 import {
   useCall,
@@ -219,6 +220,7 @@ function ParticipantTile({
   const participant = trackRef.participant;
   const hasVideo = isTrackReference(trackRef) && !trackRef.publication.isMuted;
   const name = meta?.name ?? participant.name ?? 'Member';
+  const image = meta?.image ?? null;
   const isLocal = meta?.isLocal ?? participant.isLocal;
   const speaking = meta?.isSpeaking ?? false;
   const micOn = meta?.micOn ?? true;
@@ -253,9 +255,13 @@ function ParticipantTile({
                 aria-hidden
               />
             )}
-            <div className="grid h-20 w-20 place-items-center rounded-full bg-accent text-2xl font-bold text-white shadow-pop">
+            <Avatar
+              image={image}
+              alt={name}
+              className="grid h-20 w-20 place-items-center rounded-full bg-accent text-2xl font-bold text-white shadow-pop"
+            >
               {initials(name)}
-            </div>
+            </Avatar>
           </div>
         </div>
       )}

@@ -8,6 +8,7 @@ import { useGameChannel } from '@/lib/play/realtime-client';
 import { playSfx, stopSfx } from '@/lib/play/audio';
 import { haptics } from '@/lib/haptics';
 import { usePlayActive } from '@/lib/play/use-play-active';
+import { Avatar } from '@/components/shared/Avatar';
 import type { FinalResultPayload } from '@/lib/play/types';
 
 const CONFETTI_COLORS = ['#E8C547', '#FFFFFF', '#AEBE8A', '#5E7048', '#C58A3D'];
@@ -129,7 +130,9 @@ export function Results({
               const isChamp = slot.place === 1;
               return (
                 <div key={slot.place} className="flex w-24 flex-col items-center">
-                  <div
+                  <Avatar
+                    image={entry.image}
+                    alt={entry.name}
                     className={cn(
                       'play-avatar-drop mb-2 grid place-items-center rounded-2xl bg-white/15 font-bold backdrop-blur',
                       slot.size,
@@ -138,7 +141,7 @@ export function Results({
                     style={{ animationDelay: `${slot.delay}s` }}
                   >
                     {initials(entry.name)}
-                  </div>
+                  </Avatar>
                   <div className="mb-1 max-w-full truncate text-center text-sm font-semibold">{entry.name}</div>
                   <div className="text-xs text-white/60">{entry.score}</div>
                   <div

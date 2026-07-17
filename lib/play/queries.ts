@@ -16,6 +16,9 @@ export async function getCurrentSession() {
 const playerName = (p: { guestName: string | null; user: { name: string } | null }) =>
   p.user?.name ?? p.guestName ?? 'Guest';
 
+// Profile picture for account players; guests (no linked user) have none.
+const playerImage = (p: { user: { image: string | null } | null }) => p.user?.image ?? null;
+
 /**
  * Cumulative standings for a session: each non-spectator player's total points
  * (sum of their answer points) with competition ranking. Survival also surfaces
@@ -24,7 +27,10 @@ const playerName = (p: { guestName: string | null; user: { name: string } | null
 export async function buildLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> {
   const players = await prisma.gamePlayer.findMany({
     where: { sessionId },
-    include: { user: { select: { name: true } }, answers: { select: { pointsEarned: true } } },
+    include: {
+      user: { select: { name: true, image: true } },
+      answers: { select: { pointsEarned: true } },
+    },
   });
 
   const scored = players.map((p) => ({
@@ -32,6 +38,7 @@ export async function buildLeaderboard(sessionId: string): Promise<LeaderboardEn
     score: p.answers.reduce((n, a) => n + a.pointsEarned, 0),
     name: playerName(p),
     isGuest: p.userId === null,
+    image: playerImage(p),
     team: p.team,
     hearts: p.hearts,
     isEliminated: p.isEliminated,
@@ -41,6 +48,7 @@ export async function buildLeaderboard(sessionId: string): Promise<LeaderboardEn
     playerId: p.playerId,
     name: p.name,
     isGuest: p.isGuest,
+    image: p.image,
     score: p.score,
     rank: p.rank,
     team: p.team,
@@ -58,7 +66,10 @@ export async function buildLobbySnapshot(
     where: { id: sessionId },
     include: {
       pack: { select: { name: true } },
-      players: { include: { user: { select: { name: true } } }, orderBy: { joinedAt: 'asc' } },
+      players: {
+        include: { user: { select: { name: true, image: true } } },
+        orderBy: { joinedAt: 'asc' },
+      },
     },
   });
   if (!session) return null;
@@ -84,6 +95,7 @@ export async function buildLobbySnapshot(
       id: p.id,
       name: p.user?.name ?? p.guestName ?? 'Guest',
       isGuest: p.userId === null,
+      image: p.user?.image ?? null,
       team: p.team,
     })),
     mePlayerId,
@@ -94,6 +106,7 @@ export async function buildLobbySnapshot(
 export interface PlayPointsRow {
   id: string;
   name: string;
+  image: string | null;
   playPoints: number;
   rank: number;
 }
@@ -103,7 +116,7 @@ export async function getPlayPointsLeaderboard(): Promise<PlayPointsRow[]> {
   const users = await prisma.user.findMany({
     where: { status: 'active' },
     orderBy: [{ playPoints: 'desc' }, { name: 'asc' }],
-    select: { id: true, name: true, playPoints: true },
+    select: { id: true, name: true, image: true, playPoints: true },
   });
   let lastPoints = Number.NaN;
   let lastRank = 0;
@@ -112,7 +125,7 @@ export async function getPlayPointsLeaderboard(): Promise<PlayPointsRow[]> {
       lastRank = i + 1;
       lastPoints = u.playPoints;
     }
-    return { id: u.id, name: u.name, playPoints: u.playPoints, rank: lastRank };
+    return { id: u.id, name: u.name, image: u.image, playPoints: u.playPoints, rank: lastRank };
   });
 }
 

@@ -1,26 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { PasswordField } from './PasswordField';
-import { LogOut, Lock, Check, Moon, CalendarOff, ChevronRight, UserIcon } from './Icons';
+import { Avatar } from './Avatar';
+import { LogOut, Lock, Check, Moon, CalendarOff, ChevronRight, UserIcon, Camera } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
 import { SegmentedControl } from './SegmentedControl';
 import { useTheme, type ThemePreference } from './ThemeProvider';
 import { apiFetch } from '@/lib/api-client';
+import { uploadFile } from '@/lib/upload-client';
+import { avatarPath } from '@/lib/upload-path';
+import { squareImageFile } from '@/lib/image-resize';
 
 type Props = {
+  userId: string;
   name: string;
   email: string;
   role: 'member' | 'leader';
   section: string | null;
   part: string | null;
+  image: string | null;
   isSuperAdmin: boolean;
 };
 
-export function ProfileView({ name, role, part }: Props) {
+export function ProfileView({ userId, name, role, part, image }: Props) {
   const roleChip = [part, role].filter(Boolean).join(' · ');
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatar, setAvatar] = useState<string | null>(image);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -28,6 +40,46 @@ export function ProfileView({ name, role, part }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so picking the same file again still fires onChange.
+    e.target.value = '';
+    if (!file) return;
+
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      const square = await squareImageFile(file);
+      // A timestamped name busts any CDN/browser cache when replacing the photo.
+      const path = avatarPath(userId, `${Date.now()}.jpg`);
+      const url = await uploadFile(path, square);
+      const { image: saved } = await apiFetch<{ image: string }>('/api/profile/avatar', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      });
+      setAvatar(saved);
+      router.refresh();
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Could not update your photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      await apiFetch('/api/profile/avatar', { method: 'DELETE' });
+      setAvatar(null);
+      router.refresh();
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Could not remove your photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -56,14 +108,51 @@ export function ProfileView({ name, role, part }: Props) {
   return (
     <div className="space-y-6 pt-2">
       <header className="flex flex-col items-center pt-2 text-center">
-        <div
-          className="grid h-[88px] w-[88px] place-items-center rounded-[32px] font-display text-[34px] font-semibold text-white shadow-[0_16px_40px_-18px_rgba(74,89,56,0.7)]"
-          style={{ background: 'linear-gradient(150deg, #5E7048, #3c4a2c)' }}
-        >
-          {name.slice(0, 1).toUpperCase()}
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPickPhoto}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={photoBusy}
+            aria-label={avatar ? 'Change profile photo' : 'Add profile photo'}
+            className="row-press relative block rounded-[32px] disabled:opacity-70"
+          >
+            <Avatar
+              image={avatar}
+              alt={name}
+              className="grid h-[88px] w-[88px] place-items-center rounded-[32px] font-display text-[34px] font-semibold text-white shadow-[0_16px_40px_-18px_rgba(74,89,56,0.7)]"
+              style={{ background: 'linear-gradient(150deg, #5E7048, #3c4a2c)' }}
+            >
+              {name.slice(0, 1).toUpperCase()}
+            </Avatar>
+            <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-surface bg-accent text-white">
+              <Camera width={16} height={16} />
+            </span>
+          </button>
         </div>
         <p className="mt-4 font-display text-2xl font-semibold">{name}</p>
         <span className="chip mt-2 bg-accent/10 capitalize text-accent-ink dark:text-accent-on">{roleChip}</span>
+        {photoBusy && <p className="mt-2 text-sm text-ink-faint">Updating photo…</p>}
+        {photoError && (
+          <p role="alert" className="mt-2 text-sm font-semibold text-bad">
+            {photoError}
+          </p>
+        )}
+        {avatar && !photoBusy && (
+          <button
+            type="button"
+            onClick={removePhoto}
+            className="row-press mt-2 text-sm font-semibold text-ink-faint"
+          >
+            Remove photo
+          </button>
+        )}
       </header>
 
       {/* Preferences group: Appearance · My Availability · Notifications */}
@@ -107,15 +196,17 @@ export function ProfileView({ name, role, part }: Props) {
         <div className="divide-y divide-line">
           <div className="flex items-center justify-between p-5">
             <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-faint">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
                 <UserIcon width={18} height={18} />
               </span>
               <div>
-                <p className="font-semibold text-ink-soft">Edit Profile</p>
-                <p className="text-sm text-ink-faint">Update your name and voice part.</p>
+                <p className="font-semibold">Profile</p>
+                <p className="text-sm text-ink-faint">Update name or picture.</p>
               </div>
             </div>
-            <span className="chip bg-surface-2 text-ink-faint">Coming soon</span>
+            <button className="btn-ghost" type="button">
+              Edit
+            </button>
           </div>
 
           <div className="p-5">
@@ -126,7 +217,7 @@ export function ProfileView({ name, role, part }: Props) {
                 </span>
                 <div>
                   <p className="font-semibold">Password</p>
-                  <p className="text-sm text-ink-faint">Change your password.<br />At least 8 characters.</p>
+                  <p className="text-sm text-ink-faint">At least 8 characters.</p>
                 </div>
               </div>
               {!open && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { Plus, Play, ChevronRight, ChevronLeft } from '@/components/shared/Icons';
+import { Avatar } from '@/components/shared/Avatar';
 import { PlayModal, PlayConfirm } from './PlayModal';
 import { EnterGate } from './EnterGate';
 import { usePlayActive } from '@/lib/play/use-play-active';
@@ -325,9 +326,13 @@ export function PlayHome({
                   >
                     {r.rank}
                   </div>
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-bold text-ink-soft">
+                  <Avatar
+                    image={r.image}
+                    alt={r.name}
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-bold text-ink-soft"
+                  >
                     {initials(r.name)}
-                  </div>
+                  </Avatar>
                   <div className="min-w-0 flex-1 truncate font-semibold text-ink">
                     {r.name}
                     {me && <span className="ml-1.5 text-xs font-normal text-accent-ink dark:text-accent-on">you</span>}

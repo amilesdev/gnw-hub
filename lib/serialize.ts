@@ -78,10 +78,14 @@ export type AnnouncementDTO = Omit<Announcement, 'expiresAt' | 'createdAt' | 'up
   updatedAt: string;
   // Author's display name, or null for legacy/authorless posts.
   authorName: string | null;
+  // Author's profile-picture URL, or null when they haven't set one.
+  authorImage: string | null;
 };
 
 // Accepts the announcement with its author relation optionally included.
-export function serializeAnnouncement(a: Announcement & { author?: { name: string } | null }): AnnouncementDTO {
+export function serializeAnnouncement(
+  a: Announcement & { author?: { name: string; image: string | null } | null },
+): AnnouncementDTO {
   const { author, ...rest } = a;
   return {
     ...rest,
@@ -89,6 +93,7 @@ export function serializeAnnouncement(a: Announcement & { author?: { name: strin
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
     authorName: author?.name ?? null,
+    authorImage: author?.image ?? null,
   };
 }
 

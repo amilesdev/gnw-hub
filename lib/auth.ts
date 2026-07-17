@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           section: user.section,
           part: user.part,
+          image: user.image,
           isSuperAdmin: user.isSuperAdmin,
           tokenVersion: user.tokenVersion,
         };
@@ -77,6 +78,7 @@ export const authOptions: NextAuthOptions = {
           section: true,
           part: true,
           name: true,
+          image: true,
           isSuperAdmin: true,
         },
       });
@@ -92,6 +94,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = fresh.role as Role;
         session.user.section = fresh.section ?? null;
         session.user.part = fresh.part ?? null;
+        session.user.image = fresh.image ?? null;
         session.user.isSuperAdmin = fresh.isSuperAdmin;
       }
       return session;

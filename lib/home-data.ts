@@ -40,7 +40,7 @@ export const getActiveAnnouncements = unstable_cache(
     const announcements = await prisma.announcement.findMany({
       where: { expiresAt: { gt: new Date() } },
       orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
-      include: { author: { select: { name: true } } },
+      include: { author: { select: { name: true, image: true } } },
     });
     return announcements.map(serializeAnnouncement);
   },

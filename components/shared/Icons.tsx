@@ -98,6 +98,13 @@ export const Plus = (p: P) => (
   </Base>
 );
 
+export const Camera = (p: P) => (
+  <Base {...p}>
+    <path d="M4 8.5h3l1.5-2.2h7L17 8.5h3a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1Z" />
+    <circle cx="12" cy="13" r="3.4" />
+  </Base>
+);
+
 export const X = (p: P) => (
   <Base {...p}>
     <path d="M6 6l12 12M18 6 6 18" />

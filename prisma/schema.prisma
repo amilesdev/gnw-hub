@@ -110,6 +110,9 @@ model User {
   role         Role           @default(member)
   section      MemberSection?
   part         MemberPart?
+  // Profile picture: Supabase Storage public URL (bucket `gnw-media`, under
+  // `avatars/<userId>/`). Null → the UI falls back to the member's initial.
+  image        String?
   status       UserStatus     @default(pending)
   // Only one super-admin exists; they alone may grant the leader role.
   isSuperAdmin Boolean        @default(false)

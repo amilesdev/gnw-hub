@@ -331,6 +331,7 @@ export async function endGame(sessionId: string): Promise<void> {
     playerId: e.playerId,
     name: e.name,
     isGuest: e.isGuest,
+    image: e.image,
     score: e.score,
   }));
 
@@ -370,6 +371,7 @@ export async function buildFinalResults(sessionId: string): Promise<FinalResultP
     playerId: e.playerId,
     name: e.name,
     isGuest: e.isGuest,
+    image: e.image,
     score: e.score,
   }));
 

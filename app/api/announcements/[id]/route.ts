@@ -29,7 +29,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       body: parsed.data.body,
       expiresAt: new Date(parsed.data.expiresAt),
     },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, image: true } } },
   });
   revalidateAnnouncements();
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) });

@@ -13,17 +13,19 @@ export default async function MemberProfilePage() {
   // rather than the stale values frozen into the JWT at login.
   const user = await prisma.user.findUnique({
     where: { id: session.id },
-    select: { name: true, email: true, role: true, section: true, part: true, isSuperAdmin: true },
+    select: { name: true, email: true, role: true, section: true, part: true, image: true, isSuperAdmin: true },
   });
   if (!user) redirect('/login');
 
   return (
     <ProfileView
+      userId={session.id}
       name={user.name ?? ''}
       email={user.email ?? ''}
       role={user.role}
       section={user.section ?? null}
       part={user.part ?? null}
+      image={user.image ?? null}
       isSuperAdmin={user.isSuperAdmin}
     />
   );

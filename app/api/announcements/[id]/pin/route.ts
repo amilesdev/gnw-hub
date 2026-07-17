@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const announcement = await prisma.announcement.update({
     where: { id },
     data: { pinned },
-    include: { author: { select: { name: true } } },
+    include: { author: { select: { name: true, image: true } } },
   });
   revalidateAnnouncements();
   return NextResponse.json({ announcement: serializeAnnouncement(announcement) });

@@ -74,12 +74,16 @@ export async function createJoinToken(opts: {
   room: string;
   identity: string;
   name: string;
+  // Optional JSON string surfaced as `participant.metadata` client-side — used
+  // to carry the member's avatar URL so tiles can show their profile picture.
+  metadata?: string;
 }): Promise<string> {
   if (!livekitConfigured) throw new Error('LiveKit is not configured');
 
   const at = new AccessToken(apiKey!, apiSecret!, {
     identity: opts.identity,
     name: opts.name,
+    metadata: opts.metadata,
   });
   at.addGrant({
     room: opts.room,

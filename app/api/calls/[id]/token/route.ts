@@ -29,10 +29,17 @@ export async function POST(_req: Request, { params }: Ctx) {
     return NextResponse.json({ error: 'This call is for leaders only.' }, { status: 403 });
   }
 
+  // Carry the joiner's profile picture (if any) so other tiles can show it.
+  const me = await prisma.user.findUnique({
+    where: { id: guard.user.id },
+    select: { image: true },
+  });
+
   const token = await createJoinToken({
     room: call.roomName,
     identity: guard.user.id,
     name: guard.user.name ?? 'Member',
+    metadata: JSON.stringify({ image: me?.image ?? null }),
   });
 
   // startedAt lets the client show the *total* call duration (since the leader
