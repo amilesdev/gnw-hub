@@ -347,3 +347,16 @@ export const Maximize = (p: P) => (
     <path d="M9 20H4v-5" />
   </Base>
 );
+
+export const MessageCircle = (p: P) => (
+  <Base {...p}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-4-.9L3 21l1.9-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z" />
+  </Base>
+);
+
+export const Send = (p: P) => (
+  <Base {...p}>
+    <path d="M21 3 11 13" />
+    <path d="M21 3 14.5 21l-3.5-8-8-3.5L21 3Z" />
+  </Base>
+);

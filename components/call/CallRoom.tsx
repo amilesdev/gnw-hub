@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useTracks,
@@ -12,13 +12,25 @@ import {
 import { Track } from 'livekit-client';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/shared/Avatar';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, ChevronDown, Maximize, X } from '@/components/shared/Icons';
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  ChevronDown,
+  Maximize,
+  X,
+  MessageCircle,
+  Send,
+} from '@/components/shared/Icons';
 import {
   useCall,
   useCallParticipants,
   useElapsed,
   formatElapsed,
   type CallParticipant,
+  type ChatMessage,
 } from './CallProvider';
 
 function initials(name: string): string {
@@ -38,9 +50,31 @@ function initials(name: string): string {
 // video the moment that person turns their camera on.
 export function CallRoom({ callId }: { callId: string }) {
   const router = useRouter();
-  const { callName, status, error, muted, cameraOn, callStartedAt, join, leave, toggleMute, toggleCamera, stopCamera } =
-    useCall();
+  const {
+    callName,
+    status,
+    error,
+    muted,
+    cameraOn,
+    callStartedAt,
+    join,
+    leave,
+    toggleMute,
+    toggleCamera,
+    stopCamera,
+    messages,
+    sendChat,
+  } = useCall();
   const participants = useCallParticipants();
+
+  // In-call chat panel. `seenCount` tracks how many messages have been shown so
+  // the button can badge unread ones while the panel is closed.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [seenCount, setSeenCount] = useState(0);
+  useEffect(() => {
+    if (chatOpen) setSeenCount(messages.length);
+  }, [chatOpen, messages.length]);
+  const unread = chatOpen ? 0 : messages.length - seenCount;
   // One camera track reference per participant (placeholder when their camera is
   // off), so the grid always has a tile for everyone.
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], {
@@ -118,8 +152,22 @@ export function CallRoom({ callId }: { callId: string }) {
             )}
           </p>
         </div>
-        {/* Balances the minimize button so the title stays centered. */}
-        <div className="h-11 w-11 shrink-0" aria-hidden />
+        {/* Chat toggle — mirrors the minimize button's slot so the title stays
+            centered. Badges unread messages while the panel is closed. */}
+        <button
+          type="button"
+          onClick={() => setChatOpen(true)}
+          disabled={!connected}
+          aria-label={unread > 0 ? `Chat, ${unread} new` : 'Chat'}
+          className="row-press relative -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft disabled:opacity-40"
+        >
+          <MessageCircle width={24} height={24} />
+          {unread > 0 && (
+            <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white">
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
+        </button>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center py-6">
@@ -179,6 +227,10 @@ export function CallRoom({ callId }: { callId: string }) {
           meta={metaById.get(spotlightRef.participant.identity)}
           onClose={() => setSpotlightId(null)}
         />
+      )}
+
+      {chatOpen && (
+        <ChatPanel messages={messages} onSend={sendChat} onClose={() => setChatOpen(false)} />
       )}
     </CallShell>
   );
@@ -348,6 +400,139 @@ function SpotlightOverlay({
         >
           <X width={18} height={18} />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// The in-call chat — a bottom sheet, Zoom-style. Messages live only for the
+// duration of the call (they're never stored), so the panel opens empty and its
+// history vanishes when the call ends. Matches the app's sheet pattern
+// (backdrop + slide-up) and neutral surface theme.
+function ChatPanel({
+  messages,
+  onSend,
+  onClose,
+}: {
+  messages: ChatMessage[];
+  onSend: (text: string) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const endRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest message in view as the conversation grows.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    onSend(text);
+    setDraft('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-center" role="dialog" aria-modal="true" aria-label="Call chat">
+      <div className="absolute inset-0 animate-fade-in bg-ink/50" onClick={onClose} aria-hidden />
+
+      <div className="relative z-10 mt-auto flex w-full max-w-[430px] animate-sheet-up flex-col">
+        <div className="grain-block flex max-h-[72vh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-sheet ring-1 ring-line">
+          <header className="flex items-center gap-3 border-b border-line px-5 pb-3 pt-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-ink">Chat</h2>
+              <p className="eyebrow mt-0.5">Only during this call · not saved</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close chat"
+              className="row-press -mr-1 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft"
+            >
+              <X width={20} height={20} />
+            </button>
+          </header>
+
+          <div className="no-scrollbar flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                <MessageCircle width={30} height={30} className="text-ink-soft/60" />
+                <p className="max-w-[15rem] text-sm text-ink-soft">
+                  Say something to everyone on the call. Messages disappear when the call ends.
+                </p>
+              </div>
+            ) : (
+              messages.map((m) => <ChatBubble key={m.id} message={m} />)
+            )}
+            <div ref={endRef} />
+          </div>
+
+          <form
+            onSubmit={submit}
+            className="flex items-end gap-2 border-t border-line px-3 pt-3"
+            style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+          >
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Message"
+              enterKeyHint="send"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-full border border-line bg-app px-4 py-2.5 text-[15px] text-ink placeholder:text-ink-soft/70 focus:border-accent focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!draft.trim()}
+              aria-label="Send message"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-white shadow-card transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+            >
+              <Send width={20} height={20} />
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A single chat line. Own messages hug the right in an accent bubble; others sit
+// left with the sender's avatar and name, mirroring familiar messaging UIs.
+function ChatBubble({ message }: { message: ChatMessage }) {
+  const { text, senderName, senderImage, isLocal } = message;
+  if (isLocal) {
+    return (
+      <div className="flex justify-end">
+        <p className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] text-white">
+          {text}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-end gap-2">
+      <Avatar
+        image={senderImage}
+        alt={senderName}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white"
+      >
+        {initials(senderName)}
+      </Avatar>
+      <div className="max-w-[80%]">
+        <p className="mb-0.5 pl-1 text-xs font-semibold text-ink-soft">{senderName}</p>
+        <p className="whitespace-pre-wrap break-words rounded-2xl rounded-bl-md bg-accent-soft px-3.5 py-2 text-[15px] text-ink">
+          {text}
+        </p>
       </div>
     </div>
   );

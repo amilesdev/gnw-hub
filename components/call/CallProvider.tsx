@@ -22,6 +22,25 @@ type TokenResponse = { token: string; serverUrl: string; name: string; startedAt
 
 export type CallStatus = 'idle' | 'connecting' | 'connected' | 'error';
 
+// An in-call chat message. Lives only in memory for the duration of the call
+// (Zoom-style): it's sent over the LiveKit data channel, never touches the
+// server or database, and is wiped the moment the call ends.
+export type ChatMessage = {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  senderImage: string | null;
+  isLocal: boolean;
+  at: number;
+};
+
+// The LiveKit data-channel topic in-call chat rides on, kept separate from any
+// other data traffic on the room.
+const CHAT_TOPIC = 'chat';
+const chatEncoder = new TextEncoder();
+const chatDecoder = new TextDecoder();
+
 type CallContextValue = {
   callId: string | null;
   callName: string | null;
@@ -44,6 +63,10 @@ type CallContextValue = {
   /** Turn the local camera off if it's on. No-op otherwise. Used when leaving
    *  the call screen so video never keeps broadcasting from the background. */
   stopCamera: () => void;
+  /** In-call chat, oldest first. Ephemeral: cleared when the call ends. */
+  messages: ChatMessage[];
+  /** Broadcast a chat message to everyone in the call. Trims/ignores blanks. */
+  sendChat: (text: string) => void;
 };
 
 const CallCtx = createContext<CallContextValue | null>(null);
@@ -70,6 +93,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [cameraOn, setCameraOn] = useState(false);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
   const [callStartedAt, setCallStartedAt] = useState<number | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   // Which call we're currently joining. A slow token fetch for an abandoned join
   // must not connect us to a call we've since left.
@@ -91,6 +115,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setCallStartedAt(null);
     setMuted(false);
     setCameraOn(false);
+    setMessages([]);
   }, []);
 
   // Room lifecycle: mirror the local mic state, and fall back to idle if the
@@ -102,8 +127,39 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setCameraOn(room.localParticipant.isCameraEnabled);
     };
     const onDisconnected = () => resetToIdle();
+    // Incoming chat: decode the data-channel packet and append. Anything that
+    // isn't a well-formed chat message on our topic is ignored.
+    const onData = (
+      payload: Uint8Array,
+      participant?: { identity?: string; name?: string; metadata?: string },
+      _kind?: unknown,
+      topic?: string,
+    ) => {
+      if (topic !== CHAT_TOPIC) return;
+      let text: string;
+      try {
+        const parsed = JSON.parse(chatDecoder.decode(payload)) as { text?: unknown };
+        if (typeof parsed.text !== 'string' || !parsed.text.trim()) return;
+        text = parsed.text;
+      } catch {
+        return;
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${participant?.identity ?? 'peer'}-${Date.now()}-${prev.length}`,
+          text,
+          senderId: participant?.identity ?? '',
+          senderName: participant?.name || participant?.identity || 'Member',
+          senderImage: participantImage(participant?.metadata),
+          isLocal: false,
+          at: Date.now(),
+        },
+      ]);
+    };
     room
       .on(RoomEvent.Disconnected, onDisconnected)
+      .on(RoomEvent.DataReceived, onData)
       .on(RoomEvent.LocalTrackPublished, syncLocal)
       .on(RoomEvent.LocalTrackUnpublished, syncLocal)
       .on(RoomEvent.TrackMuted, syncLocal)
@@ -111,6 +167,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     return () => {
       room
         .off(RoomEvent.Disconnected, onDisconnected)
+        .off(RoomEvent.DataReceived, onData)
         .off(RoomEvent.LocalTrackPublished, syncLocal)
         .off(RoomEvent.LocalTrackUnpublished, syncLocal)
         .off(RoomEvent.TrackMuted, syncLocal)
@@ -189,6 +246,35 @@ export function CallProvider({ children }: { children: ReactNode }) {
     room.localParticipant.setCameraEnabled(false).catch(() => {});
   }, [room]);
 
+  const sendChat = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!room || statusRef.current !== 'connected' || !trimmed) return;
+      const me = room.localParticipant;
+      // Reliable delivery so messages aren't dropped like unreliable data can be.
+      room.localParticipant
+        .publishData(chatEncoder.encode(JSON.stringify({ text: trimmed })), {
+          reliable: true,
+          topic: CHAT_TOPIC,
+        })
+        .catch(() => {});
+      // DataReceived never fires for our own packets, so echo locally.
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `me-${Date.now()}-${prev.length}`,
+          text: trimmed,
+          senderId: me.identity,
+          senderName: me.name || 'You',
+          senderImage: participantImage(me.metadata),
+          isLocal: true,
+          at: Date.now(),
+        },
+      ]);
+    },
+    [room],
+  );
+
   const value: CallContextValue = {
     callId,
     callName,
@@ -203,6 +289,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
     toggleMute,
     toggleCamera,
     stopCamera,
+    messages,
+    sendChat,
   };
 
   // Expose the LiveKit room to @livekit/components-react hooks below (participant
