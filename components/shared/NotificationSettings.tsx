@@ -13,7 +13,7 @@ export function NotificationSettings() {
   const { status, busy, error, subscribe, unsubscribe } = usePushNotifications();
 
   return (
-    <section className="card p-5">
+    <div className="p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
@@ -56,7 +56,7 @@ export function NotificationSettings() {
       )}
 
       {error && <p className="mt-3 text-sm font-semibold text-bad">{error}</p>}
-    </section>
+    </div>
   );
 }
 

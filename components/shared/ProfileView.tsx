@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { PasswordField } from './PasswordField';
-import { LogOut, Lock, Check, Moon, CalendarOff, ChevronRight } from './Icons';
+import { LogOut, Lock, Check, Moon, CalendarOff, ChevronRight, UserIcon } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
 import { SegmentedControl } from './SegmentedControl';
 import { useTheme, type ThemePreference } from './ThemeProvider';
@@ -19,7 +19,7 @@ type Props = {
   isSuperAdmin: boolean;
 };
 
-export function ProfileView({ name, email, role, section, part }: Props) {
+export function ProfileView({ name, role, part }: Props) {
   const roleChip = [part, role].filter(Boolean).join(' · ');
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState('');
@@ -54,111 +54,134 @@ export function ProfileView({ name, email, role, section, part }: Props) {
   }
 
   return (
-    <div className="space-y-5 pt-2">
-      <header>
-        <div className="eyebrow">Your account</div>
-        <h1 className="page-title mt-2">Profile</h1>
+    <div className="space-y-6 pt-2">
+      <header className="flex flex-col items-center pt-2 text-center">
+        <div
+          className="grid h-20 w-20 place-items-center rounded-[28px] font-display text-3xl font-semibold text-white shadow-[0_16px_40px_-18px_rgba(74,89,56,0.7)]"
+          style={{ background: 'linear-gradient(150deg, var(--accent), #3c4a2c)' }}
+        >
+          {name.slice(0, 1).toUpperCase()}
+        </div>
+        <p className="mt-4 font-display text-2xl font-semibold">{name}</p>
+        <span className="chip mt-2 bg-accent/10 capitalize text-accent-ink dark:text-accent-on">{roleChip}</span>
       </header>
 
-      <section className="card p-5">
-        <div className="flex items-center gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 font-display text-2xl font-semibold text-accent-ink dark:text-accent-on">
-            {name.slice(0, 1).toUpperCase()}
+      {/* Preferences group: Appearance · My Availability · Notifications */}
+      <section className="card overflow-hidden">
+        <div className="divide-y divide-line">
+          <div className="p-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+                <Moon width={18} height={18} />
+              </span>
+              <div>
+                <p className="font-semibold">Appearance</p>
+                <p className="text-sm text-ink-faint">Auto follows your device setting.</p>
+              </div>
+            </div>
+            <AppearanceControl />
           </div>
-          <div>
-            <p className="font-display text-xl font-semibold">{name}</p>
-            <p className="text-sm text-ink-soft">{email}</p>
-            <span className="chip mt-1.5 bg-accent/10 capitalize text-accent-ink dark:text-accent-on">{roleChip}</span>
-          </div>
+
+          <Link
+            href={role === 'leader' ? '/dashboard/availability' : '/home/availability'}
+            className="row-press flex items-center justify-between p-5"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+                <CalendarOff width={18} height={18} />
+              </span>
+              <div>
+                <p className="font-semibold">My Availability</p>
+                <p className="text-sm text-ink-faint">Mark days you can’t serve.</p>
+              </div>
+            </div>
+            <ChevronRight width={20} height={20} className="text-ink-faint" />
+          </Link>
+
+          <NotificationSettings />
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-3">
-          <ReadOnly label="Section" value={section ?? '—'} />
-          <ReadOnly label="Part" value={part ?? '—'} />
-        </dl>
       </section>
 
-      <section className="card p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
-              <Lock width={18} height={18} />
-            </span>
-            <div>
-              <p className="font-semibold">Password</p>
-              <p className="text-sm text-ink-faint">Change your password.<br />At least 8 characters.</p>
+      {/* Account group: Edit Profile · Password */}
+      <section className="card overflow-hidden">
+        <div className="divide-y divide-line">
+          <div className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-faint">
+                <UserIcon width={18} height={18} />
+              </span>
+              <div>
+                <p className="font-semibold text-ink-soft">Edit Profile</p>
+                <p className="text-sm text-ink-faint">Update your name and voice part.</p>
+              </div>
             </div>
+            <span className="chip bg-surface-2 text-ink-faint">Coming soon</span>
           </div>
-          {!open && (
-            <button className="btn-ghost" onClick={() => setOpen(true)} type="button">
-              Change
-            </button>
-          )}
-        </div>
 
-        {done && (
-          <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-good">
-            <Check width={16} height={16} /> Password updated.
-          </p>
-        )}
-
-        {open && (
-          <form onSubmit={changePassword} className="mt-4 space-y-4">
-            <PasswordField
-              label="Current password"
-              autoComplete="current-password"
-              required
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              enterKeyHint="next"
-            />
-            <PasswordField
-              label="New password"
-              autoComplete="new-password"
-              required
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              enterKeyHint="next"
-            />
-            <PasswordField
-              label="Confirm new password"
-              autoComplete="new-password"
-              required
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              enterKeyHint="done"
-            />
-            {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
-            <div className="flex gap-3">
-              <button type="button" className="btn-ghost flex-1" onClick={() => setOpen(false)} disabled={busy}>
-                Cancel
-              </button>
-              <button type="submit" className="btn-primary flex-1" disabled={busy}>
-                {busy ? 'Saving…' : 'Update password'}
-              </button>
+          <div className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+                  <Lock width={18} height={18} />
+                </span>
+                <div>
+                  <p className="font-semibold">Password</p>
+                  <p className="text-sm text-ink-faint">Change your password.<br />At least 8 characters.</p>
+                </div>
+              </div>
+              {!open && (
+                <button className="btn-ghost" onClick={() => setOpen(true)} type="button">
+                  Change
+                </button>
+              )}
             </div>
-          </form>
-        )}
+
+            {done && (
+              <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-good">
+                <Check width={16} height={16} /> Password updated.
+              </p>
+            )}
+
+            {open && (
+              <form onSubmit={changePassword} className="mt-4 space-y-4">
+                <PasswordField
+                  label="Current password"
+                  autoComplete="current-password"
+                  required
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value)}
+                  enterKeyHint="next"
+                />
+                <PasswordField
+                  label="New password"
+                  autoComplete="new-password"
+                  required
+                  value={next}
+                  onChange={(e) => setNext(e.target.value)}
+                  enterKeyHint="next"
+                />
+                <PasswordField
+                  label="Confirm new password"
+                  autoComplete="new-password"
+                  required
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  enterKeyHint="done"
+                />
+                {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+                <div className="flex gap-3">
+                  <button type="button" className="btn-ghost flex-1" onClick={() => setOpen(false)} disabled={busy}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary flex-1" disabled={busy}>
+                    {busy ? 'Saving…' : 'Update password'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       </section>
-
-      <Link
-        href={role === 'leader' ? '/dashboard/availability' : '/home/availability'}
-        className="card row-press flex items-center justify-between p-5"
-      >
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
-            <CalendarOff width={18} height={18} />
-          </span>
-          <div>
-            <p className="font-semibold">My Availability</p>
-            <p className="text-sm text-ink-faint">Mark days you can’t serve.</p>
-          </div>
-        </div>
-        <ChevronRight width={20} height={20} className="text-ink-faint" />
-      </Link>
-
-      <NotificationSettings />
-
-      <AppearanceCard />
 
       <button
         type="button"
@@ -177,29 +200,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
-function AppearanceCard() {
+function AppearanceControl() {
   const { theme, setTheme } = useTheme();
-  return (
-    <section className="card p-5">
-      <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
-          <Moon width={18} height={18} />
-        </span>
-        <div>
-          <p className="font-semibold">Appearance</p>
-          <p className="text-sm text-ink-faint">Auto follows your device setting.</p>
-        </div>
-      </div>
-      <SegmentedControl className="mt-4" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
-    </section>
-  );
-}
-
-function ReadOnly({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-surface-2 px-4 py-3">
-      <dt className="label">{label}</dt>
-      <dd className="mt-1 font-semibold text-ink">{value}</dd>
-    </div>
-  );
+  return <SegmentedControl className="mt-4" options={THEME_OPTIONS} value={theme} onChange={setTheme} />;
 }
