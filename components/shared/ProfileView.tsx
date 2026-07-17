@@ -57,8 +57,8 @@ export function ProfileView({ name, role, part }: Props) {
     <div className="space-y-6 pt-2">
       <header className="flex flex-col items-center pt-2 text-center">
         <div
-          className="grid h-20 w-20 place-items-center rounded-[28px] font-display text-3xl font-semibold text-white shadow-[0_16px_40px_-18px_rgba(74,89,56,0.7)]"
-          style={{ background: 'linear-gradient(150deg, var(--accent), #3c4a2c)' }}
+          className="grid h-[88px] w-[88px] place-items-center rounded-[32px] font-display text-[34px] font-semibold text-white shadow-[0_16px_40px_-18px_rgba(74,89,56,0.7)]"
+          style={{ background: 'linear-gradient(150deg, #5E7048, #3c4a2c)' }}
         >
           {name.slice(0, 1).toUpperCase()}
         </div>
