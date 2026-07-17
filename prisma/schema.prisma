@@ -213,6 +213,12 @@ model Event {
   scriptures     String[] @default([])
   holyTalksNotes String?
 
+  // Rehearsal schedule (rehearsal events only) — an ordered run-of-show. Stored
+  // as a JSON array of { time: "HH:mm", label: string }. Leaders edit the whole
+  // list on the event form and it saves with the event (no live/auto updates,
+  // unlike PrayerRequest). Null/absent on non-rehearsal events.
+  rehearsalSchedule Json?
+
   // Prayer requests (prayer events only) — members and leaders can both add,
   // and they're visible to everyone. Removed with the event.
   prayerRequests PrayerRequest[]

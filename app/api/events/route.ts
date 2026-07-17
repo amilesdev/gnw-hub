@@ -66,6 +66,7 @@ export async function POST(req: Request) {
   const seriesId = d.repeats === 'once' ? null : randomToken(12);
 
   const isHolyTalks = d.type === 'holy_talks';
+  const isRehearsal = d.type === 'rehearsal';
   // Singing assignments are a Service-only concept.
   const assignments = d.type === 'service' ? d.assignments ?? [] : [];
 
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
     topic: isHolyTalks ? d.topic ?? null : null,
     scriptures: isHolyTalks ? d.scriptures ?? [] : [],
     holyTalksNotes: isHolyTalks ? d.holyTalksNotes ?? null : null,
+    rehearsalSchedule: isRehearsal ? d.rehearsalSchedule ?? [] : [],
   };
 
   // The seed occurrence keeps everything entered on the form. The other
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
     topic: null,
     scriptures: [],
     holyTalksNotes: null,
+    rehearsalSchedule: [],
   };
 
   const created = await prisma.$transaction(

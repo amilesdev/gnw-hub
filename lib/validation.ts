@@ -117,6 +117,18 @@ export const assignmentsSchema = z
     message: 'A member can only be assigned to one part.',
   });
 
+/** A rehearsal run-of-show: an ordered list of { time, label } items. Both may
+ *  be blank on a freshly-added row; the form filters fully-empty rows before
+ *  saving. `time` is an "HH:mm" label (from a native time input). */
+export const rehearsalScheduleSchema = z
+  .array(
+    z.object({
+      time: z.string().max(8).default(''),
+      label: z.string().max(200).default(''),
+    }),
+  )
+  .max(50);
+
 export const eventSchema = z.object({
   eventName: z.string().min(1, 'Event name required').max(200),
   type: eventTypeEnum,
@@ -136,6 +148,7 @@ export const eventSchema = z.object({
   topic: z.string().max(200).optional().nullable(),
   scriptures: z.array(z.string()).optional().default([]),
   holyTalksNotes: z.string().max(2000).optional().nullable(),
+  rehearsalSchedule: rehearsalScheduleSchema.optional().default([]),
   assignments: assignmentsSchema.optional().default([]),
 });
 
@@ -205,4 +218,10 @@ export const ANNOUNCEMENT_MAX_DAYS = MAX_ANNOUNCE_DAYS;
 export const callCreateSchema = z.object({
   name: z.string().trim().min(1, 'Call name required').max(120),
   audience: z.enum(['all_members', 'leaders_only']).default('all_members'),
+});
+
+// Prayer call: the caller just points at the Prayer event; the server derives
+// the name/audience and enforces who may start it and when.
+export const prayerCallCreateSchema = z.object({
+  eventId: z.string().min(1, 'Event required'),
 });

@@ -66,6 +66,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
     data.holyTalksNotes = null;
   }
 
+  // Rehearsal schedule only meaningful when the (resulting) type is rehearsal.
+  if (resultingType === 'rehearsal') {
+    if (d.rehearsalSchedule !== undefined) data.rehearsalSchedule = d.rehearsalSchedule ?? [];
+  } else if (d.type !== undefined) {
+    // Switched away from rehearsal — drop the schedule.
+    data.rehearsalSchedule = [];
+  }
+
   // Clean up any attire photos that were removed from the array.
   if (d.attirePhotos !== undefined) {
     const removed = existing.attirePhotos.filter((u) => !d.attirePhotos!.includes(u));

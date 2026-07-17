@@ -15,6 +15,19 @@ import { toYmd } from '@/lib/dates';
 // member updates every event without touching the assignment rows.
 export type EventAssignmentDTO = { userId: string; name: string; part: VocalPart };
 
+// One row of a rehearsal run-of-show. `time` is an "HH:mm" label (formatted for
+// display with formatTimeLabel), `label` is free text.
+export type RehearsalScheduleItemDTO = { time: string; label: string };
+
+// Coerce the stored JSON (Prisma.JsonValue) into a well-formed schedule array,
+// tolerating legacy nulls / unexpected shapes.
+function parseRehearsalSchedule(value: unknown): RehearsalScheduleItemDTO[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+    .map((x) => ({ time: String(x.time ?? ''), label: String(x.label ?? '') }));
+}
+
 // Spread onto every event read so the serialized event always carries its
 // assignments (an event read without it just serializes to an empty list).
 export const eventInclude = {
@@ -28,21 +41,24 @@ type EventWithAssignments = Event & {
 // Sopranos, then altos, then tenors; alphabetical within a part.
 const PART_ORDER: Record<VocalPart, number> = { Soprano: 0, Alto: 1, Tenor: 2 };
 
-// Shapes sent to the client (Dates → ISO strings).
-export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt'> & {
+// Shapes sent to the client (Dates → ISO strings). `rehearsalSchedule` is
+// re-typed off the raw Prisma JsonValue into the structured item array.
+export type EventDTO = Omit<Event, 'date' | 'createdAt' | 'updatedAt' | 'rehearsalSchedule'> & {
   date: string;
   createdAt: string;
   updatedAt: string;
+  rehearsalSchedule: RehearsalScheduleItemDTO[];
   assignments: EventAssignmentDTO[];
 };
 
 export function serializeEvent(e: EventWithAssignments): EventDTO {
-  const { assignments, ...rest } = e;
+  const { assignments, rehearsalSchedule, ...rest } = e;
   return {
     ...rest,
     date: e.date.toISOString(),
     createdAt: e.createdAt.toISOString(),
     updatedAt: e.updatedAt.toISOString(),
+    rehearsalSchedule: parseRehearsalSchedule(rehearsalSchedule),
     assignments: (assignments ?? [])
       .map((a) => ({ userId: a.userId, name: a.user.name, part: a.part }))
       .sort((a, b) => PART_ORDER[a.part] - PART_ORDER[b.part] || a.name.localeCompare(b.name)),

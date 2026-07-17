@@ -175,6 +175,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const [openScripture, setOpenScripture] = useState<string | null>(null);
   const isHolyTalks = event.type === 'holy_talks';
   const isPrayer = event.type === 'prayer';
+  const isRehearsal = event.type === 'rehearsal';
   const assignedParts = assignmentsByPart(event);
 
   // Pull in the setlist tied to this event (if any) so it lives on the card.
@@ -234,6 +235,24 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                 );
               })}
             </ol>
+          </section>
+        )}
+
+        {isRehearsal && event.rehearsalSchedule.length > 0 && (
+          <section className="card p-4">
+            <p className="eyebrow mb-1 inline-flex items-center gap-1.5">
+              <Clock width={14} height={14} /> Schedule
+            </p>
+            <ul className="divide-y divide-line">
+              {event.rehearsalSchedule.map((item, i) => (
+                <li key={i} className="flex items-baseline gap-4 py-3">
+                  <span className="w-20 shrink-0 font-display text-sm font-semibold tabular-nums text-accent-ink dark:text-accent-on">
+                    {item.time ? formatTimeLabel(item.time) : '—'}
+                  </span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">{item.label}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

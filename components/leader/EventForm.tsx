@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { EventDTO } from '@/lib/serialize';
+import type { EventDTO, RehearsalScheduleItemDTO } from '@/lib/serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { TextField, TextArea, SelectField, FieldLabel } from '@/components/shared/Field';
 import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock } from '@/components/shared/Icons';
@@ -109,6 +109,12 @@ export function EventForm({
   const [scriptureDraft, setScriptureDraft] = useState('');
   const [holyTalksNotes, setHolyTalksNotes] = useState(initial?.holyTalksNotes ?? '');
 
+  // Rehearsal schedule (rehearsal only) — an ordered run-of-show the leader edits
+  // by hand. Populated from the event on open; saved only when the form is saved.
+  const [schedule, setSchedule] = useState<RehearsalScheduleItemDTO[]>(
+    initial?.rehearsalSchedule ?? [],
+  );
+
   // Singing assignments (service only)
   const [assignments, setAssignments] = useState<AssignmentMap>(toAssignmentMap(initial?.assignments));
 
@@ -133,6 +139,8 @@ export function EventForm({
   const folderKey = useRef(initial?.id ?? `draft-${randomToken(8)}`);
 
   const isHolyTalks = type === 'holy_talks';
+  // The rehearsal run-of-show only applies to Rehearsal events.
+  const isRehearsal = type === 'rehearsal';
   // Attire only applies to Service and Other events.
   const showAttire = type === 'service' || type === 'other';
   // Singing assignments only apply to Service events.
@@ -143,6 +151,18 @@ export function EventForm({
     if (!s) return;
     setScriptures((prev) => [...prev, s]);
     setScriptureDraft('');
+  }
+
+  function addScheduleItem() {
+    setSchedule((prev) => [...prev, { time: '', label: '' }]);
+  }
+
+  function updateScheduleItem(index: number, patch: Partial<RehearsalScheduleItemDTO>) {
+    setSchedule((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  }
+
+  function removeScheduleItem(index: number) {
+    setSchedule((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleFiles(files: FileList | null) {
@@ -195,6 +215,12 @@ export function EventForm({
       topic: isHolyTalks ? topic || null : null,
       scriptures: isHolyTalks ? scriptures : [],
       holyTalksNotes: isHolyTalks ? holyTalksNotes || null : null,
+      // Drop fully-empty rows (a leader added a line but left it blank).
+      rehearsalSchedule: isRehearsal
+        ? schedule
+            .map((s) => ({ time: s.time, label: s.label.trim() }))
+            .filter((s) => s.time || s.label)
+        : [],
       assignments: showAssignments
         ? Object.entries(assignments).map(([userId, part]) => ({ userId, part }))
         : [],
@@ -353,6 +379,59 @@ export function EventForm({
               )}
             </div>
             <TextArea label="Holy Talks notes" value={holyTalksNotes} onChange={(e) => setHolyTalksNotes(e.target.value)} />
+          </section>
+        )}
+
+        {/* Rehearsal schedule — only when type is rehearsal. Time on the left,
+            editable label on the right; a plus adds a row. */}
+        {isRehearsal && (
+          <section className="card animate-rise space-y-3 bg-surface-2/40 p-4">
+            <p className="eyebrow inline-flex items-center gap-1.5">
+              <Clock width={14} height={14} /> Schedule
+            </p>
+            {schedule.length === 0 && (
+              <p className="text-sm text-ink-faint">No schedule yet — add the first item below.</p>
+            )}
+            {schedule.length > 0 && (
+              <ul className="space-y-2">
+                {schedule.map((item, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <div className="relative w-32 shrink-0">
+                      <input
+                        type="time"
+                        value={item.time}
+                        onChange={(e) => updateScheduleItem(i, { time: e.target.value })}
+                        aria-label={`Item ${i + 1} time`}
+                        className={cn('field min-w-0 px-3 pr-9', !item.time && 'text-transparent')}
+                      />
+                      {!item.time && (
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-faint">Time</span>
+                      )}
+                      <Clock width={16} height={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+                    </div>
+                    <input
+                      className="field min-w-0 flex-1"
+                      value={item.label}
+                      onChange={(e) => updateScheduleItem(i, { label: e.target.value })}
+                      placeholder="e.g. Warm-up & vocal run"
+                      aria-label={`Item ${i + 1} label`}
+                      enterKeyHint="done"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeScheduleItem(i)}
+                      aria-label={`Remove item ${i + 1}`}
+                      className="row-press shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-bad"
+                    >
+                      <Trash width={16} height={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" onClick={addScheduleItem} className="btn-ghost w-full">
+              <Plus width={16} height={16} /> Add schedule item
+            </button>
           </section>
         )}
 
