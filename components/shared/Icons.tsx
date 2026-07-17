@@ -37,6 +37,15 @@ export const Calendar = (p: P) => (
   </Base>
 );
 
+export const CalendarOff = (p: P) => (
+  <Base {...p}>
+    <path d="M20.5 13V8a3 3 0 0 0-3-3H8" />
+    <path d="M3.5 7.6V19a3 3 0 0 0 3 3h9" />
+    <path d="M8 3v4M16 3v3M3.5 9.5h7" />
+    <path d="M4 4l16 16" />
+  </Base>
+);
+
 export const Music = (p: P) => (
   <Base {...p}>
     <path d="M9 18V6l11-2v12" />

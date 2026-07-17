@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { PasswordField } from './PasswordField';
-import { LogOut, Lock, Check, Moon } from './Icons';
+import { LogOut, Lock, Check, Moon, CalendarOff, ChevronRight } from './Icons';
 import { NotificationSettings } from './NotificationSettings';
 import { SegmentedControl } from './SegmentedControl';
 import { useTheme, type ThemePreference } from './ThemeProvider';
@@ -138,6 +139,22 @@ export function ProfileView({ name, email, role, section, part }: Props) {
           </form>
         )}
       </section>
+
+      <Link
+        href={role === 'leader' ? '/dashboard/availability' : '/home/availability'}
+        className="card row-press flex items-center justify-between p-5"
+      >
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
+            <CalendarOff width={18} height={18} />
+          </span>
+          <div>
+            <p className="font-semibold">My Availability</p>
+            <p className="text-sm text-ink-faint">Mark days you can’t serve.</p>
+          </div>
+        </div>
+        <ChevronRight width={20} height={20} className="text-ink-faint" />
+      </Link>
 
       <NotificationSettings />
 

@@ -362,6 +362,7 @@ export function EventForm({
             value={assignments}
             onChange={setAssignments}
             initialAssignments={initial?.assignments}
+            eventDate={date}
           />
         )}
 

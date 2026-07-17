@@ -9,7 +9,8 @@ import { EmptyState } from './EmptyState';
 import { EventCardSkeleton, SkeletonList } from './Skeleton';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
-import { Plus, Pencil, Trash } from './Icons';
+import Link from 'next/link';
+import { Plus, Pencil, Trash, CalendarOff } from './Icons';
 import { EventForm } from '@/components/leader/EventForm';
 import { apiFetch } from '@/lib/api-client';
 import { formatEventDate } from '@/lib/dates';
@@ -82,9 +83,19 @@ export function EventsScreen({
           <h1 className="page-title mt-2">Events</h1>
         </div>
         {canManage && (
-          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
-            <Plus width={18} height={18} /> Add
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/availability/team"
+              className="btn-ghost !px-3 !py-3"
+              aria-label="Team availability — who's away"
+              title="Who's away"
+            >
+              <CalendarOff width={18} height={18} />
+            </Link>
+            <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
+              <Plus width={18} height={18} /> Add
+            </button>
+          </div>
         )}
       </header>
 

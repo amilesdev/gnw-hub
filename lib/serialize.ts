@@ -7,7 +7,9 @@ import type {
   PollChoice,
   Call,
   VocalPart,
+  Unavailability,
 } from '@prisma/client';
+import { toYmd } from '@/lib/dates';
 
 // One assigned singer. The display name is resolved at read time, so renaming a
 // member updates every event without touching the assignment rows.
@@ -153,6 +155,34 @@ export function serializePrayerRequest(p: PrayerRequest): PrayerRequestDTO {
     ...p,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+  };
+}
+
+// A member's blackout date/range. Dates are plain "YYYY-MM-DD" (UTC calendar
+// days) so the client can drop them straight into an <input type="date"> and
+// format for display without re-parsing an ISO timestamp. `userName`/`part` are
+// populated only on leader reads (the team overview) — omitted on a member
+// reading their own list.
+export type UnavailabilityDTO = {
+  id: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  userName?: string;
+  part?: string | null;
+};
+
+export function serializeUnavailability(
+  u: Unavailability & { user?: { name: string; part: string | null } },
+): UnavailabilityDTO {
+  return {
+    id: u.id,
+    userId: u.userId,
+    startDate: toYmd(u.startDate),
+    endDate: toYmd(u.endDate),
+    reason: u.reason,
+    ...(u.user ? { userName: u.user.name, part: u.user.part } : {}),
   };
 }
 

@@ -143,6 +143,22 @@ export const prayerRequestSchema = z.object({
   body: z.string().min(1, 'Prayer request required').max(2000),
 });
 
+// A member's blackout date (or range). Dates are "YYYY-MM-DD"; those sort
+// lexicographically, so a plain string compare enforces end-on-or-after-start
+// without parsing. `userId` is leader-only (mark availability on a member's
+// behalf) and ignored for a member marking their own — the API decides whose.
+export const availabilitySchema = z
+  .object({
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date required'),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date required'),
+    reason: z.string().max(200).optional().nullable(),
+    userId: z.string().min(1).optional(),
+  })
+  .refine((d) => d.endDate >= d.startDate, {
+    message: 'End date cannot be before the start date',
+    path: ['endDate'],
+  });
+
 export const pollSchema = z
   .object({
     question: z.string().trim().min(1, 'Question is required').max(300),

@@ -144,6 +144,29 @@ model User {
   startedCalls Call[] // group calls this user (a leader) started
 
   eventAssignments EventAssignment[] // singing parts this user is assigned on services
+
+  unavailability Unavailability[] // dates this user has marked themselves away
+}
+
+// A date (or date range) a member has marked themselves unavailable. Whole-day:
+// if you're out on a date you're out for every event that day — there's no
+// per-event-type granularity. The range is an inclusive span of UTC calendar
+// days (single day → startDate == endDate), matching Event.date's UTC-midnight
+// convention (see lib/dates.ts). Leaders read these when scheduling so an away
+// member isn't put on that Sunday/rehearsal; a member can also be shown as away
+// on a service they're already assigned to.
+model Unavailability {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime // inclusive, UTC-midnight calendar day
+  endDate   DateTime // inclusive, UTC-midnight calendar day (== startDate for one day)
+  reason    String? // optional free-text ("vacation", "work")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([startDate, endDate]) // overlap lookups for "who's away on date X"
 }
 
 // A single device's Web Push subscription. One user can have several (phone,

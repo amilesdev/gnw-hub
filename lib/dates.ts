@@ -79,6 +79,27 @@ export function parseCalendarDate(ymd: string): Date {
   return new Date(`${ymd}T00:00:00.000Z`);
 }
 
+/** "YYYY-MM-DD" from a UTC-midnight calendar date — the inverse of parseCalendarDate. */
+export function toYmd(date: Date): string {
+  return new Date(date).toISOString().slice(0, 10);
+}
+
+/**
+ * Every "YYYY-MM-DD" from start to end inclusive (UTC calendar days). Used to
+ * expand an availability range into its individual days for calendar dots and
+ * day-by-day grouping. Capped at ~1 year as a guard against a pathological range.
+ */
+export function eachDayYmd(startYmd: string, endYmd: string): string[] {
+  const out: string[] = [];
+  const cur = parseCalendarDate(startYmd);
+  const end = parseCalendarDate(endYmd);
+  for (let i = 0; cur <= end && i < 366; i++) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
 /**
  * Initial occurrence dates for a newly created event.
  * `once` → a single date. Recurring → every cadence slot from the seed that

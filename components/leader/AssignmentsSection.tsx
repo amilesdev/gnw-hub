@@ -32,15 +32,21 @@ export function AssignmentsSection({
   value,
   onChange,
   initialAssignments,
+  eventDate,
 }: {
   value: AssignmentMap;
   onChange: (next: AssignmentMap) => void;
   initialAssignments?: EventAssignmentDTO[];
+  /** The event's date ("YYYY-MM-DD"); drives the "Away" flag on each vocalist. */
+  eventDate?: string;
 }) {
   const count = Object.keys(value).length;
   const [open, setOpen] = useState(count > 0);
   const [members, setMembers] = useState<MemberRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // userIds marked unavailable on eventDate. Advisory only — a leader can still
+  // assign an away member (warn, don't block).
+  const [awayIds, setAwayIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -55,6 +61,25 @@ export function AssignmentsSection({
       active = false;
     };
   }, []);
+
+  // Refetch who's away whenever the chosen date changes.
+  useEffect(() => {
+    if (!eventDate) {
+      setAwayIds(new Set());
+      return;
+    }
+    let active = true;
+    apiFetch<{ userIds: string[] }>(`/api/availability?date=${eventDate}`)
+      .then(({ userIds }) => {
+        if (active) setAwayIds(new Set(userIds));
+      })
+      .catch(() => {
+        if (active) setAwayIds(new Set());
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventDate]);
 
   // The pickable roster: active vocalists, plus anyone already assigned to this
   // event who has since left the vocal section (so they stay visible/removable).
@@ -133,6 +158,7 @@ export function AssignmentsSection({
                     {ordered.map((c) => {
                       const on = value[c.id] === part;
                       const elsewhere = value[c.id] && !on ? value[c.id] : null;
+                      const away = awayIds.has(c.id);
                       return (
                         <button
                           key={c.id}
@@ -142,21 +168,40 @@ export function AssignmentsSection({
                           aria-pressed={on}
                           className={cn(
                             'row-press relative flex w-32 shrink-0 snap-start flex-col justify-between rounded-2xl border px-3.5 py-3 text-left transition',
-                            on ? 'border-accent bg-accent/10 shadow-pop' : 'border-line bg-surface',
+                            // An away member picked anyway gets a warning outline; otherwise
+                            // the usual selected/unselected treatment. Away-but-unpicked cards
+                            // dim to de-emphasize them without hiding them (still assignable).
+                            on && away
+                              ? 'border-warn bg-warn/10 shadow-pop'
+                              : on
+                                ? 'border-accent bg-accent/10 shadow-pop'
+                                : 'border-line bg-surface',
                             elsewhere && 'opacity-40',
+                            away && !on && !elsewhere && 'opacity-60',
                           )}
                         >
                           <span
                             className={cn(
                               'grid h-5 w-5 place-items-center rounded-md',
-                              on ? 'bg-accent text-white' : 'border border-line',
+                              on ? (away ? 'bg-warn text-white' : 'bg-accent text-white') : 'border border-line',
                             )}
                           >
                             {on && <Check width={13} height={13} />}
                           </span>
                           <span className="mt-2 block truncate text-sm font-semibold">{c.name}</span>
-                          <span className="truncate text-xs text-ink-faint">
-                            {elsewhere ? `On ${elsewhere.toLowerCase()}` : c.part ?? 'Vocalist'}
+                          <span
+                            className={cn(
+                              'truncate text-xs',
+                              away ? 'font-semibold text-warn' : 'text-ink-faint',
+                            )}
+                          >
+                            {away
+                              ? on
+                                ? 'Away · assigned'
+                                : 'Away this day'
+                              : elsewhere
+                                ? `On ${elsewhere.toLowerCase()}`
+                                : c.part ?? 'Vocalist'}
                           </span>
                         </button>
                       );
