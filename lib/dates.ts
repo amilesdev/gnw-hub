@@ -143,6 +143,30 @@ export function formatEventDate(date: Date): string {
   });
 }
 
+/**
+ * Compact inclusive date range for display, from two "YYYY-MM-DD" keys.
+ * Single day → "Sun, Jan 5"; same month → "Jan 5 – 20"; spanning months →
+ * "Jan 28 – Feb 3". Read in UTC like every other calendar-date helper.
+ */
+export function formatDateRange(startYmd: string, endYmd: string): string {
+  if (startYmd === endYmd) return formatEventDate(parseCalendarDate(startYmd));
+  const start = parseCalendarDate(startYmd);
+  const end = parseCalendarDate(endYmd);
+  const sameMonth =
+    start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth();
+  const startLabel = start.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  const endLabel = end.toLocaleDateString('en-US', {
+    ...(sameMonth ? {} : { month: 'short' }),
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  return `${startLabel} – ${endLabel}`;
+}
+
 /** Convert "HH:mm" 24h to a friendly "9:00 AM" label. */
 export function formatTimeLabel(time: string): string {
   if (!time) return '';
