@@ -144,15 +144,9 @@ export function ProfileView({ userId, name, role, part, image }: Props) {
             {photoError}
           </p>
         )}
-        {avatar && !photoBusy && (
-          <button
-            type="button"
-            onClick={removePhoto}
-            className="row-press mt-2 text-sm font-semibold text-ink-faint"
-          >
-            Remove photo
-          </button>
-        )}
+        {/* "Remove photo" control intentionally omitted for now — to be moved
+            elsewhere. `removePhoto` is kept and still wired for that future spot. */}
+        {void removePhoto}
       </header>
 
       {/* Preferences group: Appearance · My Availability · Notifications */}
