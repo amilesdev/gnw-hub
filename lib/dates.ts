@@ -2,16 +2,36 @@ import type { RepeatCadence } from '@prisma/client';
 
 export const UPCOMING_WINDOW_DAYS = 7;
 
+// The worship team runs on Eastern time (see lib/prayer-call.ts, lib/bible.ts).
+// An event's stored `date` is the intended *Eastern* calendar day anchored to
+// UTC midnight (a Sunday service = "...T00:00:00.000Z" on that Sunday).
+export const APP_TIME_ZONE = 'America/New_York';
+
 // Event dates represent a calendar day with no time-of-day meaning (the
 // time-of-day lives in the separate `time` string). To stay consistent between
 // the local dev server and Vercel's UTC server — and between server and browser
 // — every calendar-date value is anchored to UTC midnight and read with UTC
 // getters. Mixing local and UTC is what made a Sunday render as Saturday.
 
-/** Start of today at 00:00 UTC. */
+/**
+ * Start of "today" — the current *Eastern* calendar day, anchored to UTC
+ * midnight to match how event dates are stored.
+ *
+ * Must NOT use the raw UTC calendar day: on a Friday evening in Eastern the
+ * clock in UTC has already rolled to Saturday, so a UTC "today" made the Sunday
+ * service read "in 1 day" while it was still Friday for the team (and "Today" on
+ * Saturday night). Deriving the day in America/New_York keeps the countdown on
+ * the team's wall clock regardless of where this runs (Vercel is UTC).
+ */
 export function startOfToday(): Date {
-  const n = new Date();
-  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+  // en-CA formats as "YYYY-MM-DD"; take the Eastern calendar day for right now.
+  const ymd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  return new Date(`${ymd}T00:00:00.000Z`);
 }
 
 /**
