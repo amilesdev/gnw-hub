@@ -135,7 +135,10 @@ export function SongBandFields({
         <input
           ref={fileRef}
           type="file"
-          accept="audio/*"
+          // Explicit extensions alongside `audio/*` — iOS Safari greys out
+          // files it can't MIME-classify as audio, so extension matching is
+          // what actually lets you pick .m4a/.wav/.flac/etc. on a phone.
+          accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.webm,.flac,.mp4"
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0];
