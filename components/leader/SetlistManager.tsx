@@ -11,20 +11,9 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import Link from 'next/link';
 import { Plus, Pencil, Trash, Music, ChevronRight, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
-import { formatMonthLabel, formatEventDate } from '@/lib/dates';
+import { formatEventDate } from '@/lib/dates';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; setlist: SetlistDTO } | null;
-
-/** Group setlists into ordered [month, setlists] pairs (input is pre-sorted by the API). */
-function groupByMonth(setlists: SetlistDTO[]): [string, SetlistDTO[]][] {
-  const map = new Map<string, SetlistDTO[]>();
-  for (const s of setlists) {
-    const list = map.get(s.month) ?? [];
-    list.push(s);
-    map.set(s.month, list);
-  }
-  return Array.from(map.entries());
-}
 
 export function SetlistManager() {
   const [setlists, setSetlists] = useState<SetlistDTO[]>([]);
@@ -86,10 +75,7 @@ export function SetlistManager() {
         <EmptyState message="No setlists yet. Create one and start adding songs for the month." />
       ) : (
         <div className="space-y-6">
-          {groupByMonth(setlists).map(([month, list]) => (
-            <section key={month} className="space-y-3">
-              <h2 className="eyebrow">{formatMonthLabel(month)}</h2>
-              {list.map((s) => {
+          {setlists.map((s) => {
                 return (
                   <section key={s.id} className="animate-rise space-y-3">
                     <div>
@@ -146,8 +132,6 @@ export function SetlistManager() {
                   </section>
                 );
               })}
-            </section>
-          ))}
         </div>
       )}
 

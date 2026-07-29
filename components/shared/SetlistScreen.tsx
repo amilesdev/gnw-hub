@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
@@ -8,18 +8,11 @@ import { EmptyState } from './EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
 import { Music, ChevronRight, Clock, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
-import { formatMonthLabel, monthKey, formatEventDate } from '@/lib/dates';
+import { formatEventDate } from '@/lib/dates';
 
 export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDTO[] } = {}) {
   const [setlists, setSetlists] = useState<SetlistDTO[]>(initialSetlists ?? []);
   const [loading, setLoading] = useState(initialSetlists === undefined);
-  const [activeMonth, setActiveMonth] = useState<string>(() =>
-    // When seeded from the server and the current month has no setlist, open the
-    // newest one — the same fallback the fetch path applies below.
-    initialSetlists?.length && !initialSetlists.some((s) => s.month === monthKey())
-      ? initialSetlists[0].month
-      : monthKey(),
-  );
   const [song, setSong] = useState<SongDTO | null>(null);
 
   useEffect(() => {
@@ -28,9 +21,6 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
       try {
         const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
         setSetlists(setlists);
-        if (setlists.length && !setlists.some((s) => s.month === monthKey())) {
-          setActiveMonth(setlists[0].month);
-        }
       } finally {
         setLoading(false);
       }
@@ -38,8 +28,8 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const months = useMemo(() => Array.from(new Set(setlists.map((s) => s.month))).sort().reverse(), [setlists]);
-  const monthSetlists = setlists.filter((s) => s.month === activeMonth && s.songs.length > 0);
+  // One flat list, soonest date first (the API/server already orders it so).
+  const visibleSetlists = setlists.filter((s) => s.songs.length > 0);
 
   return (
     <div className="space-y-5 pt-2">
@@ -53,35 +43,16 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
         </Link>
       </header>
 
-      {months.length > 1 && (
-        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
-          {months.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setActiveMonth(m)}
-              className={
-                m === activeMonth
-                  ? 'chip shrink-0 bg-accent px-3.5 py-2 text-white transition active:scale-95'
-                  : 'chip shrink-0 bg-surface-2 px-3.5 py-2 text-ink-soft transition active:scale-95'
-              }
-            >
-              {formatMonthLabel(m)}
-            </button>
-          ))}
-        </div>
-      )}
-
       {loading ? (
         <SkeletonList>
           <Skeleton className="h-6 w-44" />
           <SetlistSkeleton />
         </SkeletonList>
-      ) : monthSetlists.length === 0 ? (
-        <EmptyState icon={Clock} message="No setlist for this month yet. Sit tight — your leaders are picking the songs." />
+      ) : visibleSetlists.length === 0 ? (
+        <EmptyState icon={Clock} message="No setlists yet. Sit tight — your leaders are picking the songs." />
       ) : (
         <div className="space-y-6">
-          {monthSetlists.map((sl) => (
+          {visibleSetlists.map((sl) => (
             <section key={sl.id} className="space-y-3">
               <div>
                 <h2 className="font-display text-xl font-semibold">

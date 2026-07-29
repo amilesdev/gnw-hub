@@ -71,19 +71,15 @@ export const setlistInclude = {
 } as const;
 
 /**
- * Order setlists for a listing: months newest-first, then within a month by the
- * setlist's earliest linked event date — not createdAt — so a later-dated
- * setlist (e.g. Aug 9) never sits above a nearer one (Aug 2) just because it was
- * created first. Mutates and returns the array. Shared by GET /api/setlists and
- * its server-side mirror so the two stay in lockstep.
+ * Order setlists for a listing as one flat chronological list: soonest linked
+ * event first, so the most immediate setlist (e.g. Aug 2) sits above later ones
+ * (Aug 9) regardless of which was created first, and dates flow straight across
+ * a month boundary with no grouping. Mutates and returns the array. Shared by
+ * GET /api/setlists and its server-side mirror so the two stay in lockstep.
  */
-export function sortSetlistsForListing<T extends { month: string; events: { date: Date }[] }>(
-  setlists: T[],
-): T[] {
+export function sortSetlistsForListing<T extends { events: { date: Date }[] }>(setlists: T[]): T[] {
   const earliest = (s: T) => s.events.reduce((min, e) => Math.min(min, e.date.getTime()), Infinity);
-  return setlists.sort((a, b) =>
-    a.month < b.month ? 1 : a.month > b.month ? -1 : earliest(a) - earliest(b),
-  );
+  return setlists.sort((a, b) => earliest(a) - earliest(b));
 }
 
 /** Flatten a SetlistSong join (+ its library Song) into the wire DTO. */
