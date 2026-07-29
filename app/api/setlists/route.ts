@@ -24,8 +24,17 @@ export async function GET(req: Request) {
       ...(eventId ? { events: { some: { id: eventId } } } : {}),
     },
     include: setlistInclude,
-    orderBy: [{ month: 'desc' }, { createdAt: 'asc' }],
+    orderBy: { month: 'desc' }, // months newest-first; within a month we sort below
   });
+
+  // Within a month, order by each setlist's earliest linked event date — not by
+  // createdAt — so a later-dated setlist (e.g. Aug 9) never sits above a nearer
+  // one (Aug 2) just because it happened to be created first.
+  const earliestEvent = (s: (typeof setlists)[number]) =>
+    s.events.reduce((min, e) => Math.min(min, e.date.getTime()), Infinity);
+  setlists.sort((a, b) =>
+    a.month < b.month ? 1 : a.month > b.month ? -1 : earliestEvent(a) - earliestEvent(b),
+  );
 
   return NextResponse.json({ setlists: setlists.map(serializeSetlist) });
 }
