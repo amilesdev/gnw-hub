@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { serializeSetlist, setlistInclude, type SetlistDTO } from '@/lib/setlist-serialize';
+import { serializeSetlist, setlistInclude, sortSetlistsForListing, type SetlistDTO } from '@/lib/setlist-serialize';
 import { serializeEvent, eventInclude, type EventDTO } from '@/lib/serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { ensureRecurringWindow } from '@/lib/recurrence';
@@ -14,11 +14,8 @@ import { startOfToday } from '@/lib/dates';
 /** All setlists, newest month first — mirror of GET /api/setlists (no filters). */
 export async function getAllSetlists(): Promise<SetlistDTO[]> {
   await pruneExpiredSetlists();
-  const setlists = await prisma.setlist.findMany({
-    include: setlistInclude,
-    orderBy: [{ month: 'desc' }, { createdAt: 'asc' }],
-  });
-  return setlists.map(serializeSetlist);
+  const setlists = await prisma.setlist.findMany({ include: setlistInclude });
+  return sortSetlistsForListing(setlists).map(serializeSetlist);
 }
 
 /** Upcoming events from today onward — mirror of GET /api/events?scope=all. */
