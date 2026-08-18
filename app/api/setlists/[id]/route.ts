@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { serializeSetlist, setlistInclude } from '@/lib/setlist-serialize';
+import { leadUserIdsSchema, leadsExist, applyLeads } from '@/lib/setlist-leads';
 import { monthKey } from '@/lib/dates';
 import { revalidateSetlists } from '@/lib/cache-tags';
 
@@ -27,6 +28,8 @@ const patchSchema = z.object({
         songTitle: z.string().min(1).max(200),
         artist: z.string().max(200).optional().nullable(),
         youtubeLink: z.string().optional().nullable(),
+        // Omitted → this song's leads are left as they are; `[]` clears them.
+        leadUserIds: leadUserIdsSchema,
       }),
     )
     .optional(),
@@ -38,7 +41,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
-  const existing = await prisma.setlist.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.setlist.findUnique({ where: { id }, select: { id: true, createdAt: true } });
   if (!existing) return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
 
   const body = await req.json().catch(() => null);
@@ -50,6 +53,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   // Re-linking events re-derives the setlist's month from the earliest one.
   let nextMonth: string | undefined;
+  let earliestDate: Date | undefined;
   if (eventIds) {
     const events = await prisma.event.findMany({
       where: { id: { in: eventIds } },
@@ -62,7 +66,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
     if (events.some((e) => e.setlistId && e.setlistId !== id)) {
       return NextResponse.json({ error: 'One or more selected events already have a setlist.' }, { status: 409 });
     }
-    nextMonth = monthKey(events.reduce((a, b) => (a.date <= b.date ? a : b)).date);
+    earliestDate = events.reduce((a, b) => (a.date <= b.date ? a : b)).date;
+    nextMonth = monthKey(earliestDate);
+  }
+
+  if (songs && !(await leadsExist(songs))) {
+    return NextResponse.json({ error: 'One or more song leaders no longer exist.' }, { status: 404 });
+  }
+
+  // The date the "who led it last" memory is stamped with: the setlist's own
+  // date, i.e. its earliest linked event — the incoming set when the links are
+  // changing, otherwise what's already saved. A setlist with no events left
+  // (they were deleted; it's about to be pruned) falls back to its created date.
+  let setlistDate = earliestDate;
+  if (songs && !setlistDate) {
+    const linked = await prisma.event.findMany({ where: { setlistId: id }, select: { date: true } });
+    setlistDate = linked.length
+      ? linked.reduce((a, b) => (a.date <= b.date ? a : b)).date
+      : existing.createdAt;
   }
 
   await prisma.$transaction(async (tx) => {
@@ -96,19 +117,31 @@ export async function PATCH(req: Request, { params }: Ctx) {
             where: { id: s.id },
             data: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null },
           });
-          await tx.setlistSong.upsert({
+          const link = await tx.setlistSong.upsert({
             where: { setlistId_songId: { setlistId: id, songId: s.id } },
             create: { setlistId: id, songId: s.id, position: i },
             update: { position: i },
           });
+          await applyLeads(tx, {
+            setlistSongId: link.id,
+            songId: s.id,
+            setlistDate: setlistDate!,
+            leadUserIds: s.leadUserIds,
+          });
         } else {
           // New song: add it to the library and link it in.
-          await tx.setlistSong.create({
+          const link = await tx.setlistSong.create({
             data: {
               setlist: { connect: { id } },
               position: i,
               song: { create: { songTitle: s.songTitle, artist: s.artist || null, youtubeLink: s.youtubeLink || null } },
             },
+          });
+          await applyLeads(tx, {
+            setlistSongId: link.id,
+            songId: link.songId,
+            setlistDate: setlistDate!,
+            leadUserIds: s.leadUserIds,
           });
         }
       }

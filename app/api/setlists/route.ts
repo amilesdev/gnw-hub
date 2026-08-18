@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { serializeSetlist, setlistInclude, sortSetlistsForListing } from '@/lib/setlist-serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
+import { leadUserIdsSchema, leadsExist, applyLeads } from '@/lib/setlist-leads';
 import { monthKey } from '@/lib/dates';
 import { revalidateSetlists } from '@/lib/cache-tags';
 
@@ -40,6 +41,8 @@ const createSchema = z.object({
         songTitle: z.string().min(1).max(200),
         artist: z.string().max(200).optional().nullable(),
         youtubeLink: z.string().optional().nullable(),
+        // Who leads this song on this setlist.
+        leadUserIds: leadUserIdsSchema,
       }),
     )
     .default([]),
@@ -67,33 +70,52 @@ export async function POST(req: Request) {
   if (events.some((e) => e.setlistId)) {
     return NextResponse.json({ error: 'One or more selected events already have a setlist.' }, { status: 409 });
   }
+  if (!(await leadsExist(songs))) {
+    return NextResponse.json({ error: 'One or more song leaders no longer exist.' }, { status: 404 });
+  }
 
   // Month groups the setlist under its earliest linked event.
   const earliest = events.reduce((a, b) => (a.date <= b.date ? a : b));
 
-  const setlist = await prisma.setlist.create({
-    data: {
-      name: name?.trim() || null,
-      month: monthKey(earliest.date),
-      events: { connect: eventIds.map((id) => ({ id })) },
-      // Each song is either linked from the library (id present) or created
-      // fresh in the library and linked in — both at its position in the order.
-      songs: {
-        create: songs.map((s, i) => ({
-          position: i,
-          song: s.id
-            ? { connect: { id: s.id } }
-            : {
-                create: {
-                  songTitle: s.songTitle,
-                  artist: s.artist || null,
-                  youtubeLink: s.youtubeLink || null,
+  const setlist = await prisma.$transaction(async (tx) => {
+    const created = await tx.setlist.create({
+      data: {
+        name: name?.trim() || null,
+        month: monthKey(earliest.date),
+        events: { connect: eventIds.map((id) => ({ id })) },
+        // Each song is either linked from the library (id present) or created
+        // fresh in the library and linked in — both at its position in the order.
+        songs: {
+          create: songs.map((s, i) => ({
+            position: i,
+            song: s.id
+              ? { connect: { id: s.id } }
+              : {
+                  create: {
+                    songTitle: s.songTitle,
+                    artist: s.artist || null,
+                    youtubeLink: s.youtubeLink || null,
+                  },
                 },
-              },
-        })),
+          })),
+        },
       },
-    },
-    include: setlistInclude,
+      include: { songs: { orderBy: { position: 'asc' } } },
+    });
+
+    // Leaders go on afterwards rather than nested in the create above: a
+    // brand-new song's library id only exists once the row is written, and the
+    // "who led it last" memory is keyed on it.
+    for (const link of created.songs) {
+      await applyLeads(tx, {
+        setlistSongId: link.id,
+        songId: link.songId,
+        setlistDate: earliest.date,
+        leadUserIds: songs[link.position]?.leadUserIds,
+      });
+    }
+
+    return tx.setlist.findUniqueOrThrow({ where: { id: created.id }, include: setlistInclude });
   });
 
   revalidateSetlists();

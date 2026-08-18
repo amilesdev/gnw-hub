@@ -3,13 +3,24 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { revalidateSetlists } from '@/lib/cache-tags';
-import type { LibrarySongDTO, LyricChart } from '@/lib/setlist-serialize';
+import { leadUserSelect, type LeadDTO, type LibrarySongDTO, type LyricChart } from '@/lib/setlist-serialize';
 import type { Song } from '@prisma/client';
 
-// Shape a library Song (+ its setlist-usage count) into the wire DTO.
-function toLibraryDTO(s: Song, usageCount: number): LibrarySongDTO {
+// The rows Prisma hands back for a song's remembered leaders.
+type LastLeadRow = { user: LeadDTO };
+
+// The `include` a library read needs for `lastLeads` to come out populated.
+const libraryInclude = {
+  _count: { select: { setlistSongs: true } },
+  lastLeads: { include: { user: { select: leadUserSelect } } },
+} as const;
+
+// Shape a library Song (+ its setlist-usage count and remembered leaders) into
+// the wire DTO.
+function toLibraryDTO(s: Song, usageCount: number, lastLeads: LastLeadRow[] = []): LibrarySongDTO {
   return {
     id: s.id,
+    lastLeads: lastLeads.map((l) => l.user).sort((a, b) => a.name.localeCompare(b.name)),
     songTitle: s.songTitle,
     artist: s.artist,
     youtubeLink: s.youtubeLink,
@@ -44,10 +55,10 @@ export async function GET(req: Request) {
         }
       : undefined,
     orderBy: { songTitle: 'asc' },
-    include: { _count: { select: { setlistSongs: true } } },
+    include: libraryInclude,
   });
 
-  const library = songs.map((s) => toLibraryDTO(s, s._count.setlistSongs));
+  const library = songs.map((s) => toLibraryDTO(s, s._count.setlistSongs, s.lastLeads));
   return NextResponse.json({ songs: library });
 }
 

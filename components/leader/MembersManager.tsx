@@ -20,6 +20,7 @@ export type MemberRow = {
   section: Section | null;
   part: Part | null;
   status: 'pending' | 'active';
+  image: string | null;
   isSuperAdmin: boolean;
   inviteExpiry: string | null;
   inviteUrl: string | null;

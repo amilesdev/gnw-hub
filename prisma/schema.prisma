@@ -149,6 +149,9 @@ model User {
   eventAssignments EventAssignment[] // singing parts this user is assigned on services
 
   unavailability Unavailability[] // dates this user has marked themselves away
+
+  songLeads     SongLead[] // songs this user is set to lead, per setlist
+  lastSongLeads SongLastLead[] // library songs remembering this user as the last lead
 }
 
 // A date (or date range) a member has marked themselves unavailable. Whole-day:
@@ -338,10 +341,15 @@ model Song {
   lyricChart          Json?
   lyricDocUrl         String?
   lyricChartUpdatedAt DateTime?
+  // The date of the newest setlist that named a leader for this song (that
+  // setlist's earliest linked event). Guards the memory in `lastLeads` against
+  // being overwritten by an edit to an *older* setlist. Null → never led.
+  lastLeadAt          DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   setlistSongs SetlistSong[] // placements of this song across setlists
+  lastLeads    SongLastLead[] // remembered leaders — see SongLastLead
 
   @@index([songTitle]) // library browse/search by title
 }
@@ -358,9 +366,50 @@ model SetlistSong {
   position  Int // ordering within the setlist
   createdAt DateTime @default(now())
 
+  // Who leads this song *this time around* (see SongLead).
+  leads SongLead[]
+
   @@unique([setlistId, songId]) // a song appears at most once per setlist
   @@index([setlistId, position])
   @@index([songId])
+}
+
+// Who leads a song for one setlist. Deliberately hangs off SetlistSong, not
+// Song: leads switch off, so it's a property of the placement ("Great Are You
+// Lord, Aug 16"), not of the library entry. Several people can share a song
+// (co-leads), hence a join table rather than a column.
+model SongLead {
+  id            String      @id @default(cuid())
+  setlistSongId String
+  setlistSong   SetlistSong @relation(fields: [setlistSongId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([setlistSongId, userId]) // one lead row per person per placement
+  @@index([setlistSongId])
+  @@index([userId])
+}
+
+// The library song's memory of who led it last — the set pre-filled when the
+// song is added to a new setlist.
+//
+// It exists as its own table because SongLead can't be the source of truth for
+// it: pruneExpiredSetlists() deletes a setlist once all its events have passed,
+// cascading that Sunday's SongLead rows away. The memory has to outlive the
+// setlist that produced it, so every setlist save copies its leads here, and
+// `Song.lastLeadAt` records which setlist's date the copy came from.
+model SongLastLead {
+  id        String   @id @default(cuid())
+  songId    String
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([songId, userId])
+  @@index([songId])
+  @@index([userId])
 }
 
 model Announcement {

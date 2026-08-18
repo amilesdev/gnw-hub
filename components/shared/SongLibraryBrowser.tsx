@@ -9,10 +9,14 @@ import { Skeleton, SkeletonList } from './Skeleton';
 import { Music, ChevronRight, ChevronLeft, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 
-/** Strip library-only metadata so a song can feed the read-only SongDetail view. */
+/**
+ * Strip library-only metadata so a song can feed the read-only SongDetail view.
+ * `leads` stays empty: who leads a song belongs to a setlist, and the library
+ * looks at the song on its own.
+ */
 function libToSong(s: LibrarySongDTO): SongDTO {
-  const { usageCount: _u, updatedAt: _up, ...rest } = s;
-  return { ...rest, position: 0 };
+  const { usageCount: _u, updatedAt: _up, lastLeads: _l, ...rest } = s;
+  return { ...rest, position: 0, leads: [] };
 }
 
 /**

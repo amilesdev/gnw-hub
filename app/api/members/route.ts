@@ -21,6 +21,7 @@ export async function GET() {
       section: true,
       part: true,
       status: true,
+      image: true, // profile picture, so pickers can show faces not initials
       isSuperAdmin: true,
       inviteExpiry: true,
       inviteToken: true,

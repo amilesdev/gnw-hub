@@ -1,4 +1,4 @@
-import type { Setlist, Song, SetlistSong, Event } from '@prisma/client';
+import type { Setlist, Song, SetlistSong, SongLead, Event } from '@prisma/client';
 
 // A single line of a parsed lyric chart. `section` lines are verse/chorus/etc.
 // labels; `lyric` lines are sung text; `blank` lines are spacers.
@@ -14,13 +14,22 @@ export type LyricChart = {
   parsedAt: string; // ISO timestamp
 };
 
+// Someone leading a song. Name and photo travel with the id so every surface
+// can render the person without a second lookup.
+export type LeadDTO = { id: string; name: string; image: string | null };
+
+// The user fields a lead row carries. Kept in one place so the Prisma `select`
+// and the DTO can't drift apart.
+export const leadUserSelect = { id: true, name: true, image: true } as const;
+
 // `id` is the library Song's id — the stable identity used for audio/lyric
 // edits (PATCH /api/songs/[id]) and for reconciling a setlist's membership.
-// `position` comes from the SetlistSong join (a song can sit at a different
-// spot in each setlist that uses it).
+// `position` and `leads` come from the SetlistSong join (a song can sit at a
+// different spot — and be led by different people — in each setlist).
 export type SongDTO = {
   id: string;
   position: number;
+  leads: LeadDTO[];
   songTitle: string;
   artist: string | null;
   youtubeLink: string | null;
@@ -39,8 +48,13 @@ export type SongDTO = {
 // A library song as shown on the Song Library screen: the reusable content plus
 // how many setlists currently reference it (so a leader can tell what's in
 // rotation vs. safe to retire). It's a SongDTO without the per-setlist
-// `position`, and with library-only metadata.
-export type LibrarySongDTO = Omit<SongDTO, 'position'> & {
+// `position`/`leads`, and with library-only metadata.
+//
+// `lastLeads` is who led it in the newest setlist that names anyone — the
+// suggestion the setlist form pre-fills when the song is added again. Empty
+// when the song has never had a lead.
+export type LibrarySongDTO = Omit<SongDTO, 'position' | 'leads'> & {
+  lastLeads: LeadDTO[];
   usageCount: number;
   updatedAt: string;
 };
@@ -58,15 +72,19 @@ export type SetlistDTO = {
 
 type LinkedEvent = Pick<Event, 'id' | 'eventName' | 'date' | 'time'>;
 
-// A setlist's song as read from the DB: the join row (carrying its position)
-// with the library Song it points at.
-export type SongJoin = SetlistSong & { song: Song };
+// A setlist's song as read from the DB: the join row (carrying its position and
+// lead rows) with the library Song it points at.
+export type SongJoin = SetlistSong & { song: Song; leads: (SongLead & { user: LeadDTO })[] };
 type FullSetlist = Setlist & { songs: SongJoin[]; events: LinkedEvent[] };
 
 // The Prisma `include` every setlist read should use, so the DTO always has the
-// joined library songs (ordered) and linked events to serialize from.
+// joined library songs (ordered, with their leads) and linked events to
+// serialize from. Miss it and every song serializes with no leaders.
 export const setlistInclude = {
-  songs: { include: { song: true }, orderBy: { position: 'asc' } },
+  songs: {
+    include: { song: true, leads: { include: { user: { select: leadUserSelect } } } },
+    orderBy: { position: 'asc' },
+  },
   events: { select: { id: true, eventName: true, date: true, time: true } },
 } as const;
 
@@ -88,6 +106,8 @@ export function serializeSong(row: SongJoin): SongDTO {
   return {
     id: song.id,
     position: row.position,
+    // Stable order so the same co-leads always read the same way on every screen.
+    leads: [...row.leads].map((l) => l.user).sort((a, b) => a.name.localeCompare(b.name)),
     songTitle: song.songTitle,
     artist: song.artist,
     youtubeLink: song.youtubeLink,

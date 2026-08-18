@@ -30,6 +30,7 @@ export default async function LeaderSettingsPage() {
       section: true,
       part: true,
       status: true,
+      image: true,
       isSuperAdmin: true,
       inviteExpiry: true,
       inviteToken: true,

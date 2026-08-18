@@ -15,10 +15,14 @@ import { Plus, Music, Pencil, ChevronLeft, Trash, Book } from '@/components/shar
 import { apiFetch } from '@/lib/api-client';
 import Link from 'next/link';
 
-/** Strip library-only metadata so the song can feed SongDTO-shaped components. */
+/**
+ * Strip library-only metadata so the song can feed SongDTO-shaped components.
+ * `leads` stays empty: who leads a song belongs to a setlist, and the library
+ * looks at the song on its own.
+ */
 function libToSong(s: LibrarySongDTO): SongDTO {
-  const { usageCount: _u, updatedAt: _up, ...rest } = s;
-  return { ...rest, position: 0 };
+  const { usageCount: _u, updatedAt: _up, lastLeads: _l, ...rest } = s;
+  return { ...rest, position: 0, leads: [] };
 }
 
 export function SongLibrary() {
