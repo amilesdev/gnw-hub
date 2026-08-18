@@ -38,6 +38,9 @@ export type ChatMessage = {
 // The LiveKit data-channel topic in-call chat rides on, kept separate from any
 // other data traffic on the room.
 const CHAT_TOPIC = 'chat';
+// How many times we'll try to hand the mic back after the OS took it away
+// before admitting defeat and showing the user as muted.
+const MIC_RESTORE_ATTEMPTS = 3;
 const chatEncoder = new TextEncoder();
 const chatDecoder = new TextDecoder();
 
@@ -67,6 +70,11 @@ type CallContextValue = {
   messages: ChatMessage[];
   /** Broadcast a chat message to everyone in the call. Trims/ignores blanks. */
   sendChat: (text: string) => void;
+  /** Messages from other people that haven't been seen yet. Lives here (not in
+   *  the call screen) so it survives minimizing back to the Hub. */
+  unreadChat: number;
+  /** Mark everything currently in `messages` as seen. */
+  markChatRead: () => void;
 };
 
 const CallCtx = createContext<CallContextValue | null>(null);
@@ -80,7 +88,20 @@ export function useCall(): CallContextValue {
 // Create the Room once, on the client only (SSR-safe: null on the server).
 function createRoom(): Room | null {
   if (typeof window === 'undefined') return null;
-  return new Room({ adaptiveStream: false, dynacast: false });
+  return new Room({
+    adaptiveStream: false,
+    dynacast: false,
+    // iOS fires `pagehide`/`freeze` when you swipe out of the app or pull the
+    // notification shade — with the default (true) LiveKit tears the room down
+    // there, which is exactly the backgrounding we want the call to survive.
+    // The provider still disconnects explicitly on leave/unmount.
+    disconnectOnPageLeave: false,
+  });
+}
+
+/** True while the page is actually on screen. Server-safe. */
+function pageVisible(): boolean {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
 }
 
 export function CallProvider({ children }: { children: ReactNode }) {
@@ -94,10 +115,23 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
   const [callStartedAt, setCallStartedAt] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // How many messages have been seen. Kept here rather than in the call screen so
+  // the unread dot survives minimizing to the Hub and coming back.
+  const [seenCount, setSeenCount] = useState(0);
 
   // Which call we're currently joining. A slow token fetch for an abandoned join
   // must not connect us to a call we've since left.
   const joiningRef = useRef<string | null>(null);
+  // What the *user* wants their mic to be. iOS mutes — and sometimes ends — the
+  // mic track whenever the app goes to the background (swipe out, notification
+  // shade, screen lock). Adopting that as "the user muted themselves" is what made
+  // people come back silently muted, so intent is tracked separately and the real
+  // track is quietly reconciled to it once we're back on screen.
+  const micIntentRef = useRef(true);
+  // Guards against stacking / looping restore attempts, which is what churns the
+  // iOS audio session (and makes it chirp) on every app switch.
+  const restoringRef = useRef(false);
+  const restoreAttemptsRef = useRef(0);
   // Mirror latest state into refs so the callbacks below can stay identity-stable
   // (empty-ish deps) — consumers that call join() in an effect won't thrash.
   const callIdRef = useRef(callId);
@@ -107,6 +141,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const resetToIdle = useCallback(() => {
     joiningRef.current = null;
+    micIntentRef.current = true;
+    restoreAttemptsRef.current = 0;
     setCallId(null);
     setCallName(null);
     setStatus('idle');
@@ -116,15 +152,49 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setMuted(false);
     setCameraOn(false);
     setMessages([]);
+    setSeenCount(0);
   }, []);
 
-  // Room lifecycle: mirror the local mic state, and fall back to idle if the
+  // Put the real mic track back in step with what the user asked for. Only ever
+  // runs while the page is on screen: touching the mic in the background is what
+  // restarts the iOS audio session, and every restart is another chirp.
+  const reconcileMic = useCallback(() => {
+    if (!room || statusRef.current !== 'connected') return;
+    if (!pageVisible()) return;
+    if (restoringRef.current) return;
+    const want = micIntentRef.current;
+    if (room.localParticipant.isMicrophoneEnabled === want) {
+      restoreAttemptsRef.current = 0;
+      return;
+    }
+    // Don't retry forever if the OS keeps refusing the mic (a phone call holding
+    // it, permission revoked mid-call). After a few tries, show the user as muted
+    // rather than lying about being live — tapping Unmute starts a fresh round.
+    if (restoreAttemptsRef.current >= MIC_RESTORE_ATTEMPTS) return;
+    restoreAttemptsRef.current += 1;
+    restoringRef.current = true;
+    void room.localParticipant
+      .setMicrophoneEnabled(want)
+      .catch(() => {
+        if (want && restoreAttemptsRef.current >= MIC_RESTORE_ATTEMPTS) {
+          micIntentRef.current = false;
+          setMuted(true);
+        }
+      })
+      .finally(() => {
+        restoringRef.current = false;
+      });
+  }, [room]);
+
+  // Room lifecycle: mirror the local track state, and fall back to idle if the
   // connection drops. Cleanup disconnects the room when the app unmounts.
   useEffect(() => {
     if (!room) return;
     const syncLocal = () => {
-      setMuted(!room.localParticipant.isMicrophoneEnabled);
       setCameraOn(room.localParticipant.isCameraEnabled);
+      // The UI always shows the user's own choice — never the OS's opinion of it.
+      setMuted(!micIntentRef.current);
+      reconcileMic();
     };
     const onDisconnected = () => resetToIdle();
     // Incoming chat: decode the data-channel packet and append. Anything that
@@ -174,7 +244,30 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .off(RoomEvent.TrackUnmuted, syncLocal);
       room.disconnect();
     };
-  }, [room, resetToIdle]);
+  }, [room, resetToIdle, reconcileMic]);
+
+  // Coming back to the app is the moment to repair the mic: iOS has usually
+  // suspended (or dropped) the track while we were away. Give it a beat to hand
+  // the audio session back before asking for the mic again.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onVisible = () => {
+      if (!pageVisible()) return;
+      restoreAttemptsRef.current = 0;
+      clearTimeout(timer);
+      timer = setTimeout(reconcileMic, 400);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [reconcileMic]);
 
   const join = useCallback(
     (nextCallId: string) => {
@@ -201,6 +294,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
             await room.disconnect();
             return;
           }
+          micIntentRef.current = true;
+          restoreAttemptsRef.current = 0;
           await room.localParticipant.setMicrophoneEnabled(true);
           setCallName(conn.name);
           setMuted(false);
@@ -226,11 +321,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
     resetToIdle();
   }, [room, resetToIdle]);
 
+  // The only thing that changes mute state. Flips intent first, so the OS
+  // suspending the track later can't be mistaken for the user muting.
   const toggleMute = useCallback(() => {
     if (!room || statusRef.current !== 'connected') return;
-    const next = !room.localParticipant.isMicrophoneEnabled;
-    setMuted(!next); // optimistic; the RoomEvent listener reconciles
-    room.localParticipant.setMicrophoneEnabled(next).catch(() => setMuted(!next));
+    const next = !micIntentRef.current;
+    micIntentRef.current = next;
+    restoreAttemptsRef.current = 0;
+    setMuted(!next);
+    room.localParticipant.setMicrophoneEnabled(next).catch(() => {});
   }, [room]);
 
   const toggleCamera = useCallback(() => {
@@ -275,6 +374,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
     [room],
   );
 
+  const markChatRead = useCallback(() => setSeenCount(messages.length), [messages.length]);
+  // Only other people's messages count as unread — your own never light the dot.
+  const unreadChat = messages.slice(seenCount).filter((m) => !m.isLocal).length;
+
   const value: CallContextValue = {
     callId,
     callName,
@@ -291,6 +394,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
     stopCamera,
     messages,
     sendChat,
+    unreadChat,
+    markChatRead,
   };
 
   // Expose the LiveKit room to @livekit/components-react hooks below (participant

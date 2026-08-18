@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useTracks,
@@ -17,7 +17,7 @@ import {
   MicOff,
   Video,
   VideoOff,
-  PhoneOff,
+  DoorExit,
   ChevronDown,
   Maximize,
   X,
@@ -64,22 +64,25 @@ export function CallRoom({ callId }: { callId: string }) {
     stopCamera,
     messages,
     sendChat,
+    unreadChat,
+    markChatRead,
   } = useCall();
   const participants = useCallParticipants();
 
-  // In-call chat panel. `seenCount` tracks how many messages have been shown so
-  // the button can badge unread ones while the panel is closed.
+  // In-call chat panel. Unread bookkeeping lives in CallProvider so the dot
+  // survives minimizing to the Hub; opening the panel marks everything seen.
   const [chatOpen, setChatOpen] = useState(false);
-  const [seenCount, setSeenCount] = useState(0);
   useEffect(() => {
-    if (chatOpen) setSeenCount(messages.length);
-  }, [chatOpen, messages.length]);
-  const unread = chatOpen ? 0 : messages.length - seenCount;
+    if (chatOpen) markChatRead();
+  }, [chatOpen, messages.length, markChatRead]);
+  const unread = chatOpen ? 0 : unreadChat;
+  const toasts = useChatToasts(messages, chatOpen);
   // One camera track reference per participant (placeholder when their camera is
   // off), so the grid always has a tile for everyone.
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], {
     onlySubscribed: false,
   });
+  const orderedTracks = useVideoFirstOrder(cameraTracks);
   const elapsed = useElapsed(callStartedAt);
 
   // Which participant is enlarged (Zoom-style), if any. Only camera-on tiles can
@@ -153,7 +156,7 @@ export function CallRoom({ callId }: { callId: string }) {
           </p>
         </div>
         {/* Chat toggle — mirrors the minimize button's slot so the title stays
-            centered. Badges unread messages while the panel is closed. */}
+            centered. A quiet orange dot marks messages you haven't opened yet. */}
         <button
           type="button"
           onClick={() => setChatOpen(true)}
@@ -163,22 +166,28 @@ export function CallRoom({ callId }: { callId: string }) {
         >
           <MessageCircle width={24} height={24} />
           {unread > 0 && (
-            <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white">
-              {unread > 9 ? '9+' : unread}
-            </span>
+            <span
+              className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-unread ring-2 ring-app"
+              aria-hidden
+            />
           )}
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center py-6">
+      {/* The roster is the only part that scrolls. Header and controls stay put,
+          so Mute / Video / Leave are reachable no matter how full the call gets —
+          and the scrollbar only appears once the tiles actually overflow. */}
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto py-6">
         {connected ? (
+          // my-auto (not justify-center) keeps a short roster centered without
+          // clipping the top tiles once the grid grows past the viewport.
           <div
             className={cn(
-              'grid w-full max-w-sm gap-3',
+              'my-auto grid w-full max-w-sm gap-3 self-center',
               count <= 1 ? 'grid-cols-1' : 'grid-cols-2',
             )}
           >
-            {cameraTracks.map((ref) => {
+            {orderedTracks.map((ref) => {
               const hasVideo = isTrackReference(ref) && !ref.publication.isMuted;
               return (
                 <ParticipantTile
@@ -193,32 +202,47 @@ export function CallRoom({ callId }: { callId: string }) {
           </div>
         ) : (
           <div
-            className="h-24 w-24 rounded-full bg-accent-soft animate-breathe grain-block"
+            className="m-auto h-24 w-24 rounded-full bg-accent-soft animate-breathe grain-block"
             aria-hidden
           />
         )}
       </div>
 
-      <div className="flex items-start justify-center gap-5 pt-2">
-        <ControlButton
-          onClick={toggleMute}
-          disabled={!connected}
-          label={muted ? 'Unmute' : 'Mute'}
-          tone={muted ? 'active' : 'neutral'}
-        >
-          {muted ? <MicOff width={25} height={25} /> : <Mic width={25} height={25} />}
-        </ControlButton>
-        <ControlButton
-          onClick={toggleCamera}
-          disabled={!connected}
-          label={cameraOn ? 'Stop video' : 'Start video'}
-          tone={cameraOn ? 'active' : 'neutral'}
-        >
-          {cameraOn ? <Video width={25} height={25} /> : <VideoOff width={25} height={25} />}
-        </ControlButton>
-        <ControlButton onClick={hangUp} label="Leave" tone="danger">
-          <PhoneOff width={25} height={25} />
-        </ControlButton>
+      <div className="relative shrink-0">
+        {/* Zoom-style message pop-ups: they rise just above the controls, inside
+            the shell's safe-area padding, so they're never clipped by the bottom
+            of the phone. Tap one to open the full chat. */}
+        {toasts.length > 0 && !chatOpen && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-full z-20 mb-3 flex flex-col gap-2">
+            {toasts.map((m) => (
+              <ChatToast key={m.id} message={m} onOpen={() => setChatOpen(true)} />
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-start justify-center gap-5 pt-2">
+          <ControlButton
+            onClick={toggleMute}
+            disabled={!connected}
+            label={muted ? 'Unmute' : 'Mute'}
+            tone={muted ? 'active' : 'neutral'}
+          >
+            {muted ? <MicOff width={25} height={25} /> : <Mic width={25} height={25} />}
+          </ControlButton>
+          {/* Inverted against the mic: video *off* is the filled dark button, and
+              it goes light the moment you're actually broadcasting. */}
+          <ControlButton
+            onClick={toggleCamera}
+            disabled={!connected}
+            label={cameraOn ? 'Stop video' : 'Start video'}
+            tone={cameraOn ? 'neutral' : 'active'}
+          >
+            {cameraOn ? <Video width={25} height={25} /> : <VideoOff width={25} height={25} />}
+          </ControlButton>
+          <ControlButton onClick={hangUp} label="Leave" tone="danger">
+            <DoorExit width={25} height={25} />
+          </ControlButton>
+        </div>
       </div>
 
       {spotlightRef && isTrackReference(spotlightRef) && (
@@ -234,6 +258,93 @@ export function CallRoom({ callId }: { callId: string }) {
       )}
     </CallShell>
   );
+}
+
+// How long a chat pop-up stays on screen, and how many stack at once.
+const TOAST_MS = 4500;
+const TOAST_MAX = 2;
+
+/**
+ * The last few messages from other people, for the Zoom-style pop-up over the
+ * call. Each one ages out on its own timer; opening the chat clears them all,
+ * since you're now looking at the real thing.
+ */
+function useChatToasts(messages: ChatMessage[], chatOpen: boolean): ChatMessage[] {
+  const [toasts, setToasts] = useState<ChatMessage[]>([]);
+  // How far through `messages` we've already popped up. Starts at the end so
+  // re-opening the call screen mid-conversation doesn't replay old messages.
+  const shownRef = useRef<number | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    if (shownRef.current === null) {
+      shownRef.current = messages.length;
+      return;
+    }
+    if (chatOpen) {
+      shownRef.current = messages.length;
+      setToasts([]);
+      return;
+    }
+    const fresh = messages.slice(shownRef.current).filter((m) => !m.isLocal);
+    shownRef.current = messages.length;
+    if (fresh.length === 0) return;
+
+    setToasts((prev) => [...prev, ...fresh].slice(-TOAST_MAX));
+    const ids = new Set(fresh.map((m) => m.id));
+    timersRef.current.push(
+      setTimeout(() => setToasts((prev) => prev.filter((m) => !ids.has(m.id))), TOAST_MS),
+    );
+  }, [messages, chatOpen]);
+
+  return chatOpen ? [] : toasts;
+}
+
+/**
+ * Grid order, Zoom-style: anyone broadcasting video floats above the avatar-only
+ * tiles, ordered by when they turned their camera on. Turning a camera on mid-call
+ * lifts that person out of the avatar crowd on everyone's screen; turning it off
+ * drops them back, and the avatar tiles otherwise keep their join order.
+ */
+function useVideoFirstOrder(
+  tracks: TrackReferenceOrPlaceholder[],
+): TrackReferenceOrPlaceholder[] {
+  // identity → when their video came on. Survives re-renders so the order is
+  // stable instead of reshuffling on every roster event.
+  const videoSinceRef = useRef(new Map<string, number>());
+
+  return useMemo(() => {
+    const since = videoSinceRef.current;
+    const now = Date.now();
+    const present = new Set<string>();
+
+    for (const ref of tracks) {
+      const id = ref.participant.identity;
+      present.add(id);
+      const live = isTrackReference(ref) && !ref.publication.isMuted;
+      if (live) {
+        if (!since.has(id)) since.set(id, now);
+      } else {
+        since.delete(id);
+      }
+    }
+    for (const id of [...since.keys()]) if (!present.has(id)) since.delete(id);
+
+    // Array#sort is stable, so camera-off tiles keep the order LiveKit gave us.
+    return [...tracks].sort((a, b) => {
+      const aOn = since.get(a.participant.identity);
+      const bOn = since.get(b.participant.identity);
+      if (aOn != null && bOn != null) return aOn - bOn;
+      if (aOn != null) return -1;
+      if (bOn != null) return 1;
+      return 0;
+    });
+  }, [tracks]);
 }
 
 // Centered phone-width surface with safe-area padding — its own shell, since the
@@ -480,7 +591,9 @@ function ChatPanel({
           <form
             onSubmit={submit}
             className="flex items-end gap-2 border-t border-line px-3 pt-3"
-            style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            // Floor the lift at 1.75rem to clear the home indicator — env() is 0
+            // here because the app deliberately doesn't use viewport-fit=cover.
+            style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
           >
             <input
               type="text"
@@ -503,6 +616,32 @@ function ChatPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+// An incoming message, surfaced over the call for a few seconds — the Zoom
+// pop-up. Deliberately compact and one-line-clamped: it's a nudge to open the
+// chat, not a place to read a conversation.
+function ChatToast({ message, onOpen }: { message: ChatMessage; onOpen: () => void }) {
+  const { senderName, senderImage, text } = message;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="pointer-events-auto flex w-full items-center gap-2.5 rounded-2xl bg-surface/95 px-3 py-2.5 text-left shadow-card ring-1 ring-line backdrop-blur-sm animate-rise transition active:scale-[0.98]"
+    >
+      <Avatar
+        image={senderImage}
+        alt={senderName}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white"
+      >
+        {initials(senderName)}
+      </Avatar>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-bold text-ink-soft">{senderName}</span>
+        <span className="block truncate text-[15px] text-ink">{text}</span>
+      </span>
+    </button>
   );
 }
 

@@ -29,6 +29,7 @@ const config: Config = {
         warn: '#C58A3D', // warning / caution
         bad: '#B4544E', // error / negative
         info: '#6E7FA0', // neutral / informational
+        unread: '#E8833A', // "something new here" dot — orange so it reads against the sage accent
       },
       fontFamily: {
         sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'sans-serif'],

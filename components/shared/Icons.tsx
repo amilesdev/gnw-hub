@@ -307,6 +307,17 @@ export const PhoneOff = (p: P) => (
   </Base>
 );
 
+// Leaving a room: a door with an arrow stepping out of it. Reads as "exit"
+// rather than "hang up" — the call carries on without you.
+export const DoorExit = (p: P) => (
+  <Base {...p}>
+    <path d="M12.5 3H5.5A1.5 1.5 0 0 0 4 4.5v15A1.5 1.5 0 0 0 5.5 21h7" />
+    <path d="M9.5 12h.01" />
+    <path d="M19.5 12h-6" />
+    <path d="m16 8.5 3.5 3.5-3.5 3.5" />
+  </Base>
+);
+
 export const Video = (p: P) => (
   <Base {...p}>
     <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
