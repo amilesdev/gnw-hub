@@ -50,7 +50,8 @@ export const getActiveAnnouncements = unstable_cache(
 
 /** Songs for the soonest event within the next 7 days that has a setlist (the "This Week's Setlist").
  *  Depends on both events (which event is soonest / its setlist link) and setlists
- *  (the songs), so it's tagged with both. */
+ *  (the songs), so it's tagged with both — plus members, since each song carries
+ *  its leads' names and photos and a rename/removal has to bust this too. */
 export const getThisWeekSetlist = unstable_cache(
   async (): Promise<ThisWeekSetlist> => {
     const event = await prisma.event.findFirst({
@@ -63,7 +64,7 @@ export const getThisWeekSetlist = unstable_cache(
     return { month: event.setlist.month, songs: event.setlist.songs.map(serializeSong) };
   },
   ['home:this-week-setlist'],
-  { tags: [CACHE_TAGS.events, CACHE_TAGS.setlists], revalidate: CACHE_TTL_SECONDS },
+  { tags: [CACHE_TAGS.events, CACHE_TAGS.setlists, CACHE_TAGS.members], revalidate: CACHE_TTL_SECONDS },
 );
 
 export type LeaderAlerts = {

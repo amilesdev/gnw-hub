@@ -10,6 +10,7 @@ import { AudioPlayer } from './AudioPlayer';
 import { useAudio } from './AudioProvider';
 import { LyricChartPreview } from './LyricChartPreview';
 import { BandSongSection } from './BandSongSection';
+import { SongLeadBlock } from './SongLeads';
 import { Play, Music, FileText } from './Icons';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +63,9 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
             )}
           </div>
         )}
+
+        {/* Sits under the YouTube/key row and above the parts — read first, then sing along. */}
+        <SongLeadBlock leads={song.leads} />
 
         {showVocals && (
         <div>

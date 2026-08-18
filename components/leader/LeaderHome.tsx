@@ -10,6 +10,7 @@ import type { ThisWeekSetlist, LeaderAlerts } from '@/lib/home-data';
 import { EventCard } from '@/components/shared/EventCard';
 import { EventDetail } from '@/components/shared/EventDetail';
 import { SongDetail } from '@/components/shared/SongDetail';
+import { SongLeadFaces } from '@/components/shared/SongLeads';
 import { AnnouncementBell } from '@/components/shared/AnnouncementBell';
 import { AnnouncementCards } from '@/components/shared/AnnouncementCards';
 import { UpNextHero } from '@/components/shared/UpNextHero';
@@ -158,6 +159,7 @@ export function LeaderHome({
                       <Music width={12} height={12} /> {s.artist ? s.artist : `${parts}/4 parts uploaded`}
                     </span>
                   </span>
+                  <SongLeadFaces leads={s.leads} />
                   <ChevronRight width={18} height={18} className="text-ink-faint" />
                 </button>
               );

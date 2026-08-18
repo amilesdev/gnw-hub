@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { SetlistDTO, SongDTO, LibrarySongDTO } from '@/lib/setlist-serialize';
+import type { SetlistDTO, SongDTO, LibrarySongDTO, LeadDTO } from '@/lib/setlist-serialize';
 import type { EventDTO } from '@/lib/serialize';
 import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
@@ -21,6 +21,8 @@ import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from './LyricChartImport';
 import { LibraryPicker } from './LibraryPicker';
+import { SongLeadPicker, leadCandidates } from './SongLeadPicker';
+import type { MemberRow } from './MembersManager';
 import { apiFetch } from '@/lib/api-client';
 import { cn, randomToken } from '@/lib/utils';
 import { formatEventDate, monthKey } from '@/lib/dates';
@@ -31,6 +33,9 @@ type Row = {
   songTitle: string;
   artist: string;
   youtubeLink: string;
+  // Who leads this song on this setlist. Full LeadDTOs (not just ids) so the
+  // picker can show faces without a lookup; only the ids are sent on save.
+  leads: LeadDTO[];
   audio?: Pick<SongDTO, 'audioSoprano' | 'audioAlto' | 'audioTenor' | 'audioAllParts'>;
   lyric?: Pick<SongDTO, 'lyricChart' | 'lyricDocUrl' | 'lyricChartUpdatedAt'>;
   arrangementAudio?: string | null;
@@ -50,6 +55,7 @@ function toRows(setlist?: SetlistDTO): Row[] {
     songTitle: s.songTitle,
     artist: s.artist ?? '',
     youtubeLink: s.youtubeLink ?? '',
+    leads: s.leads,
     audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
     lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
     arrangementAudio: s.arrangementAudio,
@@ -73,6 +79,7 @@ export function SetlistForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [eventIds, setEventIds] = useState<string[]>(initial?.events.map((e) => e.id) ?? []);
   const [events, setEvents] = useState<EventDTO[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -107,14 +114,22 @@ export function SetlistForm({
     apiFetch<{ events: EventDTO[] }>('/api/events?scope=all')
       .then(({ events }) => setEvents(events))
       .catch(() => {});
+    // Fetched once for the whole form; every song's lead picker shares the list.
+    apiFetch<{ members: MemberRow[] }>('/api/members')
+      .then(({ members }) => setMembers(members))
+      .catch(() => {});
   }, []);
 
+  const candidates = useMemo(() => leadCandidates(members), [members]);
+
   function addSong() {
-    setRows((r) => [...r, { key: `new-${randomToken(6)}`, songTitle: '', artist: '', youtubeLink: '' }]);
+    setRows((r) => [...r, { key: `new-${randomToken(6)}`, songTitle: '', artist: '', youtubeLink: '', leads: [] }]);
   }
 
   // Append library songs as reference rows — they carry the library `id`, so
   // saving links the existing entry (with its parts/chart) rather than copying.
+  // Leads start at whoever led the song last: a suggestion the leader can keep
+  // or change, since the same people usually carry a song week to week.
   function addFromLibrary(songs: LibrarySongDTO[]) {
     setRows((r) => [
       ...r,
@@ -124,6 +139,7 @@ export function SetlistForm({
         songTitle: s.songTitle,
         artist: s.artist ?? '',
         youtubeLink: s.youtubeLink ?? '',
+        leads: s.lastLeads,
         audio: { audioSoprano: s.audioSoprano, audioAlto: s.audioAlto, audioTenor: s.audioTenor, audioAllParts: s.audioAllParts },
         lyric: { lyricChart: s.lyricChart, lyricDocUrl: s.lyricDocUrl, lyricChartUpdatedAt: s.lyricChartUpdatedAt },
         arrangementAudio: s.arrangementAudio,
@@ -155,9 +171,17 @@ export function SetlistForm({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // `leadUserIds` is always sent — the form holds the whole picture, so an
+    // empty list means "nobody leads this", not "leave it alone".
     const songs = rows
       .filter((r) => r.songTitle.trim())
-      .map((r) => ({ id: r.id, songTitle: r.songTitle.trim(), artist: r.artist.trim() || null, youtubeLink: r.youtubeLink || null }));
+      .map((r) => ({
+        id: r.id,
+        songTitle: r.songTitle.trim(),
+        artist: r.artist.trim() || null,
+        youtubeLink: r.youtubeLink || null,
+        leadUserIds: r.leads.map((l) => l.id),
+      }));
 
     if (eventIds.length === 0) {
       setError('Pick at least one event for this setlist.');
@@ -274,6 +298,7 @@ export function SetlistForm({
                       row={row}
                       index={i}
                       month={month}
+                      candidates={candidates}
                       canEditAudio={mode === 'edit' && !!row.id}
                       onUpdate={(patch) => updateRow(row.key, patch)}
                       onRemove={() => removeRow(row.key)}
@@ -302,6 +327,7 @@ function SortableSong({
   row,
   index,
   month,
+  candidates,
   canEditAudio,
   onUpdate,
   onRemove,
@@ -309,6 +335,7 @@ function SortableSong({
   row: Row;
   index: number;
   month: string;
+  candidates: LeadDTO[];
   canEditAudio: boolean;
   onUpdate: (patch: Partial<Row>) => void;
   onRemove: () => void;
@@ -316,10 +343,12 @@ function SortableSong({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.key });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
 
+  // Shaped for the audio/lyric/band editors, which key off the library song id.
   const songForEdit: SongDTO | null = canEditAudio && row.id
     ? {
         id: row.id,
         position: index,
+        leads: row.leads,
         songTitle: row.songTitle,
         artist: row.artist || null,
         youtubeLink: row.youtubeLink || null,
@@ -364,6 +393,7 @@ function SortableSong({
           inputMode="url"
           enterKeyHint="done"
         />
+        <SongLeadPicker value={row.leads} candidates={candidates} onChange={(leads) => onUpdate({ leads })} />
       </div>
       {songForEdit && (
         <div className="space-y-3 pl-9">

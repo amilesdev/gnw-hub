@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
+import { SongLeadFaces } from './SongLeads';
 import { EmptyState } from './EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
 import { Music, ChevronRight, Clock, Book } from './Icons';
@@ -88,6 +89,7 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
                           {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
                         </span>
                       </span>
+                      <SongLeadFaces leads={s.leads} />
                       <ChevronRight width={20} height={20} className="text-ink-faint" />
                     </button>
                   );

@@ -7,6 +7,7 @@ import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
 import { ScriptureSheet } from './ScriptureSheet';
 import { SongDetail } from './SongDetail';
+import { SongLeadFaces } from './SongLeads';
 import { EventTypeBadge } from './EventTypeBadge';
 import { hasAttire, assignmentsByPart } from './EventCard';
 import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
@@ -233,6 +234,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                           {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
                         </span>
                       </span>
+                      <SongLeadFaces leads={s.leads} />
                       <ChevronRight width={20} height={20} className="text-ink-faint" />
                     </button>
                   </li>

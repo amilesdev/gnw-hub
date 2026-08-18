@@ -5,6 +5,7 @@ import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { SetlistForm } from './SetlistForm';
 import { SongDetail } from '@/components/shared/SongDetail';
+import { SongLeadFaces } from '@/components/shared/SongLeads';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -114,6 +115,7 @@ export function SetlistManager() {
                                   {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
                                 </span>
                               </span>
+                              <SongLeadFaces leads={song.leads} />
                               <ChevronRight width={20} height={20} className="text-ink-faint" />
                             </button>
                           );

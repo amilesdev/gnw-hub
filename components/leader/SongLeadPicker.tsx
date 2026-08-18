@@ -50,36 +50,37 @@ export function SongLeadPicker({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* Chips are sized to sit level with the Add/Change button beside them. */}
+      <div className="flex flex-wrap items-center gap-2">
         {value.map((lead) => (
           <span
             key={lead.id}
-            className="inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 py-1 pl-1 pr-2 text-xs font-semibold"
+            className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent/10 py-1.5 pl-1.5 pr-2.5 text-sm font-semibold"
           >
             <Avatar
               image={lead.image}
               alt=""
-              className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-ink text-[10px] font-bold text-white"
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-ink text-[11px] font-bold text-white"
             >
               {lead.name.charAt(0).toUpperCase()}
             </Avatar>
-            <span className="max-w-24 truncate">{lead.name}</span>
+            <span className="max-w-28 truncate">{lead.name}</span>
             <button
               type="button"
               onClick={() => onChange(value.filter((l) => l.id !== lead.id))}
-              className="row-press -mr-0.5 rounded-full p-0.5 text-ink-faint"
+              className="row-press rounded-full p-0.5 text-ink-faint"
               aria-label={`Remove ${lead.name} as lead`}
             >
-              <X width={12} height={12} />
+              <X width={14} height={14} />
             </button>
           </span>
         ))}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="row-press inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink-soft"
+          className="row-press inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink-soft"
         >
-          <Mic width={13} height={13} />
+          <Mic width={16} height={16} />
           {value.length === 0 ? 'Add lead' : 'Change'}
         </button>
       </div>
