@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api-client';
+import { clearPushSyncMark, markPushSynced, syncPushSubscription } from '@/lib/use-push-sync';
 
 // VAPID applicationServerKey must be a Uint8Array; the browser hands us the
 // public key as a URL-safe base64 string in env.
@@ -52,6 +53,8 @@ export function usePushNotifications() {
     'Notification' in window;
 
   // Resolve the initial status: support → iOS install gate → permission → sub.
+  // The local subscription paints the toggle immediately; the server check that
+  // follows runs in the background, so nothing waits on a round-trip.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -65,12 +68,36 @@ export function usePushNotifications() {
         if (!cancelled) setStatus('denied');
         return;
       }
+
+      let sub: PushSubscription | null = null;
       try {
         const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (!cancelled) setStatus(sub ? 'subscribed' : 'unsubscribed');
+        sub = await reg.pushManager.getSubscription();
       } catch {
         if (!cancelled) setStatus('unsupported');
+        return;
+      }
+      if (cancelled) return;
+      setStatus(sub ? 'subscribed' : 'unsubscribed');
+      if (!sub) return;
+
+      // "On for this device" used to be a claim about the browser alone. A device
+      // can hold a live subscription the server has no row for — a POST that
+      // failed after subscribe() succeeded, a row pruned on a 410, an endpoint
+      // rotated away — and in that state the toggle read "on" forever while
+      // nothing was ever delivered. Confirm with the server, and repair silently.
+      try {
+        const { registered } = await apiFetch<{ registered: boolean }>(
+          `/api/push/subscribe?endpoint=${encodeURIComponent(sub.endpoint)}`,
+        );
+        if (cancelled || registered) return;
+        const repaired = await syncPushSubscription({ force: true });
+        // Only correct the toggle if the repair itself failed — then it's honest
+        // about being off, and flipping it re-runs the whole subscribe flow.
+        if (!cancelled && !repaired) setStatus('unsubscribed');
+      } catch {
+        // Offline or a transient failure: keep the local reading rather than
+        // claiming notifications are off when they may well be working.
       }
     })();
     return () => {
@@ -106,6 +133,9 @@ export function usePushNotifications() {
           userAgent: navigator.userAgent,
         }),
       });
+      // Server confirmed — start the re-sync throttle from here, so the app-open
+      // check doesn't re-POST what we just registered.
+      if (json.endpoint) markPushSynced(json.endpoint);
       setStatus('subscribed');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not enable notifications.');
@@ -127,6 +157,8 @@ export function usePushNotifications() {
         }).catch(() => {}); // best-effort server cleanup
         await sub.unsubscribe();
       }
+      // Drop the throttle record, so re-enabling later syncs straight away.
+      clearPushSyncMark();
       setStatus('unsubscribed');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not disable notifications.');

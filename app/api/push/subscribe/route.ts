@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { endpoint, keys, userAgent } = parsed.data;
+  const { endpoint, keys, userAgent, oldEndpoint } = parsed.data;
   await prisma.pushSubscription.upsert({
     where: { endpoint },
     create: {
@@ -33,7 +33,38 @@ export async function POST(req: Request) {
     update: { p256dh: keys.p256dh, auth: keys.auth, userAgent, userId: guard.user.id },
   });
 
+  // The push service rotated this device's endpoint — drop the superseded row so
+  // we stop sending into the void. Scoped to this user, and never the row we just
+  // wrote (a browser that reports the same endpoint as "old" isn't a rotation).
+  if (oldEndpoint && oldEndpoint !== endpoint) {
+    await prisma.pushSubscription
+      .deleteMany({ where: { endpoint: oldEndpoint, userId: guard.user.id } })
+      .catch(() => {});
+  }
+
   return NextResponse.json({ ok: true }, { status: 201 });
+}
+
+// GET /api/push/subscribe?endpoint=… — is THIS device's subscription actually
+// registered to the signed-in user? The in-app toggle used to answer that from
+// browser state alone, so a device whose row had gone missing (a failed POST, a
+// pruned 410, a rotated endpoint) still showed "On for this device" forever and
+// never self-healed. This is the server's side of that check.
+export async function GET(req: Request) {
+  const guard = await requireUser();
+  if ('error' in guard) return guard.error;
+
+  const endpoint = new URL(req.url).searchParams.get('endpoint');
+  if (!endpoint) {
+    return NextResponse.json({ error: 'Missing endpoint' }, { status: 400 });
+  }
+
+  const existing = await prisma.pushSubscription.findFirst({
+    where: { endpoint, userId: guard.user.id },
+    select: { id: true },
+  });
+
+  return NextResponse.json({ registered: !!existing });
 }
 
 // DELETE /api/push/subscribe — remove this device's subscription. Scoped to the

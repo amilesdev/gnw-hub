@@ -21,6 +21,13 @@ const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png',
 // real-time endpoints here (e.g. /api/members, /api/polls/*, /api/play/*).
 const API_SWR_PATHS = new Set(['/api/events', '/api/setlists', '/api/announcements']);
 
+// Writes that touch ONLY this device's own push-subscription row, so they can't
+// invalidate any cached read above. Exempt from the cache-clearing rule below:
+// the app-open re-sync POSTs here roughly once a day per device, and wiping the
+// read cache for it would cost a needless network round-trip on the next
+// events/setlists paint.
+const API_NON_INVALIDATING_PATHS = new Set(['/api/push/subscribe']);
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
@@ -43,7 +50,11 @@ self.addEventListener('fetch', (event) => {
   // sign-in. Clearing the whole (tiny) API cache is the safe, simple choice — it
   // also covers NextAuth's login/logout, which POST to /api/auth/*.
   if (request.method !== 'GET') {
-    if (sameOrigin && url.pathname.startsWith('/api/')) {
+    if (
+      sameOrigin &&
+      url.pathname.startsWith('/api/') &&
+      !API_NON_INVALIDATING_PATHS.has(url.pathname)
+    ) {
       event.waitUntil(caches.delete(API_CACHE));
     }
     return;
@@ -136,6 +147,77 @@ self.addEventListener('push', (event) => {
     }),
   );
 });
+
+/* Endpoint rotation. The push service can retire a subscription at any time — a
+ * PWA reinstall, a device restore, some iOS updates. Without this handler the
+ * old endpoint just dies: we keep sending to a dead row and the user silently
+ * stops receiving notifications, while the in-app toggle still reads "on" from
+ * local browser state. So: get a fresh subscription and hand it to the server,
+ * along with the old endpoint so the dead row goes now rather than on the next
+ * 410.
+ */
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(resubscribe(event));
+});
+
+async function resubscribe(event) {
+  const oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint;
+  try {
+    // Some browsers hand us the replacement outright. Otherwise subscribe again,
+    // reusing the old subscription's server key where it's exposed and asking the
+    // server for the public VAPID key where it isn't (Safari doesn't expose it).
+    let sub = event.newSubscription;
+    if (!sub) {
+      const key =
+        (event.oldSubscription &&
+          event.oldSubscription.options &&
+          event.oldSubscription.options.applicationServerKey) ||
+        (await fetchVapidKey());
+      if (!key) return;
+      sub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key,
+      });
+    }
+
+    const json = sub.toJSON();
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: json.endpoint,
+        keys: json.keys,
+        userAgent: self.navigator && self.navigator.userAgent,
+        oldEndpoint,
+      }),
+    });
+  } catch (_) {
+    // Best-effort. If this fails (expired session, offline) the browser still
+    // holds a subscription the server doesn't know about — which the app-open
+    // re-sync in lib/use-push-sync.ts repairs the next time the app is opened.
+  }
+}
+
+async function fetchVapidKey() {
+  try {
+    const res = await fetch('/api/push/key');
+    if (!res.ok) return null;
+    const { key } = await res.json();
+    return key ? urlBase64ToUint8Array(key) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// VAPID keys travel as URL-safe base64; subscribe() wants raw bytes.
+function urlBase64ToUint8Array(base64) {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const normalized = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(normalized);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

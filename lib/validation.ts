@@ -23,6 +23,9 @@ export const pushSubscribeSchema = z.object({
     auth: z.string().min(1),
   }),
   userAgent: z.string().max(500).optional(),
+  /** Set by the service worker when the push service rotated this device's
+   *  endpoint, so the superseded row is dropped in the same request. */
+  oldEndpoint: z.string().url().optional(),
 });
 
 export const pushUnsubscribeSchema = z.object({

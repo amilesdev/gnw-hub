@@ -4,6 +4,7 @@ import { PollGate } from './PollGate';
 import { AudioProvider } from './AudioProvider';
 import { MiniPlayer } from './MiniPlayer';
 import { MiniCallBar } from '@/components/call/MiniCallBar';
+import { PushSubscriptionSync } from './PushSubscriptionSync';
 
 /**
  * Fixed, centered phone shell (max 430px) with a scrollable content area and a
@@ -32,6 +33,7 @@ export function AppShell({
         <MiniPlayer />
         <TabBar variant={variant} />
         <PollGate />
+        <PushSubscriptionSync />
       </div>
     </AudioProvider>
   );
