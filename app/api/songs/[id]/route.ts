@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { requireLeader, requireVocalPartEditor } from '@/lib/session';
+import { requireLeader, requireUser } from '@/lib/session';
+import { canEditLyricCharts, canEditVocalParts, type Viewer } from '@/lib/access';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateSetlists } from '@/lib/cache-tags';
@@ -39,18 +40,34 @@ const patchSchema = z.object({
   lyricDocUrl: z.string().nullable().optional(),
 });
 
+// The fields each narrow capability unlocks for a NON-leader caller. A leader
+// bypasses these entirely and may write every field in `patchSchema`.
+const CAPABILITY_FIELDS: readonly { can: (v: Viewer) => boolean; label: string; fields: readonly string[] }[] = [
+  { can: canEditVocalParts, label: 'vocal parts', fields: AUDIO_PARTS },
+  { can: canEditLyricCharts, label: 'lyric chart', fields: ['lyricChart', 'lyricDocUrl'] },
+];
+
 // PATCH /api/songs/[id] — set/replace/clear a song's fields & audio slots.
 // Setting an audio field to a new value or null deletes the previously stored file.
 //
 // Two tiers of caller:
 //   • leader — may write every field below.
-//   • vocal director (User.vocalDirector) — may write ONLY the four `audio*`
-//     vocal parts. A payload of theirs naming any other field is rejected 403
-//     rather than silently ignored, so a mistake is loud instead of quiet.
+//   • a capability holder — vocal director (User.vocalDirector) for the four
+//     `audio*` vocal parts, administrative assistant (User.adminAssistant) for
+//     the lyric chart. A payload of theirs naming any field outside what they
+//     hold is rejected 403 rather than silently ignored, so a mistake is loud
+//     instead of quiet.
 export async function PATCH(req: Request, { params }: Ctx) {
-  const guard = await requireVocalPartEditor();
+  const guard = await requireUser();
   if ('error' in guard) return guard.error;
   const { id } = await params;
+
+  // Everything a non-leader caller is allowed to touch, pooled across the
+  // capabilities they actually hold. Empty → they hold none, so no PATCH at all.
+  const held = guard.user.role === 'leader' ? [] : CAPABILITY_FIELDS.filter((c) => c.can(guard.user));
+  if (guard.user.role !== 'leader' && !held.length) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const existing = await prisma.song.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'Song not found' }, { status: 404 });
@@ -62,15 +79,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
   const d = parsed.data;
 
-  // The capability check: a non-leader editor is confined to the vocal parts.
-  if (guard.user.role !== 'leader') {
-    const allowed = AUDIO_PARTS as readonly string[];
+  // The capability check: a non-leader editor is confined to the fields their
+  // grant covers, and nothing in this payload may fall outside them.
+  if (held.length) {
+    const allowed = held.flatMap((c) => c.fields);
     const forbidden = Object.keys(d).filter((k) => !allowed.includes(k));
     if (forbidden.length) {
-      return NextResponse.json(
-        { error: 'You can only change a song’s vocal parts.' },
-        { status: 403 },
-      );
+      const scope = held.map((c) => c.label).join(' and ');
+      return NextResponse.json({ error: `You can only change a song’s ${scope}.` }, { status: 403 });
     }
   }
 

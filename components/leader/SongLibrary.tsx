@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
-import { LyricChartImport } from './LyricChartImport';
+import { LyricChartImport } from '@/components/shared/LyricChartImport';
 import { SongDetail } from '@/components/shared/SongDetail';
 import { Plus, Music, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';

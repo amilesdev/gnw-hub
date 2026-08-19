@@ -2,21 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import type { LyricChart, SongDTO } from '@/lib/setlist-serialize';
-import { LyricChartPreview } from '@/components/shared/LyricChartPreview';
-import { FileText } from '@/components/shared/Icons';
+import { LyricChartPreview } from './LyricChartPreview';
+import { FileText } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 
 /**
- * Leader-side lyric chart import for a single saved song. Paste a Google Doc
- * URL, pull + parse it via the service account, and persist the structured
- * chart onto the song. Shows a live preview once imported.
+ * Lyric chart import for a single saved song. Paste a Google Doc URL, pull +
+ * parse it via the service account, and persist the structured chart onto the
+ * song.
+ *
+ * Shown to leaders in the Setlist / Library editors, and — as the whole of the
+ * administrative-assistant grant (lib/access.ts → canEditLyricCharts) — inside
+ * the song card itself. Pass `embedded` there: the card's Lyrics section already
+ * supplies the heading and renders the chart, so the panel drops both and shows
+ * only the controls.
  */
 export function LyricChartImport({
   song,
   onChanged,
+  embedded = false,
 }: {
   song: SongDTO;
   onChanged: (song: SongDTO) => void;
+  embedded?: boolean;
 }) {
   const [url, setUrl] = useState(song.lyricDocUrl ?? '');
   const [busy, setBusy] = useState(false);
@@ -72,10 +80,12 @@ export function LyricChartImport({
 
   return (
     <div className="space-y-2.5 rounded-2xl bg-surface-2/50 p-3">
-      <div className="flex items-center gap-2">
-        <FileText width={15} height={15} className="text-ink-soft" />
-        <p className="label !mb-0">Lyric chart</p>
-      </div>
+      {!embedded && (
+        <div className="flex items-center gap-2">
+          <FileText width={15} height={15} className="text-ink-soft" />
+          <p className="label !mb-0">Lyric chart</p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <input
@@ -134,7 +144,7 @@ export function LyricChartImport({
         </p>
       )}
 
-      {chart && (
+      {chart && !embedded && (
         <div className="rounded-xl bg-surface p-3">
           <LyricChartPreview chart={chart} />
         </div>

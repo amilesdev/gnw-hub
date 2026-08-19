@@ -19,7 +19,7 @@ import { FieldLabel } from '@/components/shared/Field';
 import { Plus, Trash, Grip, Check, Book } from '@/components/shared/Icons';
 import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
-import { LyricChartImport } from './LyricChartImport';
+import { LyricChartImport } from '@/components/shared/LyricChartImport';
 import { LibraryPicker } from './LibraryPicker';
 import { SongLeadPicker, leadCandidates } from './SongLeadPicker';
 import type { MemberRow } from './MembersManager';

@@ -1,24 +1,30 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { google } from 'googleapis';
-import { requireLeader } from '@/lib/session';
+import { requireLyricChartEditor } from '@/lib/session';
 import { parseGoogleDoc } from '@/lib/parseGoogleDoc';
 
 const bodySchema = z.object({ docUrl: z.string().min(1) });
 
 // GET /api/parse-lyric-doc — surface the service-account email so the import
-// panel can tell leaders which address to share their docs with. Leader only.
+// panel can tell the importer which address to share their docs with. Leaders
+// and the administrative assistant (see lib/access.ts → canEditLyricCharts).
 export async function GET() {
-  const guard = await requireLeader();
+  const guard = await requireLyricChartEditor();
   if ('error' in guard) return guard.error;
   return NextResponse.json({ serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? null });
 }
 
 // POST /api/parse-lyric-doc — fetch a Google Doc via the service account, parse
-// its structure into a LyricChart, and return it. Leader only. The doc must be
-// shared with GOOGLE_SERVICE_ACCOUNT_EMAIL.
+// its structure into a LyricChart, and return it. Leaders and the
+// administrative assistant. The doc must be shared with
+// GOOGLE_SERVICE_ACCOUNT_EMAIL.
+//
+// This only parses and returns a chart — persisting it is a separate
+// PATCH /api/songs/[id], which re-checks the capability against its own
+// field whitelist.
 export async function POST(req: Request) {
-  const guard = await requireLeader();
+  const guard = await requireLyricChartEditor();
   if ('error' in guard) return guard.error;
 
   const body = await req.json().catch(() => null);

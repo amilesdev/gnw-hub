@@ -11,6 +11,7 @@ declare module 'next-auth' {
     image?: string | null;
     isSuperAdmin: boolean;
     vocalDirector: boolean;
+    adminAssistant: boolean;
     tokenVersion: number;
   }
 
@@ -26,6 +27,8 @@ declare module 'next-auth' {
       isSuperAdmin: boolean;
       // Narrow capability, not a role — see lib/access.ts → canEditVocalParts.
       vocalDirector: boolean;
+      // Ditto — see lib/access.ts → canEditLyricCharts.
+      adminAssistant: boolean;
     };
   }
 }

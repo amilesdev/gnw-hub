@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { SongDTO } from '@/lib/setlist-serialize';
 import { PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
-import { canSeeVocals, canSeeBandCharts, canEditVocalParts } from '@/lib/access';
+import { canSeeVocals, canSeeBandCharts, editsVocalPartsInSongCard, canEditLyricCharts } from '@/lib/access';
 import { Overlay } from './Overlay';
 import { AudioPlayer } from './AudioPlayer';
 import { useAudio } from './AudioProvider';
 import { LyricChartPreview } from './LyricChartPreview';
+import { LyricChartImport } from './LyricChartImport';
 import { BandSongSection } from './BandSongSection';
 import { VocalPartsGrid } from './VocalPartsGrid';
 import { SongLeadBlock } from './SongLeads';
@@ -19,8 +21,11 @@ import { Music, FileText } from './Icons';
  * in-app player + lyrics. Band-section members (and any leader) get the band
  * section instead/as well: arrangement, key, BPM, and a chart slot.
  *
- * Leaders and the vocal director can also add/replace/remove the vocal parts
- * from right here — the parts grid is the only editable thing in this sheet.
+ * The vocal director and the administrative assistant can also edit from right
+ * here — the vocal parts grid and the lyric chart importer are the only editable
+ * things in this sheet, and each appears only for whoever holds that capability.
+ * Everyone else's view — leaders included, who edit from Edit Setlist — is a
+ * reader's view.
  */
 export function SongDetail({ song: initialSong, onClose }: { song: SongDTO; onClose: () => void }) {
   // Local copy so an edit to a part shows at once; the screen behind the sheet
@@ -28,6 +33,7 @@ export function SongDetail({ song: initialSong, onClose }: { song: SongDTO; onCl
   const [song, setSong] = useState(initialSong);
   const [part, setPart] = useState<AudioPart | null>(null);
   const activeSrc = part ? song[part] : null;
+  const router = useRouter();
   const { play } = useAudio();
   const { data: session } = useSession();
   const viewer = session?.user;
@@ -36,7 +42,10 @@ export function SongDetail({ song: initialSong, onClose }: { song: SongDTO; onCl
   const showVocals = !viewer || canSeeVocals(viewer);
   const showBand = viewer ? canSeeBandCharts(viewer) : false;
   const canEditBand = viewer?.role === 'leader';
-  const canEditParts = viewer ? canEditVocalParts(viewer) : false;
+  // Vocal director only — a leader's card stays a reader's view; they edit parts
+  // from Edit Setlist → Audio slots, as they always have.
+  const canEditParts = viewer ? editsVocalPartsInSongCard(viewer) : false;
+  const canEditCharts = viewer ? canEditLyricCharts(viewer) : false;
 
   return (
     <Overlay title={song.songTitle} onClose={onClose}>
@@ -101,16 +110,41 @@ export function SongDetail({ song: initialSong, onClose }: { song: SongDTO; onCl
             </div>
           ))}
 
-        {showVocals && song.lyricChart && (
+        {/* Lyrics. Read-only for vocalists; whoever holds the lyric-chart
+            capability additionally gets the Google Doc importer above the
+            chart, and sees the section even before one has been imported. */}
+        {(canEditCharts || (showVocals && song.lyricChart)) && (
           <div>
             <div className="mb-2 flex items-center gap-2">
               <FileText width={16} height={16} className="text-ink-soft" />
               <p className="label !mb-0">Lyrics</p>
             </div>
-            <div className="card p-4">
-              <LyricChartPreview chart={song.lyricChart} bare />
-            </div>
-            <p className="mt-2 text-center text-[11px] text-ink-faint">Imported from Google Docs</p>
+
+            {canEditCharts && (
+              <div className="mb-3">
+                {/* Heading above, chart below — the panel supplies only controls. */}
+                <LyricChartImport
+                  song={song}
+                  embedded
+                  onChanged={(updated) => {
+                    setSong(updated);
+                    // The screens behind this sheet are server-rendered from a
+                    // cached setlist read; the PATCH revalidated that tag, so
+                    // pull the fresh copy through.
+                    router.refresh();
+                  }}
+                />
+              </div>
+            )}
+
+            {song.lyricChart && (
+              <>
+                <div className="card p-4">
+                  <LyricChartPreview chart={song.lyricChart} bare />
+                </div>
+                <p className="mt-2 text-center text-[11px] text-ink-faint">Imported from Google Docs</p>
+              </>
+            )}
           </div>
         )}
 

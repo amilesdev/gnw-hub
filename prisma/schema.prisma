@@ -127,6 +127,13 @@ model User {
   // from the backend only (`npm run set-vocal-director`); there is no in-app
   // switch. See lib/access.ts → canEditVocalParts.
   vocalDirector Boolean       @default(false)
+  // Whether this user may import/replace/remove a song's lyric chart (the
+  // administrative assistant). Same shape and intent as `vocalDirector`: one
+  // narrow capability, not leadership — it grants nothing over events,
+  // setlists, song metadata, vocal parts, band content, or retiring songs.
+  // Assigned from the backend only (`npm run set-admin-assistant`); there is no
+  // in-app switch. See lib/access.ts → canEditLyricCharts.
+  adminAssistant Boolean      @default(false)
   inviteToken  String?        @unique
   inviteExpiry DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
