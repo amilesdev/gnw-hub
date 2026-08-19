@@ -120,6 +120,13 @@ model User {
   // `role` / the leader tag — it's an explicit, opt-in designation assigned only
   // for the call feature, and defaults to off for everyone until set.
   callLeader   Boolean        @default(false)
+  // Whether this user may add/replace/remove a song's four vocal-part audio
+  // files (the vocal director). Like `callLeader`, DELIBERATELY separate from
+  // `role`: it's one narrow capability, not leadership — it grants nothing over
+  // events, setlists, song metadata, band content, or retiring songs. Assigned
+  // from the backend only (`npm run set-vocal-director`); there is no in-app
+  // switch. See lib/access.ts → canEditVocalParts.
+  vocalDirector Boolean       @default(false)
   inviteToken  String?        @unique
   inviteExpiry DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password

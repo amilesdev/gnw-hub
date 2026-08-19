@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { requireLeader, requireUser } from '@/lib/session';
+import { requireLeader, requireUser, requireVocalPartEditor } from '@/lib/session';
 import { createSignedUpload } from '@/lib/supabase';
 import {
+  AUDIO_PREFIX,
   AVATAR_PREFIX,
   contentTypeFor,
   isAllowedPath,
@@ -17,7 +18,8 @@ import {
 // Authorization depends on the target prefix:
 //   • `avatars/<userId>/…` — any authenticated member, but only into their OWN
 //     folder (profile pictures).
-//   • everything else (attire/, audio/) — leaders only, as before.
+//   • `audio/…` — leaders and the vocal director (song parts / arrangements).
+//   • everything else (attire/) — leaders only, as before.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const rawPath = body?.path;
@@ -39,6 +41,9 @@ export async function POST(req: Request) {
     if (!isOwnAvatarPath(path, guard.user.id)) {
       return NextResponse.json({ error: 'You can only upload your own avatar.' }, { status: 403 });
     }
+  } else if (path.startsWith(AUDIO_PREFIX)) {
+    const guard = await requireVocalPartEditor();
+    if ('error' in guard) return guard.error;
   } else {
     const guard = await requireLeader();
     if ('error' in guard) return guard.error;

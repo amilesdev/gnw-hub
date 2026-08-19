@@ -13,7 +13,8 @@
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
     "db:backup": "dotenv -e .env.local -- node scripts/db-backup.mjs",
-    "db:restore": "dotenv -e .env.local -- node scripts/db-restore.mjs"
+    "db:restore": "dotenv -e .env.local -- node scripts/db-restore.mjs",
+    "set-vocal-director": "dotenv -e .env.local -- node scripts/set-vocal-director.mjs"
   },
   "prisma": {
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts"

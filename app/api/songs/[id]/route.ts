@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { requireLeader } from '@/lib/session';
+import { requireLeader, requireVocalPartEditor } from '@/lib/session';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateSetlists } from '@/lib/cache-tags';
@@ -39,10 +39,16 @@ const patchSchema = z.object({
   lyricDocUrl: z.string().nullable().optional(),
 });
 
-// PATCH /api/songs/[id] — set/replace/clear a song's fields & audio slots. Leader only.
+// PATCH /api/songs/[id] — set/replace/clear a song's fields & audio slots.
 // Setting an audio field to a new value or null deletes the previously stored file.
+//
+// Two tiers of caller:
+//   • leader — may write every field below.
+//   • vocal director (User.vocalDirector) — may write ONLY the four `audio*`
+//     vocal parts. A payload of theirs naming any other field is rejected 403
+//     rather than silently ignored, so a mistake is loud instead of quiet.
 export async function PATCH(req: Request, { params }: Ctx) {
-  const guard = await requireLeader();
+  const guard = await requireVocalPartEditor();
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
@@ -55,6 +61,18 @@ export async function PATCH(req: Request, { params }: Ctx) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
   const d = parsed.data;
+
+  // The capability check: a non-leader editor is confined to the vocal parts.
+  if (guard.user.role !== 'leader') {
+    const allowed = AUDIO_PARTS as readonly string[];
+    const forbidden = Object.keys(d).filter((k) => !allowed.includes(k));
+    if (forbidden.length) {
+      return NextResponse.json(
+        { error: 'You can only change a song’s vocal parts.' },
+        { status: 403 },
+      );
+    }
+  }
 
   // Clean up any uploaded audio file that's being replaced or cleared — the four
   // vocal parts plus the single band arrangement.

@@ -3,23 +3,29 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { SongDTO } from '@/lib/setlist-serialize';
-import { AUDIO_PARTS, PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
-import { canSeeVocals, canSeeBandCharts } from '@/lib/access';
+import { PART_LABELS, type AudioPart } from '@/lib/setlist-serialize';
+import { canSeeVocals, canSeeBandCharts, canEditVocalParts } from '@/lib/access';
 import { Overlay } from './Overlay';
 import { AudioPlayer } from './AudioPlayer';
 import { useAudio } from './AudioProvider';
 import { LyricChartPreview } from './LyricChartPreview';
 import { BandSongSection } from './BandSongSection';
+import { VocalPartsGrid } from './VocalPartsGrid';
 import { SongLeadBlock } from './SongLeads';
-import { Play, Music, FileText } from './Icons';
-import { cn } from '@/lib/utils';
+import { Music, FileText } from './Icons';
 
 /**
  * Song view. Vocalists (and any leader) get the four vocal part buttons + an
  * in-app player + lyrics. Band-section members (and any leader) get the band
  * section instead/as well: arrangement, key, BPM, and a chart slot.
+ *
+ * Leaders and the vocal director can also add/replace/remove the vocal parts
+ * from right here — the parts grid is the only editable thing in this sheet.
  */
-export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => void }) {
+export function SongDetail({ song: initialSong, onClose }: { song: SongDTO; onClose: () => void }) {
+  // Local copy so an edit to a part shows at once; the screen behind the sheet
+  // catches up separately (VocalPartsGrid calls router.refresh()).
+  const [song, setSong] = useState(initialSong);
   const [part, setPart] = useState<AudioPart | null>(null);
   const activeSrc = part ? song[part] : null;
   const { play } = useAudio();
@@ -30,6 +36,7 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
   const showVocals = !viewer || canSeeVocals(viewer);
   const showBand = viewer ? canSeeBandCharts(viewer) : false;
   const canEditBand = viewer?.role === 'leader';
+  const canEditParts = viewer ? canEditVocalParts(viewer) : false;
 
   return (
     <Overlay title={song.songTitle} onClose={onClose}>
@@ -68,41 +75,20 @@ export function SongDetail({ song, onClose }: { song: SongDTO; onClose: () => vo
         <SongLeadBlock leads={song.leads} />
 
         {showVocals && (
-        <div>
-          <p className="label mb-2">Vocal parts</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {AUDIO_PARTS.map((p) => {
-              const available = Boolean(song[p]);
-              const active = part === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  disabled={!available}
-                  onClick={() => {
-                    setPart(p);
-                    play({ src: song[p]!, title: song.songTitle, part: PART_LABELS[p] });
-                  }}
-                  className={cn(
-                    'row-press flex items-center justify-between rounded-2xl border px-4 py-4 text-left font-semibold',
-                    active
-                      ? 'border-accent bg-accent text-white shadow-pop'
-                      : available
-                        ? 'border-line bg-surface text-ink'
-                        : 'border-line bg-surface-2 text-ink-faint',
-                  )}
-                >
-                  <span>{PART_LABELS[p]}</span>
-                  {available ? (
-                    <Play width={18} height={18} className={active ? 'text-white' : 'text-accent dark:text-accent-on'} />
-                  ) : (
-                    <span className="text-[11px] font-bold uppercase tracking-wide">Soon</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          <VocalPartsGrid
+            song={song}
+            canEdit={canEditParts}
+            activePart={part}
+            onSelect={(p) => {
+              setPart(p);
+              play({ src: song[p]!, title: song.songTitle, part: PART_LABELS[p] });
+            }}
+            onChanged={(updated) => {
+              setSong(updated);
+              // A part that just got removed can't stay loaded in the player row.
+              setPart((cur) => (cur && !updated[cur] ? null : cur));
+            }}
+          />
         )}
 
         {showVocals &&

@@ -10,9 +10,9 @@ import { Music, ChevronRight, ChevronLeft, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 
 /**
- * Strip library-only metadata so a song can feed the read-only SongDetail view.
- * `leads` stays empty: who leads a song belongs to a setlist, and the library
- * looks at the song on its own.
+ * Strip library-only metadata so a song can feed the SongDetail view. `leads`
+ * stays empty: who leads a song belongs to a setlist, and the library looks at
+ * the song on its own.
  */
 function libToSong(s: LibrarySongDTO): SongDTO {
   const { usageCount: _u, updatedAt: _up, lastLeads: _l, ...rest } = s;
@@ -20,9 +20,10 @@ function libToSong(s: LibrarySongDTO): SongDTO {
 }
 
 /**
- * Read-only library browser for members: search, browse, and open a song to
- * review its lyric chart or listen to the parts. No editing — that lives in the
- * leader-only `SongLibrary`.
+ * Library browser for members: search, browse, and open a song to review its
+ * lyric chart or listen to the parts. Read-only, except that the song card
+ * itself lets a leader or the vocal director manage the vocal parts; editing the
+ * song *entry* still lives in the leader-only `SongLibrary`.
  */
 export function SongLibraryBrowser({ backHref }: { backHref: string }) {
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);

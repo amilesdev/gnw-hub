@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
           part: user.part,
           image: user.image,
           isSuperAdmin: user.isSuperAdmin,
+          vocalDirector: user.vocalDirector,
           tokenVersion: user.tokenVersion,
         };
       },
@@ -80,6 +81,7 @@ export const authOptions: NextAuthOptions = {
           name: true,
           image: true,
           isSuperAdmin: true,
+          vocalDirector: true,
         },
       });
 
@@ -96,6 +98,7 @@ export const authOptions: NextAuthOptions = {
         session.user.part = fresh.part ?? null;
         session.user.image = fresh.image ?? null;
         session.user.isSuperAdmin = fresh.isSuperAdmin;
+        session.user.vocalDirector = fresh.vocalDirector;
       }
       return session;
     },

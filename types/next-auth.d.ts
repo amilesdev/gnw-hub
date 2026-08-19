@@ -10,6 +10,7 @@ declare module 'next-auth' {
     part?: MemberPart | null;
     image?: string | null;
     isSuperAdmin: boolean;
+    vocalDirector: boolean;
     tokenVersion: number;
   }
 
@@ -23,6 +24,8 @@ declare module 'next-auth' {
       section?: MemberSection | null;
       part?: MemberPart | null;
       isSuperAdmin: boolean;
+      // Narrow capability, not a role — see lib/access.ts → canEditVocalParts.
+      vocalDirector: boolean;
     };
   }
 }

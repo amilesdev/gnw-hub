@@ -7,9 +7,15 @@
 export const ALLOWED_PREFIXES = ['attire/', 'audio/', 'avatars/'];
 
 // Profile pictures live here, one subfolder per user. Kept separate because,
-// unlike attire/audio (leader-only), any authenticated member may write their
-// own avatar — the sign route enforces the `<userId>/` scoping.
+// unlike attire (leader-only), any authenticated member may write their own
+// avatar — the sign route enforces the `<userId>/` scoping.
 export const AVATAR_PREFIX = 'avatars/';
+
+// Song audio: vocal parts and band arrangements. Leaders write here, and so does
+// the vocal director — the one non-leader with a reason to upload audio (see
+// lib/access.ts → canEditVocalParts). Whether the resulting URL actually lands
+// on a song is still gated by PATCH /api/songs/[id].
+export const AUDIO_PREFIX = 'audio/';
 
 /** Build the storage path for a member's avatar upload. */
 export function avatarPath(userId: string, filename: string): string {
