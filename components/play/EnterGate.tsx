@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { playSfx } from '@/lib/play/audio';
 import { haptics } from '@/lib/haptics';
@@ -36,6 +36,25 @@ export function EnterGate({ variant, onEnter }: { variant: 'member' | 'leader'; 
     if (timer.current) clearTimeout(timer.current);
   };
 
+  // Keyboard equivalent of press-and-hold. A <button> turns Enter/Space into a
+  // `click`, never a `pointerdown`, so with pointer handlers alone this gate was
+  // impossible to cross with a keyboard or a switch — the entry point to all of
+  // Play was unreachable. Holding the key runs the same ring fill; releasing it
+  // early cancels, exactly like lifting a finger.
+  // `e.repeat` guards the auto-repeat storm a held key produces.
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault(); // stop Space scrolling and the synthetic click
+    if (e.repeat || holding) return;
+    start();
+  };
+
+  const onKeyUp = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    cancel();
+  };
+
   const complete = () => {
     // Keep the ring full (don't unfill) — go straight into the flood.
     setEntering(true);
@@ -66,8 +85,11 @@ export function EnterGate({ variant, onEnter }: { variant: 'member' | 'leader'; 
           onPointerUp={cancel}
           onPointerLeave={cancel}
           onPointerCancel={cancel}
+          onKeyDown={onKeyDown}
+          onKeyUp={onKeyUp}
+          onBlur={cancel}
           onContextMenu={(e) => e.preventDefault()}
-          className="relative grid h-64 w-64 touch-none select-none place-items-center"
+          className="relative grid h-64 w-64 touch-none select-none place-items-center rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
           {/* Constant soft sage halo for depth. */}
           <span

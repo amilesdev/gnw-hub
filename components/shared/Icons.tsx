@@ -212,6 +212,56 @@ export const Sparkle = (p: P) => (
   </Base>
 );
 
+// Survival life. `filled` = a life still held, outline = one already spent — the
+// state reads from the SHAPE, not colour alone, so it survives colour-blind
+// vision and greyscale. Replaces the old '❤️'.repeat(n) emoji string, which
+// rendered differently on every OS and could not be animated.
+export const Heart = ({ filled = false, ...p }: P & { filled?: boolean }) => (
+  <Base {...p} fill={filled ? 'currentColor' : 'none'}>
+    <path d="M12 20.3S4.5 15.7 4.5 10.7A4.2 4.2 0 0 1 12 8.1a4.2 4.2 0 0 1 7.5 2.6c0 5-7.5 9.6-7.5 9.6Z" />
+  </Base>
+);
+
+export const Crown = (p: P) => (
+  <Base {...p}>
+    <path d="M4.5 18.5h15" />
+    <path d="M4.5 18.5 3 7.5l4.9 3.6L12 4.5l4.1 6.6L21 7.5l-1.5 11" />
+  </Base>
+);
+
+// A run of correct answers "burning". Filled by default — it reads as a mark of
+// state, not an outline control, so it sits at a different hierarchy level than
+// the stroke icons around it.
+export const Flame = ({ filled = true, ...p }: P & { filled?: boolean }) => (
+  <Base {...p} fill={filled ? 'currentColor' : 'none'} strokeWidth={filled ? 0 : 1.9}>
+    <path d="M12.6 2.6c2.6 3.3 1.1 5.1.3 6.5-.6 1-.5 2 .5 2.2 1 .2 1.7-.9 1.9-2.1 1.8 1.6 2.8 3.5 2.8 5.5a6.1 6.1 0 0 1-12.2 0c0-3.3 2.3-5.7 3.8-7.6 1.4-1.8 2.4-3.2 2.9-4.5Z" />
+  </Base>
+);
+
+// Rank movement between rounds. Solid triangles, not chevrons: a chevron in this
+// set already means "navigate", and this is a value, not a control.
+export const RankUp = (p: P) => (
+  <Base {...p} fill="currentColor" strokeWidth={0}>
+    <path d="M12 6.5 19 17H5z" />
+  </Base>
+);
+
+export const RankDown = (p: P) => (
+  <Base {...p} fill="currentColor" strokeWidth={0}>
+    <path d="M12 17.5 5 7h14z" />
+  </Base>
+);
+
+// "More actions" affordance. Replaces a literal '⋯' character, which inherited
+// the body font and sat at whatever baseline that font decided on.
+export const MoreHorizontal = (p: P) => (
+  <Base {...p} fill="currentColor" strokeWidth={0}>
+    <circle cx="5.5" cy="12" r="1.7" />
+    <circle cx="12" cy="12" r="1.7" />
+    <circle cx="18.5" cy="12" r="1.7" />
+  </Base>
+);
+
 export const Lock = (p: P) => (
   <Base {...p}>
     <rect x="5" y="11" width="14" height="9" rx="2.5" />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 // Standard reaction set (spec §4.4).
 export const EMOJIS = ['🎉', '😂', '🔥', '❤️', '👀', '😮'];
@@ -43,7 +44,19 @@ export function ReactionLayer({ floats }: { floats: { id: number; emoji: string;
   );
 }
 
-export function EmojiBar({ onPick }: { onPick: (emoji: string) => void }) {
+/**
+ * `tone` exists because this bar sits on two different grounds. On the lobby it
+ * lives on the themed app surface; on the live game it sits on the stage, which
+ * is dark in BOTH themes — and `bg-surface-2` there rendered six cream discs on
+ * a near-black stage in light mode, the one place the stage didn't hold.
+ */
+export function EmojiBar({
+  onPick,
+  tone = 'surface',
+}: {
+  onPick: (emoji: string) => void;
+  tone?: 'surface' | 'stage';
+}) {
   return (
     <div className="flex items-center justify-center gap-1.5">
       {EMOJIS.map((e) => (
@@ -51,7 +64,10 @@ export function EmojiBar({ onPick }: { onPick: (emoji: string) => void }) {
           key={e}
           type="button"
           onClick={() => onPick(e)}
-          className="row-press grid h-11 w-11 place-items-center rounded-2xl bg-surface-2 text-2xl"
+          className={cn(
+            'grid h-11 w-11 place-items-center rounded-2xl text-2xl transition active:scale-95',
+            tone === 'stage' ? 'bg-white/10 active:bg-white/20' : 'row-press bg-surface-2',
+          )}
           aria-label={`React ${e}`}
         >
           {e}

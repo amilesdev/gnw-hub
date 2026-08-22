@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Fraunces } from 'next/font/google';
+import { Inter, Fraunces, Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
@@ -16,6 +16,23 @@ const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['500', '600', '700'],
   variable: '--font-fraunces',
+  display: 'swap',
+});
+
+// GNW Play's display face — used ONLY past the Enter gate (see the
+// `html.play-active .font-display` remap in globals.css). The Hub keeps
+// Fraunces, so crossing the gate is a genuine change of world.
+//
+// Register is confident and geometric, NOT toy — a rounded/bouncy face read as
+// goofy here. Outfit is a geometric sans that stays clean at display sizes and
+// gets genuinely heavy for scores and answers.
+// No `weight` array: Outfit is a variable font, so this ships the whole 100–900
+// range in one file (smaller than several static cuts) and lets the answer
+// letter chips use font-black without synthesising a fake bold.
+// Alternatives can be auditioned live at /play-preview.
+const playDisplay = Outfit({
+  subsets: ['latin'],
+  variable: '--font-play',
   display: 'swap',
 });
 
@@ -53,7 +70,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${playDisplay.variable}`}>
       <body>
         <ThemeScript />
         <Providers>{children}</Providers>

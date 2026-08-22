@@ -39,7 +39,10 @@ export function GuestJoin({
     <div className="app-shell play-surface items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6 text-center">
         <div
-          className="play-core-breathe mx-auto grid h-20 w-20 place-items-center rounded-full text-white shadow-pop"
+          // Dark glyph, not white: this gradient's inner stop is --play-green,
+          // where white sits at 2.27:1 and misses the 3:1 non-text minimum. Dark
+          // ink clears it at both stops (8.06:1 inner, 3.40:1 outer).
+          className="play-core-breathe mx-auto grid h-20 w-20 place-items-center rounded-full text-play-ink shadow-pop"
           style={{ background: 'radial-gradient(120% 120% at 30% 25%, rgb(var(--play-green)), #157a43)' }}
         >
           <PlayRings width={36} height={36} />

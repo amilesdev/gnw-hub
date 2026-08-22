@@ -18,6 +18,10 @@ const config: Config = {
         ink: 'rgb(var(--ink) / <alpha-value>)',
         'ink-soft': 'rgb(var(--ink-soft) / <alpha-value>)',
         'ink-faint': 'rgb(var(--ink-faint) / <alpha-value>)',
+        // GNW Play: fixed dark ink for text on bright option colours (does NOT
+        // flip in dark mode), and the Survival life colour.
+        'play-ink': 'rgb(var(--play-ink) / <alpha-value>)',
+        'play-heart': 'rgb(var(--play-heart) / <alpha-value>)',
         accent: {
           DEFAULT: '#5E7048',
           soft: 'rgb(var(--accent-soft) / <alpha-value>)',

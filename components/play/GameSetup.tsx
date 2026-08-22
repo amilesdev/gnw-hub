@@ -131,8 +131,15 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
                   setMode(m.id);
                   setStep(3);
                 }}
-                className="play-press flex w-full items-center gap-4 overflow-hidden rounded-3xl p-4 text-left text-white shadow-pop"
-                style={{ background: `linear-gradient(135deg, rgb(var(${m.color})), rgb(var(${m.color}) / 0.78))` }}
+                className="play-press flex w-full items-center gap-4 overflow-hidden rounded-3xl p-4 text-left text-play-ink shadow-pop"
+                // Opaque base + a white sheen, rather than fading the colour to
+                // 78% alpha. The old alpha gradient composited against the theme
+                // background, so in dark mode its faded end dropped dark ink to
+                // 3.52:1. A white overlay can only lighten, so contrast now holds
+                // at the solid colour's ratio (worst case 5.05:1) in both themes.
+                style={{
+                  background: `linear-gradient(135deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0) 62%), rgb(var(${m.color}))`,
+                }}
               >
                 <img
                   src={m.image}
@@ -143,7 +150,7 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
                 />
                 <span className="min-w-0">
                   <span className="block font-display text-lg font-bold">{m.name}</span>
-                  <span className="block text-sm text-white/85">{m.desc}</span>
+                  <span className="block text-sm text-play-ink/80">{m.desc}</span>
                 </span>
               </button>
             ))}
