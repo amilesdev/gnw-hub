@@ -52,14 +52,15 @@ export function SetlistManager() {
 
   return (
     <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between gap-2 pr-12">
         <div>
           <div className="eyebrow">Leader tools</div>
           <h1 className="page-title mt-2">Setlists</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/library" className="btn-ghost !px-4 !py-3 border border-line">
-            <Book width={18} height={18} /> Library
+          {/* Icon-only on narrow phones so the header fits beside the floating avatar. */}
+          <Link href="/dashboard/library" className="btn-ghost !px-4 !py-3 border border-line max-[389px]:!px-3">
+            <Book width={18} height={18} /> <span className="max-[389px]:sr-only">Library</span>
           </Link>
           <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
             <Plus width={18} height={18} /> Add

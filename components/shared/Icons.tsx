@@ -54,6 +54,16 @@ export const Music = (p: P) => (
   </Base>
 );
 
+// A single note with a plus — "suggest a song".
+export const MusicPlus = (p: P) => (
+  <Base {...p}>
+    <path d="M10 18V5l8-1.5v6" />
+    <circle cx="7.5" cy="18" r="2.5" />
+    <path d="M18 14v6" />
+    <path d="M15 17h6" />
+  </Base>
+);
+
 export const UserIcon = (p: P) => (
   <Base {...p}>
     <circle cx="12" cy="8" r="4" />
@@ -406,6 +416,17 @@ export const Maximize = (p: P) => (
     <path d="M15 4h5v5" />
     <path d="M15 20h5v-5" />
     <path d="M9 20H4v-5" />
+  </Base>
+);
+
+// Two paths crossing over, each ending in an arrow — the Crossover tab.
+export const Crossover = (p: P) => (
+  <Base {...p}>
+    <path d="M3 7h3.5a5 5 0 0 1 4.2 2.3l2.6 4.4A5 5 0 0 0 17.5 16H21" />
+    <path d="M3 17h3.5a5 5 0 0 0 4.2-2.3" />
+    <path d="M13.3 9.3A5 5 0 0 1 17.5 7H21" />
+    <path d="M18 4l3 3-3 3" />
+    <path d="M18 13l3 3-3 3" />
   </Base>
 );
 

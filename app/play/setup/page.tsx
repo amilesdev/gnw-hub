@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getCurrentSession } from '@/lib/play/queries';
+import { countIncomplete, QUESTION_READINESS_SELECT } from '@/lib/play/packs';
 import { GameSetup, type SetupPack } from '@/components/play/GameSetup';
 
 export const dynamic = 'force-dynamic';
@@ -23,13 +24,14 @@ export default async function GameSetupPage() {
   const packs = await prisma.questionPack.findMany({
     where: { createdById: user.id },
     orderBy: { updatedAt: 'desc' },
-    include: { _count: { select: { questions: true } } },
+    include: { questions: { select: QUESTION_READINESS_SELECT } },
   });
 
   const setupPacks: SetupPack[] = packs.map((p) => ({
     id: p.id,
     name: p.name,
-    questionCount: p._count.questions,
+    questionCount: p.questions.length,
+    incompleteCount: countIncomplete(p.questions),
   }));
 
   return <GameSetup packs={setupPacks} />;

@@ -162,6 +162,25 @@ export const prayerRequestSchema = z.object({
   body: z.string().min(1, 'Prayer request required').max(2000),
 });
 
+// A song suggestion: just the YouTube link. Title/artist are optional overrides
+// of the server's guess (the suggester corrected it in the preview).
+export const suggestionCreateSchema = z.object({
+  url: z.string().trim().min(1, 'Paste a YouTube link').max(500),
+  songTitle: z.string().trim().max(200).optional().nullable(),
+  artist: z.string().trim().max(200).optional().nullable(),
+});
+
+// Leader triage: pass on a suggestion, or bring a passed one back.
+export const suggestionStatusSchema = z.object({
+  status: z.enum(['open', 'dismissed']),
+});
+
+// "Add to library": the leader may tidy the title/artist on the way in.
+export const suggestionToLibrarySchema = z.object({
+  songTitle: z.string().trim().min(1, 'Song title required').max(200),
+  artist: z.string().trim().max(200).optional().nullable(),
+});
+
 // A member's blackout date (or range). Dates are "YYYY-MM-DD"; those sort
 // lexicographically, so a plain string compare enforces end-on-or-after-start
 // without parsing. `userId` is leader-only (mark availability on a member's

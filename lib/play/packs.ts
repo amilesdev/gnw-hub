@@ -2,7 +2,33 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/session';
-import type { Question, QuestionPack } from '@prisma/client';
+import { isQuestionIncomplete } from './validation';
+import type { Prisma, Question, QuestionPack } from '@prisma/client';
+
+/**
+ * The columns needed to judge a pack's readiness. Play home and game setup both
+ * list packs and both have to say whether each one can actually be launched, so
+ * they select this and hand the rows to `countIncomplete` rather than each
+ * re-deriving the rule.
+ */
+export const QUESTION_READINESS_SELECT = {
+  questionText: true,
+  options: true,
+  correctAnswer: true,
+} as const;
+
+/** How many of a pack's questions are unfinished (see `isQuestionIncomplete`). */
+export function countIncomplete(
+  questions: { questionText: string; options: Prisma.JsonValue; correctAnswer: string }[],
+): number {
+  return questions.filter((q) =>
+    isQuestionIncomplete({
+      questionText: q.questionText,
+      options: (q.options as string[]) ?? [],
+      correctAnswer: q.correctAnswer,
+    }),
+  ).length;
+}
 
 // A pack is locked (read-only) while a session that uses it is live, so the
 // questions can't change mid-game (system constraint).

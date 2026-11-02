@@ -77,7 +77,7 @@ export function EventsScreen({
 
   return (
     <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between gap-2 pr-12">
         <div>
           <div className="eyebrow">{canManage ? 'Leader tools' : 'GNW Hub'}</div>
           <h1 className="page-title mt-2">Events</h1>

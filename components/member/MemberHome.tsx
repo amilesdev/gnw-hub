@@ -38,7 +38,7 @@ export function MemberHome({
 
   return (
     <div className="animate-enter-home space-y-6 pt-2">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex items-start justify-between gap-3 pr-12">
         <div>
           <div className="eyebrow">GNW Hub</div>
           <h1 className="page-title mt-2">Shalom, {firstName}</h1>

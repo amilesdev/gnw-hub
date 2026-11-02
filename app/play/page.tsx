@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getCurrentSession, getPlayPointsLeaderboard } from '@/lib/play/queries';
+import { countIncomplete, QUESTION_READINESS_SELECT } from '@/lib/play/packs';
 import { PlayHome, type PackSummary, type ActiveGame } from '@/components/play/PlayHome';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export default async function PlayHomePage() {
       ? prisma.questionPack.findMany({
           where: { createdById: user.id },
           orderBy: { updatedAt: 'desc' },
-          include: { _count: { select: { questions: true } } },
+          include: { questions: { select: QUESTION_READINESS_SELECT } },
         })
       : Promise.resolve([]),
     getPlayPointsLeaderboard(),
@@ -45,7 +46,8 @@ export default async function PlayHomePage() {
   const packSummaries: PackSummary[] = packs.map((p) => ({
     id: p.id,
     name: p.name,
-    questionCount: p._count.questions,
+    questionCount: p.questions.length,
+    incompleteCount: countIncomplete(p.questions),
     updatedAt: p.updatedAt.toISOString(),
   }));
 

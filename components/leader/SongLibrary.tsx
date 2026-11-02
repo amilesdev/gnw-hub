@@ -11,7 +11,7 @@ import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from '@/components/shared/LyricChartImport';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { Plus, Music, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
+import { Plus, Music, MusicPlus, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import Link from 'next/link';
 
@@ -55,7 +55,7 @@ export function SongLibrary() {
 
   return (
     <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between gap-2 pr-12">
         <div>
           <Link
             href="/dashboard/setlist"
@@ -64,11 +64,17 @@ export function SongLibrary() {
           >
             <ChevronLeft width={18} height={18} />
           </Link>
-          <h1 className="page-title">Song library</h1>
+          <h1 className="page-title">Library</h1>
         </div>
-        <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
-          <Plus width={18} height={18} /> New
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Icon-only on narrow phones so the header fits beside the floating avatar. */}
+          <Link href="/dashboard/library/suggestions" className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3">
+            <MusicPlus width={18} height={18} /> <span className="max-[389px]:sr-only">Suggest</span>
+          </Link>
+          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
+            <Plus width={18} height={18} /> New
+          </button>
+        </div>
       </header>
 
       {songs === null ? (

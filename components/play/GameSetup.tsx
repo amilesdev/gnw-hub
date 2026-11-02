@@ -14,6 +14,8 @@ export interface SetupPack {
   id: string;
   name: string;
   questionCount: number;
+  /** Questions with no text or no correct answer — a pack can't launch with any. */
+  incompleteCount: number;
 }
 
 const MODES: { id: GameMode; name: string; desc: string; color: string; image: string }[] = [
@@ -92,7 +94,15 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
               </div>
             )}
             {packs.map((p) => {
-              const ok = p.questionCount >= MIN_QUESTIONS_TO_PLAY;
+              // Both gates the server applies at launch, said here instead of
+              // after the tap: enough questions, and none of them unfinished.
+              const enough = p.questionCount >= MIN_QUESTIONS_TO_PLAY;
+              const ok = enough && p.incompleteCount === 0;
+              const why = !enough
+                ? ` · need ${MIN_QUESTIONS_TO_PLAY}+`
+                : p.incompleteCount > 0
+                  ? ` · ${p.incompleteCount} unfinished`
+                  : '';
               return (
                 <button
                   key={p.id}
@@ -111,7 +121,7 @@ export function GameSetup({ packs }: { packs: SetupPack[] }) {
                   <div>
                     <div className="font-semibold text-ink">{p.name}</div>
                     <div className="mt-0.5 text-xs text-ink-faint">
-                      {p.questionCount} questions{!ok && ` · need ${MIN_QUESTIONS_TO_PLAY}+`}
+                      {p.questionCount} questions{why}
                     </div>
                   </div>
                 </button>

@@ -8,7 +8,8 @@ export const SPEED_BONUS_MAX = 500;
 /**
  * Universal per-answer score (spec §6.1). Faster correct answers earn more; a
  * wrong/late answer earns 0. Speed bonus is clamped to ≥0 so an over-limit
- * answer (shouldn't happen — server cuts off at the limit) never goes negative.
+ * answer never goes negative — `recordAnswer` refuses anything past the limit
+ * and clamps what it accepts to it, so this clamp is a floor, not the guard.
  */
 export function calculatePoints(isCorrect: boolean, timeTakenMs: number, timeLimitMs: number): number {
   if (!isCorrect) return 0;

@@ -4,15 +4,16 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { Grip, Trash, ChevronDown, Check } from '@/components/shared/Icons';
+import { isQuestionIncomplete } from '@/lib/play/validation';
 import type { SerializedQuestion } from '@/lib/play/packs';
 
 export type DraftQuestion = SerializedQuestion;
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-export function isIncomplete(q: DraftQuestion): boolean {
-  return q.questionText.trim() === '' || !q.options.includes(q.correctAnswer);
-}
+// Re-exported under the builder's own name; the rule itself lives in
+// lib/play/validation so the session route enforces the same one at launch.
+export const isIncomplete = (q: DraftQuestion): boolean => isQuestionIncomplete(q);
 
 export function QuestionRow({
   question,

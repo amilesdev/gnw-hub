@@ -8,8 +8,10 @@ import type {
   Call,
   VocalPart,
   Unavailability,
+  SongSuggestion,
 } from '@prisma/client';
 import { toYmd } from '@/lib/dates';
+import { youTubeThumbnail } from '@/lib/youtube';
 import type { RehearsalScheduleItem } from '@/lib/rehearsal-schedule';
 
 // One assigned singer. The display name is resolved at read time, so renaming a
@@ -183,6 +185,23 @@ export function serializePrayerRequest(p: PrayerRequest): PrayerRequestDTO {
     ...p,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+  };
+}
+
+// A song suggestion. The thumbnail is derived from the video id rather than
+// stored (every video has one at a fixed URL).
+export type SongSuggestionDTO = Omit<SongSuggestion, 'createdAt' | 'updatedAt'> & {
+  thumbnailUrl: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function serializeSuggestion(s: SongSuggestion): SongSuggestionDTO {
+  return {
+    ...s,
+    thumbnailUrl: youTubeThumbnail(s.videoId),
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
   };
 }
 

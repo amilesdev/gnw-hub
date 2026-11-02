@@ -24,6 +24,8 @@ export interface PackSummary {
   id: string;
   name: string;
   questionCount: number;
+  /** Questions with no text or no correct answer — a pack can't launch with any. */
+  incompleteCount: number;
   updatedAt: string;
 }
 
@@ -453,7 +455,10 @@ export function PlayHome({
  * back state and a plain count when it can't.
  */
 function PackRow({ pack, onOpen }: { pack: PackSummary; onOpen: () => void }) {
-  const ready = pack.questionCount >= MIN_QUESTIONS_TO_PLAY;
+  // "Ready" has to mean what the launch route means by it, or the lit green chip
+  // promises a game that the next screen then refuses to start.
+  const enough = pack.questionCount >= MIN_QUESTIONS_TO_PLAY;
+  const ready = enough && pack.incompleteCount === 0;
   return (
     <button
       type="button"
@@ -483,7 +488,9 @@ function PackRow({ pack, onOpen }: { pack: PackSummary; onOpen: () => void }) {
           state — this just says how far off it is. */}
       {!ready && (
         <span className="chip shrink-0 bg-surface-2 text-ink-soft">
-          {MIN_QUESTIONS_TO_PLAY - pack.questionCount} more
+          {enough
+            ? `${pack.incompleteCount} unfinished`
+            : `${MIN_QUESTIONS_TO_PLAY - pack.questionCount} more`}
         </span>
       )}
       <ChevronRight width={18} height={18} className="shrink-0 text-ink-faint" />

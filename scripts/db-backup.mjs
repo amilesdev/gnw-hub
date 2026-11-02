@@ -31,8 +31,21 @@ async function main() {
   const data = {};
   const counts = {};
 
+  const skipped = [];
   for (const model of models) {
-    const rows = await prisma[delegateOf(model.name)].findMany();
+    let rows;
+    try {
+      rows = await prisma[delegateOf(model.name)].findMany();
+    } catch (e) {
+      // P2021 = table doesn't exist yet: the schema has a model whose migration
+      // hasn't been applied — the normal state when backing up *before* a
+      // migration. Nothing to back up there, so skip it rather than abort.
+      if (e?.code === 'P2021') {
+        skipped.push(model.name);
+        continue;
+      }
+      throw e;
+    }
     data[model.name] = rows;
     counts[model.name] = rows.length;
   }
@@ -50,6 +63,7 @@ async function main() {
   console.log(`✔ Backup written: ${file}`);
   console.log(`  ${total} rows across ${models.length} tables`);
   for (const [name, c] of Object.entries(counts)) if (c) console.log(`    ${name}: ${c}`);
+  if (skipped.length) console.log(`  skipped (not migrated yet): ${skipped.join(', ')}`);
 
   // Prune old backups, keeping the newest KEEP.
   const backups = readdirSync(BACKUP_DIR)

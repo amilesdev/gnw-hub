@@ -170,32 +170,38 @@ export const PACK_LOCKED: SerializedPack = {
   locked: true,
 };
 
+// One pack per readiness state, so the gallery shows all three: ready, held
+// back for unfinished questions, and held back for too few.
 export const PACK_SUMMARIES: PackSummary[] = [
   {
     id: 'preview-pack-1',
     name: 'Sunday Warm-Up',
     questionCount: 8,
+    incompleteCount: 0,
     updatedAt: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
   },
   {
     id: 'preview-pack-2',
     name: 'Youth Night Trivia',
     questionCount: 12,
+    incompleteCount: 2,
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
   },
   {
     id: 'preview-pack-3',
     name: 'Worship History',
     questionCount: 3,
+    incompleteCount: 0,
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9).toISOString(),
   },
 ];
 
 export const SETUP_PACKS: SetupPack[] = [
-  { id: 'preview-pack-1', name: 'Sunday Warm-Up', questionCount: 8 },
-  { id: 'preview-pack-2', name: 'Youth Night Trivia', questionCount: 12 },
-  // Under MIN_QUESTIONS_TO_PLAY — renders disabled with "Need 5+ questions".
-  { id: 'preview-pack-3', name: 'Worship History', questionCount: 3 },
+  { id: 'preview-pack-1', name: 'Sunday Warm-Up', questionCount: 8, incompleteCount: 0 },
+  // Enough questions, but two are unfinished — renders disabled with "2 unfinished".
+  { id: 'preview-pack-2', name: 'Youth Night Trivia', questionCount: 12, incompleteCount: 2 },
+  // Under MIN_QUESTIONS_TO_PLAY — renders disabled with "need 5+".
+  { id: 'preview-pack-3', name: 'Worship History', questionCount: 3, incompleteCount: 0 },
 ];
 
 // ---------------------------------------------------------------------------

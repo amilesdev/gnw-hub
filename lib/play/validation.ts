@@ -65,3 +65,33 @@ export const guestJoinSchema = z.object({
 });
 
 export const MIN_QUESTIONS_TO_PLAY = 5;
+
+// --- Question completeness ----------------------------------------------
+
+/**
+ * The shape needed to judge whether a question can actually be played. Kept
+ * structural so both the Prisma row (server) and the builder draft (client)
+ * satisfy it without either side importing the other's types.
+ */
+export interface QuestionCompleteness {
+  questionText: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+/**
+ * A question nobody can answer: it asks nothing, or none of its options is
+ * marked correct.
+ *
+ * The builder deliberately SAVES incomplete rows — autosave must never block
+ * typing (spec §2.9) — and flags them with a warning dot, so this is the gate
+ * that keeps them out of a live game instead. It matters most in survival,
+ * where a question with no correct answer scores the whole room wrong and costs
+ * every player a heart in the same round.
+ *
+ * Lives here rather than in QuestionRow so the session route can share it
+ * without importing a 'use client' module.
+ */
+export function isQuestionIncomplete(q: QuestionCompleteness): boolean {
+  return q.questionText.trim() === '' || !q.options.includes(q.correctAnswer);
+}

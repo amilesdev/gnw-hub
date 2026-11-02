@@ -6,7 +6,7 @@ import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
 import { EmptyState } from './EmptyState';
 import { Skeleton, SkeletonList } from './Skeleton';
-import { Music, ChevronRight, ChevronLeft, Book } from './Icons';
+import { Music, MusicPlus, ChevronRight, ChevronLeft, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 
 /**
@@ -25,7 +25,7 @@ function libToSong(s: LibrarySongDTO): SongDTO {
  * itself lets a leader or the vocal director manage the vocal parts; editing the
  * song *entry* still lives in the leader-only `SongLibrary`.
  */
-export function SongLibraryBrowser({ backHref }: { backHref: string }) {
+export function SongLibraryBrowser({ backHref, suggestHref }: { backHref: string; suggestHref: string }) {
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<SongDTO | null>(null);
@@ -47,15 +47,20 @@ export function SongLibraryBrowser({ backHref }: { backHref: string }) {
 
   return (
     <div className="space-y-5 pt-2">
-      <header className="flex items-center gap-3">
-        <Link
-          href={backHref}
-          className="row-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-          aria-label="Back"
-        >
-          <ChevronLeft width={18} height={18} />
+      <header className="flex items-center justify-between gap-3 pr-12">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href={backHref}
+            className="row-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft"
+            aria-label="Back"
+          >
+            <ChevronLeft width={18} height={18} />
+          </Link>
+          <h1 className="page-title">Library</h1>
+        </div>
+        <Link href={suggestHref} className="btn-ghost shrink-0 border border-line !px-4 !py-3">
+          <MusicPlus width={18} height={18} /> Suggest
         </Link>
-        <h1 className="page-title">Song library</h1>
       </header>
 
       {songs === null ? (

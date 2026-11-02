@@ -103,6 +103,18 @@ export async function startQuestion(sessionId: string): Promise<StartResult> {
 
 export type AnswerResult = { accepted: true } | { accepted: false; status: number; reason: string };
 
+/**
+ * Slack allowed past the question's time limit before an answer is refused.
+ *
+ * The round is closed by the host's client when its timer expires, which is a
+ * wall-clock race the player can lose through no fault of their own: a tap sent
+ * at 14.9s can land at 15.2s on a bad connection. Without a window, that player
+ * is punished for their network. With one, a genuinely late answer is still
+ * refused — and anything inside it is clamped to the limit, so the grace buys
+ * acceptance, never points.
+ */
+const LATE_ANSWER_GRACE_MS = 750;
+
 export async function recordAnswer(
   sessionId: string,
   playerId: string,
@@ -133,8 +145,26 @@ export async function recordAnswer(
   });
   if (existing) return { accepted: true }; // locked — no changing answers
 
+  // Enforce the clock on the SERVER, not just on the host's screen.
+  //
+  // `roundState.status` stays 'answering' until the host's client posts
+  // end-question, and that client is a phone that can sleep, background, or
+  // throttle its timers. Left to that alone, a round could sit open long past
+  // its limit and a late correct answer would still bank the full base points,
+  // indistinguishable from one given at the buzzer.
+  //
+  // Note this reads the same wall clock the host's timer does, so a long pause
+  // mid-question closes the window for everyone — consistent with pause already
+  // being a soft, client-display pause best used between rounds.
   const start = session.roundState.questionStartAt ?? submittedAt;
-  const timeTakenMs = Math.max(0, submittedAt.getTime() - start.getTime());
+  const elapsedMs = Math.max(0, submittedAt.getTime() - start.getTime());
+  const timeLimitMs = getSettings(session).time_per_question * 1000;
+  if (elapsedMs > timeLimitMs + LATE_ANSWER_GRACE_MS) {
+    return { accepted: false, status: 409, reason: 'Out of time' };
+  }
+  // Clamp so an answer accepted inside the grace window scores as if it arrived
+  // exactly on the limit: full base points, zero speed bonus, never negative.
+  const timeTakenMs = Math.min(elapsedMs, timeLimitMs);
 
   await prisma.gameAnswer.create({
     data: { sessionId, playerId, questionId, answer, submittedAt, timeTakenMs },

@@ -26,6 +26,15 @@ export async function POST(_req: Request, { params }: Ctx) {
   if ('error' in guard) return guard.error;
   const old = guard.session;
 
+  // Only a finished game gets a rematch. The results screen already redirects
+  // anywhere else, so the UI can't reach this — but without the check a direct
+  // POST during a live game would open a second lobby and strand the first one
+  // as permanently 'active', which is the same one-game-at-a-time invariant
+  // that POST /api/play/sessions enforces on the way in.
+  if (old.status !== 'ended') {
+    return NextResponse.json({ error: 'That game is still running' }, { status: 409 });
+  }
+
   const settings = old.settings as unknown as GameSettings;
   const pack = await prisma.question.findMany({
     where: { packId: old.packId },

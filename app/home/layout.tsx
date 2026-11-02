@@ -9,5 +9,9 @@ import { AppShell } from '@/components/shared/AppShell';
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
-  return <AppShell variant="member">{children}</AppShell>;
+  return (
+    <AppShell variant="member" user={{ name: user.name ?? '', image: user.image ?? null }}>
+      {children}
+    </AppShell>
+  );
 }

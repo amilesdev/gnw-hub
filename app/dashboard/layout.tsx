@@ -9,5 +9,9 @@ export default async function LeaderLayout({ children }: { children: React.React
   const user = await getSessionUser();
   if (!user) redirect('/login');
   if (user.role !== 'leader') redirect('/home');
-  return <AppShell variant="leader">{children}</AppShell>;
+  return (
+    <AppShell variant="leader" user={{ name: user.name ?? '', image: user.image ?? null }}>
+      {children}
+    </AppShell>
+  );
 }

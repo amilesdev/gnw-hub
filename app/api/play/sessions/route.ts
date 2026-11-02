@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireLeader } from '@/lib/session';
 import { getCurrentSession } from '@/lib/play/queries';
-import { createSessionSchema, MIN_QUESTIONS_TO_PLAY } from '@/lib/play/validation';
+import {
+  createSessionSchema,
+  isQuestionIncomplete,
+  MIN_QUESTIONS_TO_PLAY,
+} from '@/lib/play/validation';
 import { randomToken } from '@/lib/utils';
 import type { GameSettings } from '@/lib/play/types';
 
@@ -41,7 +45,12 @@ export async function POST(req: Request) {
 
   const pack = await prisma.questionPack.findUnique({
     where: { id: packId },
-    include: { questions: { orderBy: { orderIndex: 'asc' }, select: { id: true } } },
+    include: {
+      questions: {
+        orderBy: { orderIndex: 'asc' },
+        select: { id: true, questionText: true, options: true, correctAnswer: true },
+      },
+    },
   });
   if (!pack) return NextResponse.json({ error: 'Pack not found' }, { status: 404 });
   if (pack.createdById !== guard.user.id && !guard.user.isSuperAdmin) {
@@ -49,6 +58,27 @@ export async function POST(req: Request) {
   }
   if (pack.questions.length < MIN_QUESTIONS_TO_PLAY) {
     return NextResponse.json({ error: `Pack needs ${MIN_QUESTIONS_TO_PLAY}+ questions` }, { status: 400 });
+  }
+
+  // The builder saves half-finished questions on purpose, so a pack can reach
+  // five questions while some of them are unanswerable. Launching one of those
+  // scores the whole room wrong on that round — in survival that costs every
+  // player a heart at once — so the count alone was never a sufficient gate.
+  const incomplete = pack.questions.filter((q) =>
+    isQuestionIncomplete({
+      questionText: q.questionText,
+      options: (q.options as string[]) ?? [],
+      correctAnswer: q.correctAnswer,
+    }),
+  ).length;
+  if (incomplete > 0) {
+    const s = incomplete === 1;
+    return NextResponse.json(
+      {
+        error: `${incomplete} question${s ? '' : 's'} ${s ? 'is' : 'are'} missing text or a correct answer. Finish ${s ? 'it' : 'them'} first.`,
+      },
+      { status: 400 },
+    );
   }
 
   const ids = pack.questions.map((q) => q.id);

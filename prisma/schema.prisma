@@ -364,8 +364,48 @@ model Song {
 
   setlistSongs SetlistSong[] // placements of this song across setlists
   lastLeads    SongLastLead[] // remembered leaders — see SongLastLead
+  suggestions  SongSuggestion[] // suggestions a leader turned into this song
 
   @@index([songTitle]) // library browse/search by title
+}
+
+// Where a song suggestion stands. `added` = a leader turned it into a library
+// Song; `dismissed` = a leader passed on it (shown as "Passed" in the UI).
+enum SuggestionStatus {
+  open
+  added
+  dismissed
+}
+
+// A song someone thinks the team should sing, submitted as just a YouTube link.
+// Title/artist are guessed from the video's oEmbed metadata (lib/youtube.ts)
+// and may have been corrected by the suggester; the raw video title + channel
+// are kept alongside so a bad guess can be re-read. Visible to the whole team.
+model SongSuggestion {
+  id          String  @id @default(cuid())
+  // The 11-char YouTube video id — the duplicate-detection key.
+  videoId     String
+  url         String // canonical https://www.youtube.com/watch?v=<videoId>
+  songTitle   String
+  artist      String?
+  videoTitle  String?
+  channelName String?
+
+  // Author denormalized with no FK, like PrayerRequest: removing a member never
+  // has to clear their suggestions first, and the name still reads correctly.
+  suggestedById   String?
+  suggestedByName String
+
+  status SuggestionStatus @default(open)
+  // The library Song created from this suggestion ("Add to library").
+  songId String?
+  song   Song?   @relation(fields: [songId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([videoId])
 }
 
 // Join between a Setlist and a library Song: where the song sits (and in what
