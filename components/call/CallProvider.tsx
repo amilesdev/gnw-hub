@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Room, RoomEvent, ConnectionState } from 'livekit-client';
+import { Room, RoomEvent, ConnectionState, DisconnectReason, Track } from 'livekit-client';
 import { RoomContext, RoomAudioRenderer, useMaybeRoomContext } from '@livekit/components-react';
 import { apiFetch } from '@/lib/api-client';
 
@@ -41,6 +41,18 @@ const CHAT_TOPIC = 'chat';
 // How many times we'll try to hand the mic back after the OS took it away
 // before admitting defeat and showing the user as muted.
 const MIC_RESTORE_ATTEMPTS = 3;
+// Disconnects that mean "you're really out" — you hung up, the call was ended,
+// you were removed, or you joined from another device. Anything else (iOS
+// suspending the app, the signal socket dying, a server blip) gets an automatic
+// rejoin instead of silently dropping the person from the call.
+const FINAL_DISCONNECTS = new Set<DisconnectReason | undefined>([
+  DisconnectReason.CLIENT_INITIATED,
+  DisconnectReason.DUPLICATE_IDENTITY,
+  DisconnectReason.PARTICIPANT_REMOVED,
+  DisconnectReason.ROOM_DELETED,
+  DisconnectReason.ROOM_CLOSED,
+  DisconnectReason.USER_REJECTED,
+]);
 const chatEncoder = new TextEncoder();
 const chatDecoder = new TextDecoder();
 
@@ -132,6 +144,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
   // iOS audio session (and makes it chirp) on every app switch.
   const restoringRef = useRef(false);
   const restoreAttemptsRef = useRef(0);
+  // The call we got dropped from and still owe a rejoin. Held until the page is
+  // back on screen — iOS won't hand a hidden page the mic or a stable socket.
+  const pendingRejoinRef = useRef<string | null>(null);
   // Mirror latest state into refs so the callbacks below can stay identity-stable
   // (empty-ish deps) — consumers that call join() in an effect won't thrash.
   const callIdRef = useRef(callId);
@@ -141,6 +156,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const resetToIdle = useCallback(() => {
     joiningRef.current = null;
+    pendingRejoinRef.current = null;
     micIntentRef.current = true;
     restoreAttemptsRef.current = 0;
     setCallId(null);
@@ -155,17 +171,27 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setSeenCount(0);
   }, []);
 
-  // Put the real mic track back in step with what the user asked for. Only ever
-  // runs while the page is on screen: touching the mic in the background is what
-  // restarts the iOS audio session, and every restart is another chirp.
+  // Put the real mic track back in step with what the user asked for.
+  //
+  // In the background we only take the cheap path: when iOS cuts the mic out
+  // from under a backgrounded call, LiveKit tries to re-grab it, fails, and
+  // *mutes the user itself* — but the capture is often still live (hence the
+  // red "recording" pill). Unmuting a live capture just re-enables the track: no
+  // getUserMedia, no audio-session restart, no chirp. Anything that needs a
+  // fresh mic (the capture actually ended) waits until we're back on screen,
+  // since touching the mic hardware in the background is what makes iOS chirp.
   const reconcileMic = useCallback(() => {
     if (!room || statusRef.current !== 'connected') return;
-    if (!pageVisible()) return;
     if (restoringRef.current) return;
     const want = micIntentRef.current;
     if (room.localParticipant.isMicrophoneEnabled === want) {
       restoreAttemptsRef.current = 0;
       return;
+    }
+    if (!pageVisible()) {
+      const capture = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track
+        ?.mediaStreamTrack;
+      if (!want || capture?.readyState !== 'live') return;
     }
     // Don't retry forever if the OS keeps refusing the mic (a phone call holding
     // it, permission revoked mid-call). After a few tries, show the user as muted
@@ -176,7 +202,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
     void room.localParticipant
       .setMicrophoneEnabled(want)
       .catch(() => {
-        if (want && restoreAttemptsRef.current >= MIC_RESTORE_ATTEMPTS) {
+        // Only give up on screen — a background failure is iOS being iOS, and
+        // coming back resets the attempts for a proper try.
+        if (want && pageVisible() && restoreAttemptsRef.current >= MIC_RESTORE_ATTEMPTS) {
           micIntentRef.current = false;
           setMuted(true);
         }
@@ -186,8 +214,62 @@ export function CallProvider({ children }: { children: ReactNode }) {
       });
   }, [room]);
 
-  // Room lifecycle: mirror the local track state, and fall back to idle if the
-  // connection drops. Cleanup disconnects the room when the app unmounts.
+  // Connect the room to a call. Shared by a fresh join and by the automatic
+  // rejoin after a drop — a rejoin keeps the user's mute choice and chat, and
+  // doesn't fail the whole call just because iOS is slow to hand the mic back
+  // (reconcileMic keeps trying once we're connected).
+  const connect = useCallback(
+    (nextCallId: string, rejoin: boolean) => {
+      if (!room) return;
+      joiningRef.current = nextCallId;
+      setCallId(nextCallId);
+      setStatus('connecting');
+      setError(null);
+
+      void (async () => {
+        try {
+          const conn = await apiFetch<TokenResponse>(`/api/calls/${nextCallId}/token`, {
+            method: 'POST',
+          });
+          if (joiningRef.current !== nextCallId) return; // superseded while fetching
+          if (room.state !== ConnectionState.Disconnected) await room.disconnect();
+          await room.connect(conn.serverUrl, conn.token);
+          if (joiningRef.current !== nextCallId) {
+            await room.disconnect();
+            return;
+          }
+          if (!rejoin) micIntentRef.current = true;
+          restoreAttemptsRef.current = 0;
+          const mic = room.localParticipant.setMicrophoneEnabled(micIntentRef.current);
+          await (rejoin ? mic.catch(() => {}) : mic);
+          setCallName(conn.name);
+          setMuted(!micIntentRef.current);
+          setCameraOn(false); // join voice-first; camera is opt-in
+          if (!rejoin) setConnectedAt(Date.now());
+          const started = Date.parse(conn.startedAt);
+          setCallStartedAt(Number.isNaN(started) ? Date.now() : started);
+          setStatus('connected');
+        } catch (err) {
+          if (joiningRef.current !== nextCallId) return;
+          joiningRef.current = null;
+          setError(err instanceof Error ? err.message : 'Could not join the call.');
+          setStatus('error');
+        }
+      })();
+    },
+    [room],
+  );
+
+  // Fire the owed rejoin, but only on screen (see pendingRejoinRef).
+  const startRejoin = useCallback(() => {
+    const id = pendingRejoinRef.current;
+    if (!id || !pageVisible()) return;
+    pendingRejoinRef.current = null;
+    connect(id, true);
+  }, [connect]);
+
+  // Room lifecycle: mirror the local track state, and rejoin (or fall back to
+  // idle) if the connection drops. Cleanup disconnects the room on unmount.
   useEffect(() => {
     if (!room) return;
     const syncLocal = () => {
@@ -196,7 +278,20 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setMuted(!micIntentRef.current);
       reconcileMic();
     };
-    const onDisconnected = () => resetToIdle();
+    const onDisconnected = (reason?: DisconnectReason) => {
+      const id = callIdRef.current;
+      // Dropped mid-call (not hung up / ended / removed): stay "in" the call and
+      // reconnect instead of kicking the person back to the Hub. This is what
+      // used to happen after iOS suspended the app or "Stop recording" was hit.
+      if (id && statusRef.current === 'connected' && !FINAL_DISCONNECTS.has(reason)) {
+        joiningRef.current = id; // hold the slot so join() from the call screen no-ops
+        pendingRejoinRef.current = id;
+        setStatus('connecting');
+        startRejoin();
+        return;
+      }
+      resetToIdle();
+    };
     // Incoming chat: decode the data-channel packet and append. Anything that
     // isn't a well-formed chat message on our topic is ignored.
     const onData = (
@@ -244,11 +339,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .off(RoomEvent.TrackUnmuted, syncLocal);
       room.disconnect();
     };
-  }, [room, resetToIdle, reconcileMic]);
+  }, [room, resetToIdle, reconcileMic, startRejoin]);
 
-  // Coming back to the app is the moment to repair the mic: iOS has usually
-  // suspended (or dropped) the track while we were away. Give it a beat to hand
-  // the audio session back before asking for the mic again.
+  // Coming back to the app is the moment to repair the call: iOS has usually
+  // suspended (or dropped) the mic track — or the whole connection — while we
+  // were away. Give it a beat to hand the audio session back before asking for
+  // the mic again.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -256,7 +352,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
       if (!pageVisible()) return;
       restoreAttemptsRef.current = 0;
       clearTimeout(timer);
-      timer = setTimeout(reconcileMic, 400);
+      timer = setTimeout(() => {
+        startRejoin();
+        reconcileMic();
+      }, 400);
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
@@ -267,52 +366,19 @@ export function CallProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('pageshow', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-  }, [reconcileMic]);
+  }, [reconcileMic, startRejoin]);
 
   const join = useCallback(
     (nextCallId: string) => {
       if (!room) return;
-      // Already in this call, or already connecting to it — returning to the call
-      // screen from the MiniCallBar is a no-op.
+      // Already in this call, or already connecting / rejoining it — returning to
+      // the call screen from the MiniCallBar is a no-op.
       if (joiningRef.current === nextCallId) return;
       if (callIdRef.current === nextCallId && statusRef.current === 'connected') return;
-
-      joiningRef.current = nextCallId;
-      setCallId(nextCallId);
-      setStatus('connecting');
-      setError(null);
-
-      void (async () => {
-        try {
-          const conn = await apiFetch<TokenResponse>(`/api/calls/${nextCallId}/token`, {
-            method: 'POST',
-          });
-          if (joiningRef.current !== nextCallId) return; // superseded while fetching
-          if (room.state !== ConnectionState.Disconnected) await room.disconnect();
-          await room.connect(conn.serverUrl, conn.token);
-          if (joiningRef.current !== nextCallId) {
-            await room.disconnect();
-            return;
-          }
-          micIntentRef.current = true;
-          restoreAttemptsRef.current = 0;
-          await room.localParticipant.setMicrophoneEnabled(true);
-          setCallName(conn.name);
-          setMuted(false);
-          setCameraOn(false); // join voice-first; camera is opt-in
-          setConnectedAt(Date.now());
-          const started = Date.parse(conn.startedAt);
-          setCallStartedAt(Number.isNaN(started) ? Date.now() : started);
-          setStatus('connected');
-        } catch (err) {
-          if (joiningRef.current !== nextCallId) return;
-          joiningRef.current = null;
-          setError(err instanceof Error ? err.message : 'Could not join the call.');
-          setStatus('error');
-        }
-      })();
+      pendingRejoinRef.current = null;
+      connect(nextCallId, false);
     },
-    [room],
+    [room, connect],
   );
 
   const leave = useCallback(async () => {
