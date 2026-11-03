@@ -5,7 +5,7 @@ export const VOCALIST_PARTS = ['Soprano', 'Alto', 'Tenor'] as const;
 export const BAND_PARTS = ['Keys', 'Guitar', 'Bass', 'Drums'] as const;
 export const partEnum = z.enum(['Soprano', 'Alto', 'Tenor', 'Keys', 'Guitar', 'Bass', 'Drums']);
 export const roleEnum = z.enum(['member', 'leader']);
-export const eventTypeEnum = z.enum(['service', 'rehearsal', 'prayer', 'holy_talks', 'other']);
+export const eventTypeEnum = z.enum(['service', 'rehearsal', 'prayer', 'holy_talks', 'encounter_night', 'other']);
 export const repeatEnum = z.enum(['once', 'weekly', 'biweekly', 'monthly']);
 
 /** A part must belong to its section (vocal parts for Vocalist, instruments for Band). */

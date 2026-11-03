@@ -17,6 +17,8 @@ import { VerseRibbon } from '@/components/shared/VerseRibbon';
 import { MemberPolls } from '@/components/member/MemberPolls';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ActiveCallBanner } from '@/components/call/ActiveCallBanner';
+import { ProductionHomeCard } from '@/components/production/ProductionHomeCard';
+import type { MyProductionTasks } from '@/lib/production/server';
 import { Music, ChevronRight } from '@/components/shared/Icons';
 
 export function MemberHome({
@@ -25,12 +27,14 @@ export function MemberHome({
   announcements,
   thisWeek,
   verse,
+  production,
 }: {
   name: string;
   events: EventDTO[];
   announcements: AnnouncementDTO[];
   thisWeek: ThisWeekSetlist;
   verse: Verse;
+  production: MyProductionTasks;
 }) {
   const [detail, setDetail] = useState<EventDTO | null>(null);
   const [song, setSong] = useState<SongDTO | null>(null);
@@ -47,6 +51,8 @@ export function MemberHome({
       </header>
 
       <ActiveCallBanner />
+
+      <ProductionHomeCard mine={production} base="/home" />
 
       <VerseRibbon verse={verse} />
 

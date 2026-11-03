@@ -20,6 +20,8 @@ import { AnnouncementForm } from '@/components/leader/AnnouncementForm';
 import { PollsManager } from '@/components/leader/PollsManager';
 import { StartCallModal } from '@/components/leader/StartCallModal';
 import { ActiveCallBanner } from '@/components/call/ActiveCallBanner';
+import { ProductionHomeCard } from '@/components/production/ProductionHomeCard';
+import type { MyProductionTasks } from '@/lib/production/server';
 import { Calendar, Bell, Music, ChevronRight, Poll, Users, Phone } from '@/components/shared/Icons';
 
 export function LeaderHome({
@@ -29,6 +31,7 @@ export function LeaderHome({
   thisWeek,
   alerts,
   verse,
+  production,
 }: {
   name: string;
   events: EventDTO[];
@@ -36,6 +39,7 @@ export function LeaderHome({
   thisWeek: ThisWeekSetlist;
   alerts: LeaderAlerts;
   verse: Verse;
+  production: MyProductionTasks;
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<EventDTO | null>(null);
@@ -60,6 +64,8 @@ export function LeaderHome({
       </header>
 
       <ActiveCallBanner />
+
+      <ProductionHomeCard mine={production} base="/dashboard" />
 
       <VerseRibbon verse={verse} />
 

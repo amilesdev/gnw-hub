@@ -12,12 +12,14 @@ import { uploadFile } from '@/lib/upload-client';
 import { cn, randomToken } from '@/lib/utils';
 import { parseCalendarDate, startOfToday } from '@/lib/dates';
 import { applyTimeEdit, buildRehearsalPreset, songNameForSlot } from '@/lib/rehearsal-schedule';
+import { carriesAssignments, carriesAttire } from '@/lib/event-types';
 
 const TYPES = [
   { value: 'service', label: 'Service' },
   { value: 'rehearsal', label: 'Rehearsal' },
   { value: 'prayer', label: 'Prayer' },
   { value: 'holy_talks', label: 'Holy Talks' },
+  { value: 'encounter_night', label: 'Encounter Night' },
   { value: 'other', label: 'Other' },
 ] as const;
 
@@ -176,10 +178,10 @@ export function EventForm({
   const isHolyTalks = type === 'holy_talks';
   // The rehearsal run-of-show only applies to Rehearsal events.
   const isRehearsal = type === 'rehearsal';
-  // Attire only applies to Service and Other events.
-  const showAttire = type === 'service' || type === 'other';
-  // Singing assignments only apply to Service events.
-  const showAssignments = type === 'service';
+  // Attire only applies to Service, Encounter Night and Other events.
+  const showAttire = carriesAttire(type);
+  // Singing assignments only apply to Service and Encounter Night events.
+  const showAssignments = carriesAssignments(type);
 
   function addScripture() {
     const s = scriptureDraft.trim();

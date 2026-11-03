@@ -26,6 +26,7 @@ import type { MemberRow } from './MembersManager';
 import { apiFetch } from '@/lib/api-client';
 import { cn, randomToken } from '@/lib/utils';
 import { formatEventDate, monthKey } from '@/lib/dates';
+import { SETLIST_EVENT_TYPES } from '@/lib/event-types';
 
 type Row = {
   key: string;
@@ -42,10 +43,6 @@ type Row = {
   songKey?: string | null;
   bpm?: string | null;
 };
-
-// Only these event types can carry a setlist — Prayer and Holy Talks never do,
-// so they're excluded from the picker.
-const SETLIST_EVENT_TYPES = ['service', 'rehearsal', 'other'] as const;
 
 function toRows(setlist?: SetlistDTO): Row[] {
   if (!setlist) return [];

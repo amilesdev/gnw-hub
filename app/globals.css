@@ -686,3 +686,42 @@ html.play-active .field:focus {
   .no-print { display: none !important; }
   .print-area { display: block !important; }
 }
+
+/* === Production (stage map) ===
+   Colors for the top-down gear drawings, cables and zones. Real gear is dark in
+   both themes; dark mode lifts the bodies and adds a light halo behind cables so
+   black cables still read on the dark floor. */
+:root {
+  --pd-floor: #F6F2EB; --pd-grid: #E3DBCD; --pd-table: #E6DFD2; --pd-table-edge: #CFC5B4;
+  --pd-metal-dark: #2A292E; --pd-metal: #3A3940; --pd-metal-hi: #55535C; --pd-edge: #19181C;
+  --pd-silver: #C9CCD3; --pd-silver-dark: #8E929B; --pd-gold: #C9A04A;
+  --pd-key-white: #FBFAF6; --pd-key-black: #1B1A1E;
+  --pd-head: #F3EFE6; --pd-shell: #7C2F28; --pd-brass: #D3B062; --pd-brass-dark: #A9853A;
+  --pd-lcd: #8FD3C4; --pd-led: #6BCB77; --pd-led-blue: #6AA9FF;
+  --pd-di-body: #273246; --pd-iface: #C8423B; --pd-strat: #F2EDE3; --pd-neck: #D2A56C; --pd-rosewood: #5A3A2A;
+  --pd-c-black: #232126; --pd-c-gray: #8E9097; --pd-c-red: #C8423B; --pd-c-blue: #3A6FC4;
+  --pd-cable-halo: rgba(255, 255, 255, 0); --pd-flow-dot: #FFFFFF; --pd-rj: #DCE3E8; --pd-drop: rgba(30, 20, 10, 0.22);
+  --pd-z-instruments: #C58A3D; --pd-z-musician_ears: #3F8580; --pd-z-vocal_ears: #8A5A8C;
+  --pd-z-mics: #B4544E; --pd-z-stagebox: #5E7048; --pd-z-di: #6E7FA0;
+}
+.dark {
+  --pd-floor: #1D1A16; --pd-grid: #34302A; --pd-table: #2C2822; --pd-table-edge: #423B31;
+  --pd-metal-dark: #34333A; --pd-metal: #44434C; --pd-metal-hi: #63616C; --pd-edge: #8C8796;
+  --pd-key-white: #E9E5DC; --pd-head: #E4DFD4; --pd-shell: #9A4036; --pd-brass: #C7A55A; --pd-brass-dark: #9C7B36;
+  --pd-lcd: #7FC7B8; --pd-di-body: #34415A; --pd-iface: #D9574F; --pd-strat: #E6E0D4; --pd-neck: #C79A61; --pd-rosewood: #6B4733;
+  --pd-c-black: #121114; --pd-c-gray: #9A9CA3; --pd-c-red: #D9574F; --pd-c-blue: #5A8BDB;
+  --pd-cable-halo: rgba(217, 211, 200, 0.7); --pd-rj: #B9C3CA; --pd-drop: rgba(0, 0, 0, 0.55);
+  --pd-z-instruments: #E0A75E; --pd-z-musician_ears: #6FB3AD; --pd-z-vocal_ears: #B98BBB;
+  --pd-z-mics: #D98A84; --pd-z-stagebox: #AEBE8A; --pd-z-di: #9DAED0;
+}
+.pd-prop { cursor: pointer; transition: opacity 0.25s; outline: none; }
+.pd-prop.pd-dim { opacity: 0.22; }
+.pd-sel { fill: none; stroke: var(--pd-zc); stroke-width: 0; transition: stroke-width 0.2s; }
+.pd-prop.pd-on .pd-sel, .pd-prop:focus-visible .pd-sel { stroke-width: 2.5; }
+.pd-cab { fill: none; stroke-linecap: round; transition: opacity 0.25s; }
+.pd-cab-halo { fill: none; stroke: var(--pd-cable-halo); stroke-width: 4.4; stroke-linecap: round; }
+.pd-cab-flow { fill: none; stroke: var(--pd-flow-dot); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 0.1 11; animation: pd-flow 1.2s linear infinite; opacity: 0.95; }
+@keyframes pd-flow { to { stroke-dashoffset: -22.2; } }
+.pd-flow-v::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(180deg, var(--pd-flow-dot) 0 3px, transparent 3px 12px); opacity: 0.9; animation: pd-drip 0.9s linear infinite; }
+@keyframes pd-drip { from { transform: translateY(-12px); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .pd-cab-flow, .pd-flow-v::after { animation: none; } }

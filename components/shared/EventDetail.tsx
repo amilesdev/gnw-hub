@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { EventDTO, PrayerRequestDTO } from '@/lib/serialize';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
@@ -178,6 +180,9 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const isHolyTalks = event.type === 'holy_talks';
   const isPrayer = event.type === 'prayer';
   const isRehearsal = event.type === 'rehearsal';
+  // Production (stage map + setup checklist) lives on Service, Encounter Night and Other events.
+  const hasProduction = event.type === 'service' || event.type === 'encounter_night' || event.type === 'other';
+  const productionBase = usePathname().startsWith('/dashboard') ? '/dashboard' : '/home';
   const assignedParts = assignmentsByPart(event);
   // Song-review rows resolve their title from the currently-attached setlist, so
   // a saved schedule stays in step with setlist changes.
@@ -204,6 +209,22 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
           <InfoRow icon={<Clock width={18} height={18} />}>{formatTimeLabel(event.time)}</InfoRow>
           <InfoRow icon={<MapPin width={18} height={18} />}>{event.location}</InfoRow>
         </section>
+
+        {hasProduction && (
+          <Link
+            href={`${productionBase}/production?event=${event.id}&tab=${event.type === 'other' ? 'checklist' : 'map'}`}
+            className="card row-press flex items-center gap-3 p-4"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
+              <Mic width={18} height={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">Production</span>
+              <span className="block text-xs text-ink-faint">{event.type === 'other' ? 'Setup checklist' : 'Stage map and setup checklist'}</span>
+            </span>
+            <ChevronRight width={20} height={20} className="text-ink-faint" />
+          </Link>
+        )}
 
         {setlist && setlist.songs.length > 0 && (
           <section className="space-y-2.5">

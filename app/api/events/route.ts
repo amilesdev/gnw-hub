@@ -8,6 +8,7 @@ import { ensureRecurringWindow } from '@/lib/recurrence';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { randomToken } from '@/lib/utils';
 import { revalidateEvents } from '@/lib/cache-tags';
+import { carriesAssignments } from '@/lib/event-types';
 
 // GET /api/events?scope=upcoming|all|month&month=YYYY-MM
 export async function GET(req: Request) {
@@ -67,8 +68,8 @@ export async function POST(req: Request) {
 
   const isHolyTalks = d.type === 'holy_talks';
   const isRehearsal = d.type === 'rehearsal';
-  // Singing assignments are a Service-only concept.
-  const assignments = d.type === 'service' ? d.assignments ?? [] : [];
+  // Singing assignments only exist on Service and Encounter Night events.
+  const assignments = carriesAssignments(d.type) ? d.assignments ?? [] : [];
 
   const common = {
     eventName: d.eventName,

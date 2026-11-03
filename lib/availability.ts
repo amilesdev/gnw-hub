@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { sendPush } from '@/lib/push';
 import { formatEventDate } from '@/lib/dates';
+import { ASSIGNMENT_EVENT_TYPES } from '@/lib/event-types';
 
 /**
  * Which users are marked away on a given UTC calendar day. A block covers the
@@ -30,7 +31,7 @@ export async function notifyLeadersOfAssignmentConflict(
     const clashes = await prisma.eventAssignment.findMany({
       where: {
         userId,
-        event: { type: 'service', date: { gte: startDate, lte: endDate } },
+        event: { type: { in: [...ASSIGNMENT_EVENT_TYPES] }, date: { gte: startDate, lte: endDate } },
       },
       select: {
         part: true,

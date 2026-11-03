@@ -1,0 +1,38 @@
+name: Production Reminders
+
+# Every 5 minutes, asks the app to push "your production tasks start soon" to
+# each task owner whose event starts within the next 30 minutes. The app sends
+# at most once per event, so overlapping or extra runs are harmless.
+#
+# Requires:
+#   - Repository variable APP_URL (same one keep-warm uses), e.g. https://gnw-hub.vercel.app
+#   - Repository secret CRON_SECRET (Settings → Secrets and variables → Actions → Secrets)
+#   - The same CRON_SECRET value set as an environment variable in Vercel
+#
+# GitHub cron can run a few minutes late under load; the 30-minute lead absorbs it.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: production-reminders
+  cancel-in-progress: true
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send due reminders
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${{ vars.APP_URL }}" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL variable or CRON_SECRET secret is not set — skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 --retry 2 \
+            -H "Authorization: Bearer $CRON_SECRET" "${{ vars.APP_URL }}/api/production/reminders")
+          echo "HTTP $code"; cat /tmp/out.json; echo
+          [ "$code" = "200" ]

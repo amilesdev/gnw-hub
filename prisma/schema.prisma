@@ -43,6 +43,7 @@ enum EventType {
   rehearsal
   prayer
   holy_talks
+  encounter_night
   other
 }
 
@@ -103,48 +104,48 @@ enum RoundStatus {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  name         String
-  email        String         @unique
-  passwordHash String?
-  role         Role           @default(member)
-  section      MemberSection?
-  part         MemberPart?
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  passwordHash   String?
+  role           Role           @default(member)
+  section        MemberSection?
+  part           MemberPart?
   // Profile picture: Supabase Storage public URL (bucket `gnw-media`, under
   // `avatars/<userId>/`). Null → the UI falls back to the member's initial.
-  image        String?
-  status       UserStatus     @default(pending)
+  image          String?
+  status         UserStatus     @default(pending)
   // Only one super-admin exists; they alone may grant the leader role.
-  isSuperAdmin Boolean        @default(false)
+  isSuperAdmin   Boolean        @default(false)
   // Whether this user may join "Leaders Only" calls. DELIBERATELY separate from
   // `role` / the leader tag — it's an explicit, opt-in designation assigned only
   // for the call feature, and defaults to off for everyone until set.
-  callLeader   Boolean        @default(false)
+  callLeader     Boolean        @default(false)
   // Whether this user may add/replace/remove a song's four vocal-part audio
   // files (the vocal director). Like `callLeader`, DELIBERATELY separate from
   // `role`: it's one narrow capability, not leadership — it grants nothing over
   // events, setlists, song metadata, band content, or retiring songs. Assigned
   // from the backend only (`npm run set-vocal-director`); there is no in-app
   // switch. See lib/access.ts → canEditVocalParts.
-  vocalDirector Boolean       @default(false)
+  vocalDirector  Boolean        @default(false)
   // Whether this user may import/replace/remove a song's lyric chart (the
   // administrative assistant). Same shape and intent as `vocalDirector`: one
   // narrow capability, not leadership — it grants nothing over events,
   // setlists, song metadata, vocal parts, band content, or retiring songs.
   // Assigned from the backend only (`npm run set-admin-assistant`); there is no
   // in-app switch. See lib/access.ts → canEditLyricCharts.
-  adminAssistant Boolean      @default(false)
-  inviteToken  String?        @unique
-  inviteExpiry DateTime?
+  adminAssistant Boolean        @default(false)
+  inviteToken    String?        @unique
+  inviteExpiry   DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
   // reset, "sign out everywhere"). The live session check compares the token's
   // copy against this; a mismatch forces re-login. See lib/auth.ts.
-  tokenVersion Int            @default(0)
+  tokenVersion   Int            @default(0)
   // Self-serve password reset (active users only). Short-lived, single-use.
-  resetToken   String?        @unique
-  resetExpiry  DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  resetToken     String?        @unique
+  resetExpiry    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   pushSubscriptions PushSubscription[]
 
@@ -166,6 +167,9 @@ model User {
 
   songLeads     SongLead[] // songs this user is set to lead, per setlist
   lastSongLeads SongLastLead[] // library songs remembering this user as the last lead
+
+  ownedProductionTasks ProductionTask[] @relation("ProductionTaskOwner") // production tasks this user owns
+  doneProductionTasks  ProductionTask[] @relation("ProductionTaskDoneBy") // production tasks this user checked off
 }
 
 // A date (or date range) a member has marked themselves unavailable. Whole-day:
@@ -253,6 +257,11 @@ model Event {
   setlistId String?
   setlist   Setlist? @relation("EventSetlist", fields: [setlistId], references: [id], onDelete: SetNull)
 
+  // Production: which stage map this event uses (+ this week's changes) and its
+  // task checklist. Both removed with the event.
+  production      EventProduction?
+  productionTasks ProductionTask[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -313,7 +322,7 @@ model PrayerRequest {
 }
 
 model Setlist {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   name      String? // optional display name; falls back to linked event names when empty.
   month     String // "YYYY-MM" — grouping key, derived from the earliest linked event's date.
   // A setlist can be linked to multiple events (see Event.setlist).
@@ -323,7 +332,7 @@ model Setlist {
   // setlists without duplicating storage. Order lives on the join's `position`.
   songs     SetlistSong[]
   createdAt DateTime      @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime      @updatedAt
 
   @@index([month])
 }
@@ -399,7 +408,7 @@ model SongSuggestion {
   status SuggestionStatus @default(open)
   // The library Song created from this suggestion ("Add to library").
   songId String?
-  song   Song?   @relation(fields: [songId], references: [id], onDelete: SetNull)
+  song   Song?            @relation(fields: [songId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -671,7 +680,7 @@ model GameTeam {
 // LiveKit; this row is the discoverable record + audit trail.
 // ===========================================================================
 model Call {
-  id       String     @id @default(cuid())
+  id       String       @id @default(cuid())
   name     String // leader-entered call name (free text)
   roomName String       @unique // LiveKit room identifier (unique slug)
   status   CallStatus   @default(active)
@@ -686,4 +695,115 @@ model Call {
   endedAt   DateTime?
 
   @@index([status])
+}
+
+// ===========================================================================
+// Production — how Sunday's gear connects (the Stage Map) and who sets up what
+// (per-event task checklists). Encounter Night and "Other" events use the same
+// tables; "Other" is checklist-only (no stage map).
+// ===========================================================================
+enum ProductionKind {
+  service
+  encounter_night
+  other
+}
+
+// A venue's base setup — gear, ports, cables, zones and layout — reused every
+// week. Stored as one JSON document (shape in lib/stage-map.ts) because it's
+// always read and edited whole, and leader quick-adds ("Add mic") only append
+// to it. `active` marks the map new events pick up for that kind.
+model StageMap {
+  id     String         @id @default(cuid())
+  name   String // e.g. "Hotel — Sunday Service"
+  venue  String // e.g. "Hotel"; a new building gets its own map
+  kind   ProductionKind
+  active Boolean        @default(true)
+  data   Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventProductions EventProduction[]
+
+  @@index([kind, active])
+}
+
+// One event's production state: the stage map it uses plus this week's changes
+// on top of it (the ~10% that differs — a guest drummer, an extra mic). The
+// map itself is never edited per event; `changes` is a list of edits applied
+// over it at read time (shape in lib/stage-map.ts). Removed with the event.
+model EventProduction {
+  eventId    String    @id
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  stageMapId String?
+  stageMap   StageMap? @relation(fields: [stageMapId], references: [id], onDelete: SetNull)
+  changes    Json?
+
+  // When the "your production tasks start soon" push went out (30 min before
+  // the event). Set once so the every-few-minutes reminder job never repeats it.
+  remindedAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@index([stageMapId])
+}
+
+// A reusable checklist for one production kind (Service, Encounter Night…).
+// Its tasks are copied onto an event's checklist when production is set up.
+model ProductionTemplate {
+  id    String                   @id @default(cuid())
+  name  String
+  kind  ProductionKind
+  tasks ProductionTemplateTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+}
+
+model ProductionTemplateTask {
+  id         String             @id @default(cuid())
+  templateId String
+  template   ProductionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  zone       String? // stage-map zone key (lib/stage-map.ts); null = general
+  title      String
+  notes      String?
+  sortOrder  Int                @default(0)
+
+  eventTasks ProductionTask[]
+
+  @@index([templateId])
+}
+
+// One task on one event's checklist — copied from a template or added ad hoc
+// by a leader. Owners are optional and leader-assigned; a new event's owner
+// defaults to whoever owned the same template task on the previous event of
+// the same type (matched on templateTaskId). Members check off their own
+// tasks; leaders can check off anything. Both user links are SET NULL so
+// removing a member never fails.
+model ProductionTask {
+  id             String                  @id @default(cuid())
+  eventId        String
+  event          Event                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  templateTaskId String?
+  templateTask   ProductionTemplateTask? @relation(fields: [templateTaskId], references: [id], onDelete: SetNull)
+  zone           String?
+  title          String
+  notes          String?
+  sortOrder      Int                     @default(0)
+
+  ownerId String?
+  owner   User?   @relation("ProductionTaskOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  doneAt   DateTime?
+  doneById String?
+  doneBy   User?     @relation("ProductionTaskDoneBy", fields: [doneById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([ownerId])
+  @@index([templateTaskId])
 }

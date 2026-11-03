@@ -6,6 +6,7 @@ import { serializeEvent, eventInclude } from '@/lib/serialize';
 import { parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateEvents } from '@/lib/cache-tags';
+import { carriesAssignments } from '@/lib/event-types';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -81,11 +82,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
     if (paths.length) await deleteObjects(paths);
   }
 
-  // Singing assignments are Service-only: the form sends the full set for a
-  // service (so saving replaces it wholesale), and switching an event away from
-  // Service drops whatever was assigned.
-  const isService = resultingType === 'service';
-  const nextAssignments = isService ? d.assignments : d.type !== undefined ? [] : undefined;
+  // Singing assignments live on Service and Encounter Night only: the form sends
+  // the full set (so saving replaces it wholesale), and switching an event to a
+  // type without assignments drops whatever was assigned.
+  const nextAssignments = carriesAssignments(resultingType) ? d.assignments : d.type !== undefined ? [] : undefined;
 
   try {
     const event = await prisma.$transaction(async (tx) => {
