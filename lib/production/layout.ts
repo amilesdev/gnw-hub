@@ -19,7 +19,7 @@ export const PROPS: Record<string, PropLayout> = {
   di: { x: 650, y: 196, w: 68, h: 30, zone: 'di', label: 'DI box', ly: 32 },
   tx: { x: 650, y: 182, w: 62, h: 16, zone: 'vocal_ears', label: 'Vocalist In-Ears', ly: -28 },
   guitar: { x: 614, y: 440, w: 66, h: 36, zone: 'instruments', label: 'Guitar', lx: -40, ly: 22 },
-  bass: { x: 708, y: 452, w: 76, h: 36, zone: 'instruments', label: 'Bass', lx: 48, ly: 0 },
+  bass: { x: 708, y: 452, w: 76, h: 36, zone: 'instruments', label: 'Bass', lx: -40, ly: 22 },
   p16gb: { x: 664, y: 520, w: 52, h: 20, zone: 'musician_ears', label: 'Guitar + Bass P16', ly: 24 },
   p16d: { x: 786, y: 588, w: 24, h: 20, zone: 'musician_ears', label: 'Drums P16', lx: -54, ly: 0 },
   drums: { x: 770, y: 690, w: 92, h: 96, zone: 'instruments', label: 'Drums', ly: 62 },
