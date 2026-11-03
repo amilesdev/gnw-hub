@@ -340,7 +340,6 @@ export async function sendDueReminders(now = new Date()): Promise<{ events: numb
 // ---------------------------------------------------------------- screen ----
 
 export type ProductionScreenData = {
-  events: ProductionEventDTO[];
   event: ProductionEventDTO | null;
   map: StageMapDTO | null;
   tasks: ProductionTaskDTO[];
@@ -349,12 +348,17 @@ export type ProductionScreenData = {
   templates: TemplateDTO[] | null;
 };
 
-/** Everything the Production screen needs for one event (default: the next one). */
+/**
+ * Everything the Production screen needs for one event. A production setup
+ * belongs to the event it was opened from; with no event given (an old link),
+ * it falls back to the next upcoming service.
+ */
 export async function getProductionScreenData(eventId: string | null, isLeader: boolean): Promise<ProductionScreenData> {
-  const events = await getUpcomingProductionEvents();
   let event = eventId ? await getProductionEvent(eventId) : null;
-  if (!event) event = events.find((e) => e.type !== 'other') ?? events[0] ?? null;
-  if (event && !events.some((e) => e.id === event!.id)) events.unshift(event);
+  if (!event) {
+    const upcoming = await getUpcomingProductionEvents();
+    event = upcoming.find((e) => e.type !== 'other') ?? upcoming[0] ?? null;
+  }
 
   const kind = event ? productionKindFor(event.type as EventType) : 'service';
   const [map, tasks, singers, people, templates] = await Promise.all([
@@ -364,5 +368,5 @@ export async function getProductionScreenData(eventId: string | null, isLeader: 
     getPeople(),
     isLeader ? getTemplates() : Promise.resolve(null),
   ]);
-  return { events, event, map, tasks, singers, people, templates };
+  return { event, map, tasks, singers, people, templates };
 }

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft } from '@/components/shared/Icons';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { eventTypeLabel } from '@/components/shared/EventTypeBadge';
@@ -19,9 +18,9 @@ import { TraceView } from './TraceView';
 export type ProductionTab = 'map' | 'checklist' | 'trace';
 
 /**
- * Production: the stage map (how everything connects), the event's setup
- * checklist, and a signal tracer. Opened from an event, the Home card, or a
- * reminder push.
+ * Production for one event: the stage map (how everything connects), that
+ * event's setup checklist, and a signal tracer. Always tied to the event it was
+ * opened from (its Production row, the Home card, or a reminder push).
  */
 export function ProductionScreen({
   initial,
@@ -36,8 +35,7 @@ export function ProductionScreen({
   canManage: boolean;
   initialTab: ProductionTab;
 }) {
-  const router = useRouter();
-  const { event, events, people, singers } = initial;
+  const { event, people, singers } = initial;
   const [map, setMap] = useState(initial.map);
   const [tasks, setTasks] = useState(initial.tasks);
   const [templates, setTemplates] = useState(initial.templates);
@@ -82,23 +80,6 @@ export function ProductionScreen({
           </p>
         )}
       </header>
-
-      {events.length > 1 && (
-        <label className="block">
-          <span className="sr-only">Event</span>
-          <select
-            className="w-full rounded-2xl border border-line bg-surface px-3 py-2.5 text-sm font-semibold"
-            value={event?.id ?? ''}
-            onChange={(e) => router.push(`${base}/production?event=${e.target.value}&tab=${tab}`)}
-          >
-            {events.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.eventName} · {formatEventDate(new Date(e.date))}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
 
       {tabs.length > 1 && <PillTabs value={tab} onChange={setTab} options={tabs} />}
 
