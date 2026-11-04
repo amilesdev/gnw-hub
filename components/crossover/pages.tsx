@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { getCrossoverData } from '@/lib/crossover';
 import { crossoverOpenFor, scheduleComesFirst } from '@/lib/crossover-season';
-import { toYmd, startOfToday, formatTimeLabel } from '@/lib/dates';
+import { toYmd, startOfToday } from '@/lib/dates';
 import { prisma } from '@/lib/prisma';
 import { parseProgram, parseTimed } from '@/lib/crossover-schedule';
 import { ChevronLeft, Video } from '@/components/shared/Icons';
@@ -47,7 +47,6 @@ export async function CrossoverHomePage({ base }: { base: Base }) {
   ]);
   const songCount = sets.reduce((n, s) => n + s.songs.length, 0);
   const minutes = totalMinutes(sets);
-  const firstRow = parseTimed(data.season.dayOfSchedule)[0];
 
   return (
     <CrossoverHome
@@ -61,9 +60,7 @@ export async function CrossoverHomePage({ base }: { base: Base }) {
         sets: `${sets.length} set${sets.length === 1 ? '' : 's'} · ${minutes ? `${minutes} min` : `${songCount} song${songCount === 1 ? '' : 's'}`}`,
         attire: mine ? `Your look: ${LOOK_LABEL[mine.status]}` : 'Submit your look',
         suggestions: openSuggestions ? `${openSuggestions} waiting` : 'Song ideas for Crossover',
-        schedule: firstRow
-          ? `${firstRow.label}${firstRow.time ? ` · ${formatTimeLabel(firstRow.time)}` : ''} · plus Dress Rehearsal and the program`
-          : 'Day of Crossover, the Dress Rehearsal and the program',
+        schedule: 'Setup and Program Schedule',
       }}
     />
   );

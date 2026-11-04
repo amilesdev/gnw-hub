@@ -177,7 +177,9 @@ function SectionCard({
 function Road({ events, todayYmd, nextId }: { events: EventDTO[]; todayYmd: string; nextId: string | null }) {
   if (events.length === 0) return null;
   return (
-    <ol className="no-scrollbar -mx-5 flex snap-x overflow-x-auto px-5 pb-1 pt-1">
+    // scroll-px keeps snapping from pulling the first stop flush to the screen
+    // edge; the extra top/left room keeps the next stop's glow from clipping.
+    <ol className="no-scrollbar -mx-5 flex snap-x scroll-px-5 overflow-x-auto px-5 pb-1 pt-2">
       {events.map((e, i) => {
         const done = e.date.slice(0, 10) < todayYmd;
         const isNext = e.id === nextId;

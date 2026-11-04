@@ -16,8 +16,8 @@ type View = 'dayOf' | 'dress' | 'program';
 type Schedule = { dayOf: TimedRow[]; dress: TimedRow[]; program: ProgramItem[] };
 
 const VIEWS: { value: View; label: string }[] = [
-  { value: 'dayOf', label: 'Day-of' },
   { value: 'dress', label: 'Dress Reh.' },
+  { value: 'dayOf', label: 'Day-of' },
   { value: 'program', label: 'Program' },
 ];
 
@@ -41,7 +41,7 @@ export function CrossoverSchedule({
   canManage: boolean;
 }) {
   const [schedule, setSchedule] = useState(initial);
-  const [view, setView] = useState<View>('dayOf');
+  const [view, setView] = useState<View>('dress');
   const [editing, setEditing] = useState(false);
   const setById = new Map(sets.map((s) => [s.id, s]));
 
