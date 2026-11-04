@@ -191,13 +191,14 @@ function SetCard({
       </div>
 
       {set.songs.length > 0 ? (
-        <ol className="mt-3 border-t border-line">
+        // lines only between songs; the Edit row below brings its own top line
+        <ol className="mt-3 divide-y divide-line border-t border-line">
           {set.songs.map((s, i) => (
             <li key={s.id}>
               <button
                 type="button"
                 onClick={() => onSong(s)}
-                className="row-press flex w-full items-center gap-3 border-b border-line py-2.5 text-left"
+                className="row-press flex w-full items-center gap-3 py-2.5 text-left"
               >
                 <span className="w-4 shrink-0 text-xs font-bold text-ink-faint tabular-nums">{i + 1}</span>
                 <span className="min-w-0 flex-1">

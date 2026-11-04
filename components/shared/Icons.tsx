@@ -48,19 +48,25 @@ export const CalendarOff = (p: P) => (
 
 export const Music = (p: P) => (
   <Base {...p}>
-    <path d="M9 18V6l11-2v12" />
-    <circle cx="6.5" cy="18" r="2.5" />
-    <circle cx="17.5" cy="16" r="2.5" />
+    {/* nudged up: the note heads weigh the bottom, so the raw drawing reads low */}
+    <g transform="translate(0 -0.75)">
+      <path d="M9 18V6l11-2v12" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="17.5" cy="16" r="2.5" />
+    </g>
   </Base>
 );
 
 // A single note with a plus — "suggest a song".
 export const MusicPlus = (p: P) => (
   <Base {...p}>
-    <path d="M10 18V5l8-1.5v6" />
-    <circle cx="7.5" cy="18" r="2.5" />
-    <path d="M18 14v6" />
-    <path d="M15 17h6" />
+    {/* the drawing spans x 5–21, so shift it back onto the 12 centerline */}
+    <g transform="translate(-1 -0.5)">
+      <path d="M10 18V5l8-1.5v6" />
+      <circle cx="7.5" cy="18" r="2.5" />
+      <path d="M18 14v6" />
+      <path d="M15 17h6" />
+    </g>
   </Base>
 );
 

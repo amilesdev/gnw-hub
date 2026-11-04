@@ -72,13 +72,12 @@ export function CrossoverHome({
             onClick={() => setDetail(next)}
             className="card row-press flex w-full items-center gap-3.5 p-3.5 text-left"
           >
-            <span className="grid h-[50px] w-[46px] shrink-0 place-items-center rounded-2xl bg-crossover-ever text-crossover-gold-hi">
-              <span className="text-center leading-tight">
-                <span className="block text-[10px] font-bold tracking-wider text-crossover-champagne/80">
-                  {new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()}
-                </span>
-                <span className="block text-[19px] font-bold">{new Date(next.date).getUTCDate()}</span>
+            <span className="flex h-[50px] w-[46px] shrink-0 flex-col items-center justify-center rounded-2xl bg-crossover-ever text-crossover-gold-hi">
+              {/* pl matches the tracking so the trailing letter-space doesn't pull it left */}
+              <span className="pl-[0.05em] text-[10px] font-bold leading-none tracking-wider text-crossover-champagne/80">
+                {new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()}
               </span>
+              <span className="mt-1 text-[19px] font-bold leading-none tabular-nums">{new Date(next.date).getUTCDate()}</span>
             </span>
             <span className="min-w-0 flex-1">
               <span className="label block">{next.date.slice(0, 10) === todayYmd ? 'Today' : 'Up next'}</span>
