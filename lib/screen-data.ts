@@ -2,8 +2,11 @@ import { prisma } from '@/lib/prisma';
 import { serializeSetlist, setlistInclude, sortSetlistsForListing, type SetlistDTO } from '@/lib/setlist-serialize';
 import { serializeEvent, eventInclude, type EventDTO } from '@/lib/serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
+import type { Role } from '@prisma/client';
 import { ensureRecurringWindow } from '@/lib/recurrence';
 import { startOfToday } from '@/lib/dates';
+import { ensureCrossoverSeason } from '@/lib/crossover';
+import { visibleEvents } from '@/lib/crossover-season';
 
 // Server-side mirrors of the list endpoints, so a page can fetch on the server
 // (one round-trip, painted with the loading.tsx skeleton) instead of shipping a
@@ -18,8 +21,9 @@ export async function getAllSetlists(): Promise<SetlistDTO[]> {
   return sortSetlistsForListing(setlists).map(serializeSetlist);
 }
 
-/** Upcoming events from today onward — mirror of GET /api/events?scope=all. */
-export async function getAllEvents(): Promise<EventDTO[]> {
+/** Upcoming events from today onward, as this viewer may see them — mirror of GET /api/events?scope=all. */
+export async function getAllEvents(role: Role): Promise<EventDTO[]> {
+  await ensureCrossoverSeason();
   await ensureRecurringWindow();
   await pruneExpiredSetlists();
   const events = await prisma.event.findMany({
@@ -27,5 +31,5 @@ export async function getAllEvents(): Promise<EventDTO[]> {
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
     include: eventInclude,
   });
-  return events.map(serializeEvent);
+  return visibleEvents(events.map(serializeEvent), role);
 }

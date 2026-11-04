@@ -33,12 +33,15 @@ export function AssignmentsSection({
   onChange,
   initialAssignments,
   eventDate,
+  title = 'Assignments (optional)',
 }: {
   value: AssignmentMap;
   onChange: (next: AssignmentMap) => void;
   initialAssignments?: EventAssignmentDTO[];
   /** The event's date ("YYYY-MM-DD"); drives the "Away" flag on each vocalist. */
   eventDate?: string;
+  /** Header label (Crossover sets call it "Singers"). */
+  title?: string;
 }) {
   const count = Object.keys(value).length;
   const [open, setOpen] = useState(count > 0);
@@ -114,7 +117,7 @@ export function AssignmentsSection({
         className="row-press flex w-full items-center justify-between px-4 py-3.5 text-left"
       >
         <span className="inline-flex items-center gap-2 font-semibold">
-          <Mic width={18} height={18} className="text-accent dark:text-accent-on" /> Assignments (optional)
+          <Mic width={18} height={18} className="text-accent dark:text-accent-on" /> {title}
         </span>
         <span className="flex items-center gap-2">
           {count > 0 && (

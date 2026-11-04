@@ -37,6 +37,27 @@ export async function squareImageFile(file: File, size = 512): Promise<File> {
   return new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
 }
 
+/**
+ * Downscale an image File to fit within `maxEdge` px on its longer side, keeping
+ * its shape (no crop) — for outfit photos, where a full-length shot matters.
+ * Like {@link squareImageFile} it transcodes HEIC to JPEG and keeps uploads small.
+ */
+export async function fitImageFile(file: File, maxEdge = 1600): Promise<File> {
+  const bitmap = await loadBitmap(file);
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not process the image.');
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if ('close' in bitmap && typeof bitmap.close === 'function') bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  if (!blob) throw new Error('Could not process the image.');
+  return new File([blob], 'look.jpg', { type: 'image/jpeg' });
+}
+
 /** Decode a File to something drawable, preferring the faster createImageBitmap. */
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === 'function') {

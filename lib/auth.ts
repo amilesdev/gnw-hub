@@ -48,6 +48,7 @@ export const authOptions: NextAuthOptions = {
           isSuperAdmin: user.isSuperAdmin,
           vocalDirector: user.vocalDirector,
           adminAssistant: user.adminAssistant,
+          attireReviewer: user.attireReviewer,
           tokenVersion: user.tokenVersion,
         };
       },
@@ -84,6 +85,7 @@ export const authOptions: NextAuthOptions = {
           isSuperAdmin: true,
           vocalDirector: true,
           adminAssistant: true,
+          attireReviewer: true,
         },
       });
 
@@ -102,6 +104,7 @@ export const authOptions: NextAuthOptions = {
         session.user.isSuperAdmin = fresh.isSuperAdmin;
         session.user.vocalDirector = fresh.vocalDirector;
         session.user.adminAssistant = fresh.adminAssistant;
+        session.user.attireReviewer = fresh.attireReviewer;
       }
       return session;
     },

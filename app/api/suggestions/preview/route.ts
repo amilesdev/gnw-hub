@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/session';
 import { fetchYouTubeMeta, guessSong, parseYouTubeId, youTubeThumbnail, youTubeWatchUrl } from '@/lib/youtube';
 import { duplicateReason } from '@/lib/suggestions';
+import { scopeParam } from '@/lib/suggestion-scope';
 
 // GET /api/suggestions/preview?url=<youtube link> — what the composer shows
 // before you submit: the guessed title/artist, the thumbnail, and whether the
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'That doesn’t look like a YouTube link.' }, { status: 400 });
   }
 
-  const [meta, duplicate] = await Promise.all([fetchYouTubeMeta(videoId), duplicateReason(videoId)]);
+  const [meta, duplicate] = await Promise.all([fetchYouTubeMeta(videoId), duplicateReason(videoId, scopeParam(req))]);
   if (meta === 'not_found') {
     return NextResponse.json(
       { error: 'Couldn’t find that video — it may be private or removed.' },

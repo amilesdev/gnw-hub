@@ -10,7 +10,7 @@ import { Overlay } from './Overlay';
 import { ScriptureSheet } from './ScriptureSheet';
 import { SongDetail } from './SongDetail';
 import { SongLeadFaces } from './SongLeads';
-import { EventTypeBadge } from './EventTypeBadge';
+import { EventBadge } from './EventTypeBadge';
 import { hasAttire, assignmentsByPart } from './EventCard';
 import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
@@ -181,7 +181,9 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const isPrayer = event.type === 'prayer';
   const isRehearsal = event.type === 'rehearsal';
   // Production (stage map + setup checklist) lives on Service, Encounter Night and Other events.
-  const hasProduction = event.type === 'service' || event.type === 'encounter_night' || event.type === 'other';
+  // Crossover events get their own production later (on the Crossover tab), not this one.
+  const hasProduction =
+    !event.crossoverKind && (event.type === 'service' || event.type === 'encounter_night' || event.type === 'other');
   const productionBase = usePathname().startsWith('/dashboard') ? '/dashboard' : '/home';
   const assignedParts = assignmentsByPart(event);
   // Song-review rows resolve their title from the currently-attached setlist, so
@@ -202,7 +204,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   }, [event.id]);
 
   return (
-    <Overlay title={event.eventName} onClose={onClose} action={<EventTypeBadge type={event.type} />}>
+    <Overlay title={event.eventName} onClose={onClose} action={<EventBadge event={event} />}>
       <div className="space-y-5">
         <section className="card divide-y divide-line px-4 py-1">
           <InfoRow icon={<Calendar width={18} height={18} />}>{formatEventDate(new Date(event.date))}</InfoRow>

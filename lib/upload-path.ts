@@ -4,7 +4,16 @@
 // Only these top-level prefixes are writable, matching the spec's storage
 // layout. `avatars/` holds member profile pictures; the sign route scopes each
 // member to their own `avatars/<userId>/` subfolder (see AVATAR_PREFIX below).
-export const ALLOWED_PREFIXES = ['attire/', 'audio/', 'avatars/'];
+export const ALLOWED_PREFIXES = ['attire/', 'audio/', 'avatars/', 'looks/'];
+
+// Crossover look photos (a member's submitted outfit), one subfolder per user —
+// scoped exactly like avatars: anyone signed in, into their own folder only.
+export const LOOK_PREFIX = 'looks/';
+
+/** Whether `path` is a look photo owned by `userId` (under `looks/<userId>/`). */
+export function isOwnLookPath(path: string, userId: string): boolean {
+  return path.startsWith(`${LOOK_PREFIX}${sanitizeSegment(userId)}/`);
+}
 
 // Profile pictures live here, one subfolder per user. Kept separate because,
 // unlike attire (leader-only), any authenticated member may write their own

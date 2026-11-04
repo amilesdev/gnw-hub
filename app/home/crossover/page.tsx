@@ -1,13 +1,7 @@
-import { ComingSoon } from '@/components/shared/ComingSoon';
-import { Crossover } from '@/components/shared/Icons';
+import { CrossoverHomePage } from '@/components/crossover/pages';
+
+export const dynamic = 'force-dynamic';
 
 export default function MemberCrossoverPage() {
-  return (
-    <ComingSoon
-      title="Crossover"
-      icon={Crossover}
-      headline="Crossover is on its way."
-      body="Something new is coming to the Hub. Stay tuned."
-    />
-  );
+  return <CrossoverHomePage base="/home" />;
 }

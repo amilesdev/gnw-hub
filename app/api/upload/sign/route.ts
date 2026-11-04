@@ -4,9 +4,11 @@ import { createSignedUpload } from '@/lib/supabase';
 import {
   AUDIO_PREFIX,
   AVATAR_PREFIX,
+  LOOK_PREFIX,
   contentTypeFor,
   isAllowedPath,
   isOwnAvatarPath,
+  isOwnLookPath,
   sanitizePath,
 } from '@/lib/upload-path';
 
@@ -18,6 +20,7 @@ import {
 // Authorization depends on the target prefix:
 //   • `avatars/<userId>/…` — any authenticated member, but only into their OWN
 //     folder (profile pictures).
+//   • `looks/<userId>/…` — likewise, own folder only (Crossover look photos).
 //   • `audio/…` — leaders and the vocal director (song parts / arrangements).
 //   • everything else (attire/) — leaders only, as before.
 export async function POST(req: Request) {
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
   const path = sanitizePath(rawPath);
   if (!isAllowedPath(path)) {
     return NextResponse.json(
-      { error: 'Path must be under attire/, audio/, or avatars/' },
+      { error: 'Path must be under attire/, audio/, avatars/, or looks/' },
       { status: 400 },
     );
   }
@@ -40,6 +43,12 @@ export async function POST(req: Request) {
     if ('error' in guard) return guard.error;
     if (!isOwnAvatarPath(path, guard.user.id)) {
       return NextResponse.json({ error: 'You can only upload your own avatar.' }, { status: 403 });
+    }
+  } else if (path.startsWith(LOOK_PREFIX)) {
+    const guard = await requireUser();
+    if ('error' in guard) return guard.error;
+    if (!isOwnLookPath(path, guard.user.id)) {
+      return NextResponse.json({ error: 'You can only upload photos of your own look.' }, { status: 403 });
     }
   } else if (path.startsWith(AUDIO_PREFIX)) {
     const guard = await requireVocalPartEditor();

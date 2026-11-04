@@ -34,6 +34,16 @@ const config: Config = {
         bad: '#B4544E', // error / negative
         info: '#6E7FA0', // neutral / informational
         unread: '#E8833A', // "something new here" dot — orange so it reads against the sage accent
+        // Crossover's one celebratory layer: the sage taken down to evergreen,
+        // plus gold. Used only on Crossover surfaces (hero, badge, finish line).
+        crossover: {
+          ever: '#3D4A2E',
+          deep: '#222B1A',
+          gold: '#C99B45',
+          'gold-hi': '#F2DDA4',
+          'gold-ink': '#8A6A24',
+          champagne: '#F6EEDC',
+        },
       },
       fontFamily: {
         sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'sans-serif'],

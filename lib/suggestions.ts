@@ -1,6 +1,10 @@
+import type { SongScope } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { sendPush } from '@/lib/push';
 import { serializeSuggestion, type SongSuggestionDTO } from '@/lib/serialize';
+
+// Suggestions come in two lists that never mix, matching the two song lists:
+// the Song Library's, and Crossover's (whose "Add" makes a Crossover-list song).
 
 /** How long a passed-on suggestion is kept before it's deleted (and the song can be suggested again). */
 export const DISMISSED_RETENTION_DAYS = 90;
@@ -23,10 +27,13 @@ export async function pruneDismissedSuggestions(): Promise<void> {
  * visible only to whoever suggested it (tagged "Dismissed" in My Suggestions).
  * Shared by the page (first paint) and GET /api/suggestions (refetch).
  */
-export async function getSuggestions(viewer: { id: string }): Promise<SongSuggestionDTO[]> {
+export async function getSuggestions(viewer: { id: string }, scope: SongScope = 'library'): Promise<SongSuggestionDTO[]> {
   await pruneDismissedSuggestions();
   const rows = await prisma.songSuggestion.findMany({
-    where: { OR: [{ status: { in: ['open', 'added'] } }, { status: 'dismissed', suggestedById: viewer.id }] },
+    where: {
+      scope,
+      OR: [{ status: { in: ['open', 'added'] } }, { status: 'dismissed', suggestedById: viewer.id }],
+    },
     orderBy: { createdAt: 'desc' },
     take: 300,
   });
@@ -38,20 +45,21 @@ export async function getSuggestions(viewer: { id: string }): Promise<SongSugges
  * in the library, or someone already suggested it (open, added, or passed on
  * within the last DISMISSED_RETENTION_DAYS — older passes are pruned first).
  */
-export async function duplicateReason(videoId: string): Promise<string | null> {
+export async function duplicateReason(videoId: string, scope: SongScope = 'library'): Promise<string | null> {
   await pruneDismissedSuggestions();
+  const listName = scope === 'crossover' ? 'the Crossover songs' : 'the song library';
   const [song, existing] = await Promise.all([
     // Library links are free text (any URL shape), so match on the id itself.
-    prisma.song.findFirst({ where: { youtubeLink: { contains: videoId } }, select: { songTitle: true } }),
+    prisma.song.findFirst({ where: { scope, youtubeLink: { contains: videoId } }, select: { songTitle: true } }),
     prisma.songSuggestion.findFirst({
-      where: { videoId },
+      where: { videoId, scope },
       orderBy: { createdAt: 'desc' },
       select: { status: true, suggestedByName: true },
     }),
   ]);
-  if (song) return `“${song.songTitle}” is already in the song library.`;
+  if (song) return `“${song.songTitle}” is already in ${listName}.`;
   if (!existing) return null;
-  if (existing.status === 'added') return 'This one was already suggested and added to the library.';
+  if (existing.status === 'added') return `This one was already suggested and added to ${listName}.`;
   if (existing.status === 'dismissed') {
     return `The leaders passed on this one recently. It can be suggested again ${DISMISSED_RETENTION_DAYS} days after that.`;
   }
@@ -68,11 +76,12 @@ export async function notifyLeadersOfSuggestion(s: SongSuggestionDTO): Promise<v
     });
     if (leaders.length === 0) return;
     const who = s.suggestedByName.split(' ')[0];
+    const crossover = s.scope === 'crossover';
     await sendPush(
       {
-        title: 'New song suggestion',
-        body: `${who} suggested “${s.songTitle}”${s.artist ? ` by ${s.artist}` : ''}.`,
-        url: '/dashboard/library/suggestions',
+        title: crossover ? 'New Crossover song suggestion' : 'New song suggestion',
+        body: `${who} suggested “${s.songTitle}”${s.artist ? ` by ${s.artist}` : ''}${crossover ? ' for Crossover' : ''}.`,
+        url: crossover ? '/dashboard/crossover/suggestions' : '/dashboard/library/suggestions',
         tag: `suggestion-${s.id}`,
       },
       leaders.map((l) => l.id),

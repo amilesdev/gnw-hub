@@ -12,6 +12,7 @@ declare module 'next-auth' {
     isSuperAdmin: boolean;
     vocalDirector: boolean;
     adminAssistant: boolean;
+    attireReviewer: boolean;
     tokenVersion: number;
   }
 
@@ -29,6 +30,8 @@ declare module 'next-auth' {
       vocalDirector: boolean;
       // Ditto — see lib/access.ts → canEditLyricCharts.
       adminAssistant: boolean;
+      // Ditto — see lib/access.ts → canReviewLooks (Crossover attire).
+      attireReviewer: boolean;
     };
   }
 }

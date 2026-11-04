@@ -2,7 +2,7 @@
 
 import type { ComponentType, SVGProps } from 'react';
 import type { EventDTO } from '@/lib/serialize';
-import { eventTypeLabel } from './EventTypeBadge';
+import { eventLabel } from './EventTypeBadge';
 import { Calendar, MapPin, Music, Book, Pray } from './Icons';
 import { formatEventDate, formatTimeLabel, daysUntil } from '@/lib/dates';
 import { downloadEventICS } from '@/lib/calendar';
@@ -50,7 +50,7 @@ export function UpNextHero({ event, onOpen }: { event: EventDTO; onOpen: () => v
         <div>
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white/80">
             <span className="h-1.5 w-1.5 rounded-full bg-white/70" aria-hidden />
-            {eventTypeLabel(event.type)}
+            {eventLabel(event)}
           </span>
           <h2 className="mt-1.5 font-display text-xl font-semibold leading-tight">{event.eventName}</h2>
         </div>

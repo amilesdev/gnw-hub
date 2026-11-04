@@ -11,9 +11,13 @@ import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from '@/components/shared/LyricChartImport';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { Plus, Music, MusicPlus, Pencil, ChevronLeft, Trash, Book } from '@/components/shared/Icons';
+import { Plus, Music, MusicPlus, Pencil, ChevronLeft, Trash, Book, Sparkle, Upload } from '@/components/shared/Icons';
+import { LibraryPicker } from './LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
+import { crossoverSeasonActive } from '@/lib/crossover-season';
 import Link from 'next/link';
+
+type Scope = LibrarySongDTO['scope'];
 
 /**
  * Strip library-only metadata so the song can feed SongDTO-shaped components.
@@ -21,23 +25,46 @@ import Link from 'next/link';
  * looks at the song on its own.
  */
 function libToSong(s: LibrarySongDTO): SongDTO {
-  const { usageCount: _u, updatedAt: _up, lastLeads: _l, ...rest } = s;
+  const { usageCount: _u, updatedAt: _up, lastLeads: _l, scope: _s, ...rest } = s;
   return { ...rest, position: 0, leads: [] };
 }
 
-export function SongLibrary() {
+/**
+ * A song list and its editor: the Song Library, or (scope "crossover") the
+ * separate Crossover song list. Same editor either way — parts, band content
+ * and lyric chart — plus a way to copy a song across to the other list.
+ */
+export function SongLibrary({ scope = 'library' }: { scope?: Scope }) {
+  const crossover = scope === 'crossover';
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<LibrarySongDTO | 'new' | null>(null);
   const [viewing, setViewing] = useState<SongDTO | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   async function load() {
     try {
-      const { songs } = await apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs');
+      const { songs } = await apiFetch<{ songs: LibrarySongDTO[] }>(`/api/songs?scope=${scope}`);
       setSongs(songs);
     } catch {
       setSongs([]);
     }
+  }
+
+  // "Import from library": each picked Song Library song becomes its own
+  // Crossover-list copy, free to be rearranged without touching the original.
+  async function importSongs(picked: LibrarySongDTO[]) {
+    setImporting(false);
+    setImportError(null);
+    try {
+      for (const s of picked) {
+        await apiFetch(`/api/songs/${s.id}/copy`, { method: 'POST', body: JSON.stringify({ to: 'crossover' }) });
+      }
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : 'Could not import every song.');
+    }
+    load();
   }
 
   useEffect(() => {
@@ -58,24 +85,43 @@ export function SongLibrary() {
       <header className="flex items-end justify-between gap-2 pr-12">
         <div>
           <Link
-            href="/dashboard/setlist"
+            href={crossover ? '/dashboard/crossover/sets' : '/dashboard/setlist'}
             className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-            aria-label="Back to setlists"
+            aria-label={crossover ? 'Back to Crossover sets' : 'Back to setlists'}
           >
             <ChevronLeft width={18} height={18} />
           </Link>
-          <h1 className="page-title">Library</h1>
+          {crossover && <div className="eyebrow mb-2">Crossover</div>}
+          <h1 className="page-title">{crossover ? 'Songs' : 'Library'}</h1>
         </div>
         <div className="flex items-center gap-2">
           {/* Icon-only on narrow phones so the header fits beside the floating avatar. */}
-          <Link href="/dashboard/library/suggestions" className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3">
-            <MusicPlus width={18} height={18} /> <span className="max-[389px]:sr-only">Suggest</span>
-          </Link>
+          {crossover ? (
+            <button
+              type="button"
+              className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3"
+              onClick={() => setImporting(true)}
+            >
+              <Upload width={18} height={18} /> <span className="max-[389px]:sr-only">Import</span>
+            </button>
+          ) : (
+            <Link href="/dashboard/library/suggestions" className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3">
+              <MusicPlus width={18} height={18} /> <span className="max-[389px]:sr-only">Suggest</span>
+            </Link>
+          )}
           <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
             <Plus width={18} height={18} /> New
           </button>
         </div>
       </header>
+
+      {crossover && (
+        <p className="-mt-2 text-sm text-ink-soft">
+          Crossover arrangements, kept apart from the Song Library. Import a library song to start from it, or copy a
+          Crossover song back from its editor.
+        </p>
+      )}
+      {importError && <p className="text-sm font-semibold text-bad">{importError}</p>}
 
       {songs === null ? (
         <SkeletonList>
@@ -85,8 +131,12 @@ export function SongLibrary() {
         </SkeletonList>
       ) : songs.length === 0 ? (
         <EmptyState
-          icon={Book}
-          message="Your library is empty. Add your first song, upload its parts, and it'll be ready for every setlist."
+          icon={crossover ? Sparkle : Book}
+          message={
+            crossover
+              ? 'No Crossover songs yet. Add one, or import a song from the library to start from it.'
+              : "Your library is empty. Add your first song, upload its parts, and it'll be ready for every setlist."
+          }
         />
       ) : (
         <>
@@ -135,8 +185,19 @@ export function SongLibrary() {
 
       {viewing && <SongDetail song={viewing} onClose={() => setViewing(null)} />}
 
+      {importing && (
+        <LibraryPicker
+          title="Import from library"
+          actionLabel="Import"
+          excludeIds={new Set()}
+          onAdd={importSongs}
+          onClose={() => setImporting(false)}
+        />
+      )}
+
       {editing && (
         <LibraryEditor
+          scope={scope}
           initial={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onChanged={load}
@@ -151,16 +212,19 @@ export function SongLibrary() {
 }
 
 function LibraryEditor({
+  scope,
   initial,
   onClose,
   onChanged,
   onDeleted,
 }: {
+  scope: Scope;
   initial: LibrarySongDTO | null;
   onClose: () => void;
   onChanged: () => void;
   onDeleted: () => void;
 }) {
+  const crossover = scope === 'crossover';
   // `song` is null until a brand-new song is created; once it exists, the audio
   // and chart sections (which need a saved song id) appear.
   const [song, setSong] = useState<SongDTO | null>(initial ? libToSong(initial) : null);
@@ -170,8 +234,34 @@ function LibraryEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRetire, setConfirmRetire] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const usageCount = initial?.usageCount ?? 0;
+  const usedIn = crossover
+    ? `${usageCount} Crossover set${usageCount > 1 ? 's' : ''}`
+    : `${usageCount} setlist${usageCount > 1 ? 's' : ''}`;
+  // A Crossover song can always go to the Song Library; a library song can go
+  // to the Crossover list while a season is running.
+  const canCopy = crossover || crossoverSeasonActive();
+
+  // Copy this song into the other list as a separate song (it starts with the
+  // same parts, band content and chart, then the two go their own ways).
+  async function copyAcross() {
+    if (!song) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/songs/${song.id}/copy`, {
+        method: 'POST',
+        body: JSON.stringify({ to: crossover ? 'library' : 'crossover' }),
+      });
+      setCopied(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not copy the song.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const details = {
     songTitle: title.trim(),
@@ -193,7 +283,7 @@ function LibraryEditor({
       } else {
         const { song: created } = await apiFetch<{ song: LibrarySongDTO }>('/api/songs', {
           method: 'POST',
-          body: JSON.stringify(details),
+          body: JSON.stringify({ ...details, scope }),
         });
         setSong(libToSong(created));
       }
@@ -250,8 +340,22 @@ function LibraryEditor({
 
         {song ? (
           <div className="space-y-4">
-            <SongAudioSlots song={song} month="library" onChanged={(s) => setSong({ ...song, ...s })} />
+            <SongAudioSlots song={song} month={crossover ? 'crossover' : 'library'} onChanged={(s) => setSong({ ...song, ...s })} />
             <LyricChartImport song={song} onChanged={(s) => setSong({ ...song, ...s })} />
+
+            {canCopy && (
+              <div className="border-t border-line pt-4">
+                <button type="button" className="btn-ghost !py-2 text-sm" onClick={copyAcross} disabled={busy || copied}>
+                  {crossover ? <Book width={15} height={15} /> : <Sparkle width={15} height={15} />}
+                  {copied ? 'Copied' : crossover ? 'Copy to Song Library' : 'Copy to Crossover songs'}
+                </button>
+                <p className="mt-1.5 text-xs text-ink-faint">
+                  {copied
+                    ? `A copy is now in the ${crossover ? 'Song Library' : 'Crossover song list'}.`
+                    : `Adds a separate copy to the ${crossover ? 'Song Library' : 'Crossover song list'} with the same parts and chart. Changing one won’t change the other.`}
+                </p>
+              </div>
+            )}
 
             <div className="border-t border-line pt-4">
               <button type="button" className="btn-ghost !py-2 text-sm text-bad" onClick={() => setConfirmRetire(true)}>
@@ -259,7 +363,7 @@ function LibraryEditor({
               </button>
               <p className="mt-1.5 text-xs text-ink-faint">
                 {usageCount > 0
-                  ? `Used in ${usageCount} setlist${usageCount > 1 ? 's' : ''}. Retiring deletes its audio and removes it from those setlists.`
+                  ? `Used in ${usedIn}. Retiring deletes its audio and removes it from ${usageCount > 1 ? 'those' : 'it'}.`
                   : 'Deletes this song and its uploaded audio for good.'}
               </p>
             </div>
@@ -276,7 +380,7 @@ function LibraryEditor({
         title="Retire this song?"
         message={
           usageCount > 0
-            ? `This deletes the song and its audio, and removes it from ${usageCount} setlist${usageCount > 1 ? 's' : ''}. This can't be undone.`
+            ? `This deletes the song and its audio, and removes it from ${usedIn}. This can't be undone.`
             : "This deletes the song and its uploaded audio. This can't be undone."
         }
         confirmLabel="Retire"

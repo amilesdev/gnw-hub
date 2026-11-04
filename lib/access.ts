@@ -7,7 +7,18 @@ export type Viewer = {
   section?: MemberSection | null;
   vocalDirector?: boolean;
   adminAssistant?: boolean;
+  attireReviewer?: boolean;
 };
+
+/**
+ * Who reviews Crossover looks — approves a member's submitted outfit or asks
+ * for changes: only a user flagged `attireReviewer` (User.attireReviewer,
+ * granted from the backend only). Deliberately NOT every leader: approval is one
+ * person's call, so the team gets one consistent answer.
+ */
+export function canReviewLooks(v: Viewer): boolean {
+  return v.attireReviewer === true;
+}
 
 /**
  * Band-section members get number charts + arrangements in place of the vocal

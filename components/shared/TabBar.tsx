@@ -15,9 +15,11 @@ export type TabItem = {
 };
 
 // Icon components stay inside the client boundary — the server layout passes
-// only a role string, never the function components themselves.
-export function TabBar({ variant }: { variant: 'member' | 'leader' }) {
-  const items = variant === 'leader' ? leaderTabs : memberTabs;
+// only a role string, never the function components themselves. The Crossover
+// tab only shows in season (leaders from Sep 1, members from Oct 1).
+export function TabBar({ variant, showCrossover }: { variant: 'member' | 'leader'; showCrossover: boolean }) {
+  const tabs = variant === 'leader' ? leaderTabs : memberTabs;
+  const items = showCrossover ? tabs : tabs.filter((t) => !t.href.endsWith('/crossover'));
   const pathname = usePathname();
 
   return (

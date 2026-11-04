@@ -135,6 +135,10 @@ model User {
   // Assigned from the backend only (`npm run set-admin-assistant`); there is no
   // in-app switch. See lib/access.ts → canEditLyricCharts.
   adminAssistant Boolean        @default(false)
+  // Whether this user reviews Crossover looks (approve / ask for changes). Same
+  // shape as the two above: one narrow capability, granted from the backend
+  // only (`npm run set-attire-reviewer`). See lib/access.ts → canReviewLooks.
+  attireReviewer Boolean        @default(false)
   inviteToken    String?        @unique
   inviteExpiry   DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
@@ -170,6 +174,9 @@ model User {
 
   ownedProductionTasks ProductionTask[] @relation("ProductionTaskOwner") // production tasks this user owns
   doneProductionTasks  ProductionTask[] @relation("ProductionTaskDoneBy") // production tasks this user checked off
+
+  crossoverSetSingers CrossoverSetSinger[] // Crossover sets this user sings on
+  crossoverLooks      CrossoverLook[] // this user's submitted Crossover looks, one per season
 }
 
 // A date (or date range) a member has marked themselves unavailable. Whole-day:
@@ -262,6 +269,15 @@ model Event {
   production      EventProduction?
   productionTasks ProductionTask[]
 
+  // Crossover (the ministry's year-end event, Dec 31). A Crossover event is an
+  // ordinary event tagged with its kind and the season (year) it belongs to; it
+  // shows on the Crossover tab and on Events with a Crossover badge. The
+  // leaders-only flag marks the Sep 1 kickoff, which members never see.
+  crossoverKind        CrossoverKind?
+  crossoverSeasonId    String?
+  crossoverSeason      CrossoverSeason? @relation(fields: [crossoverSeasonId], references: [id], onDelete: SetNull)
+  crossoverLeadersOnly Boolean          @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -269,6 +285,146 @@ model Event {
   @@index([date])
   @@index([seriesId])
   @@index([setlistId])
+  @@index([crossoverSeasonId])
+}
+
+enum CrossoverKind {
+  gnw_rehearsal
+  all_team_rehearsal
+  dress_rehearsal
+  setup
+  crossover
+  other
+}
+
+// One Crossover season per year (Sep 1 – Dec 31). Created lazily the first time
+// the app is used on/after Sep 1 (lib/crossover.ts → ensureCrossoverSeason),
+// together with that year's kickoff, Dress Rehearsal (Dec 30) and Crossover
+// (Dec 31) events; the unique year is the race lock. Later phases hang the
+// season's sets, schedules and attire off this row.
+model CrossoverSeason {
+  id   String @id @default(cuid())
+  year Int    @unique
+
+  // "It's Crossover Season!" pushes — leaders on Sep 1, members on Oct 1. Each
+  // is claimed once (null → timestamp) so overlapping cron runs can't double-send.
+  leaderKickoffSentAt DateTime?
+  memberKickoffSentAt DateTime?
+
+  // Set once the season's set build (names + planned minutes) has been laid
+  // down — copied from last year, or the default Opening Number / Set 1 / Set 2.
+  // The flip false → true is the lock, so a leader deleting every set never
+  // brings the defaults back.
+  setsSeeded Boolean @default(false)
+
+  // Schedules, each a JSON array of { time: "HH:mm", label, note? } rows, edited
+  // whole by a leader: the day of Crossover (Dec 31) and the Dress Rehearsal +
+  // Setup (Dec 30). Both carry over from last year when a season opens.
+  dayOfSchedule Json?
+  dressSchedule Json?
+  // The program — the order of the night: a JSON array of items, each either a
+  // set ({ setId }) or a segment ({ label }), with an optional text cue.
+  program       Json?
+
+  // This season's attire (the same fields as an event's attire).
+  attirePrimary       String?
+  attirePrimaryHex    String?
+  attireSecondary     String?
+  attireSecondaryHex  String?
+  attireComplement    String?
+  attireComplementHex String?
+  attireNotes         String?
+  attirePhotos        String[] @default([])
+
+  events Event[]
+  sets   CrossoverSet[]
+  looks  CrossoverLook[]
+
+  createdAt DateTime @default(now())
+}
+
+enum LookStatus {
+  pending
+  approved
+  changes_requested
+}
+
+// A member's Crossover outfit, submitted for review (photos + an optional
+// note). One per person per season; resubmitting updates the same row and puts
+// it back to pending. Kept with the season after Crossover is over.
+model CrossoverLook {
+  id       String          @id @default(cuid())
+  seasonId String
+  season   CrossoverSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos   String[]
+  note     String?
+  status   LookStatus      @default(pending)
+
+  // The reviewer's note (what to change, or a kind word). The reviewer is
+  // denormalized with no FK, so removing them never touches anyone's look.
+  reviewNote     String?
+  reviewedById   String?
+  reviewedByName String?
+  reviewedAt     DateTime?
+
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, status])
+}
+
+// One set in a Crossover season's setlist ("Opening Number", "Set 1", …), in
+// running order. Names and planned minutes carry over to next year's season;
+// songs and singers start fresh.
+model CrossoverSet {
+  id       String          @id @default(cuid())
+  seasonId String
+  season   CrossoverSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  name     String
+  position Int
+  minutes  Int? // planned length
+
+  songs   CrossoverSetSong[]
+  singers CrossoverSetSinger[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seasonId, position])
+}
+
+// A Crossover-list song placed in a set, in order. Deleting the set or the song
+// removes the placement.
+model CrossoverSetSong {
+  id       String       @id @default(cuid())
+  setId    String
+  set      CrossoverSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  songId   String
+  song     Song         @relation(fields: [songId], references: [id], onDelete: Cascade)
+  position Int
+
+  @@unique([setId, songId])
+  @@index([setId, position])
+  @@index([songId])
+}
+
+// Who sings on a set, and which part — Crossover assignments are per set, not
+// per song. One part per person per set; removed with the set or the member.
+model CrossoverSetSinger {
+  id     String       @id @default(cuid())
+  setId  String
+  set    CrossoverSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  part   VocalPart
+
+  @@unique([setId, userId])
+  @@index([setId])
+  @@index([userId])
 }
 
 // One member singing one part on one service. A person holds at most one part
@@ -368,14 +524,26 @@ model Song {
   // setlist's earliest linked event). Guards the memory in `lastLeads` against
   // being overwritten by an edit to an *older* setlist. Null → never led.
   lastLeadAt          DateTime?
+  // Which list the song lives in: the Song Library, or the separate Crossover
+  // song list (Crossover arrangements differ, so they never mix). Moving a song
+  // between lists copies it; the copy shares the original's audio files, which
+  // is why file cleanup checks for other songs still using a URL.
+  scope               SongScope @default(library)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  setlistSongs SetlistSong[] // placements of this song across setlists
-  lastLeads    SongLastLead[] // remembered leaders — see SongLastLead
-  suggestions  SongSuggestion[] // suggestions a leader turned into this song
+  setlistSongs      SetlistSong[] // placements of this song across setlists
+  lastLeads         SongLastLead[] // remembered leaders — see SongLastLead
+  suggestions       SongSuggestion[] // suggestions a leader turned into this song
+  crossoverSetSongs CrossoverSetSong[] // placements in Crossover sets (crossover-scope songs)
 
   @@index([songTitle]) // library browse/search by title
+  @@index([scope, songTitle])
+}
+
+enum SongScope {
+  library
+  crossover
 }
 
 // Where a song suggestion stands. `added` = a leader turned it into a library
@@ -409,12 +577,16 @@ model SongSuggestion {
   // The library Song created from this suggestion ("Add to library").
   songId String?
   song   Song?            @relation(fields: [songId], references: [id], onDelete: SetNull)
+  // Which list it's a suggestion for: the Song Library, or Crossover (whose
+  // "Add" creates a Crossover-list song instead).
+  scope  SongScope        @default(library)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([videoId])
+  @@index([scope, status, createdAt])
 }
 
 // Join between a Setlist and a library Song: where the song sits (and in what

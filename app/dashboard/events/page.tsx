@@ -9,6 +9,6 @@ export default async function LeaderEventsPage() {
   const user = await getSessionUser();
   if (!user) redirect('/login');
   if (user.role !== 'leader') redirect('/home');
-  const events = await getAllEvents();
+  const events = await getAllEvents(user.role);
   return <EventsScreen canManage initialEvents={events} />;
 }

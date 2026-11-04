@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { playSfx } from '@/lib/play/audio';
 import { haptics } from '@/lib/haptics';
 import { TabBar } from '@/components/shared/TabBar';
+import { crossoverOpenFor } from '@/lib/crossover-season';
 
 const HOLD_MS = 1100;
 const R = 102; // progress-ring radius
@@ -172,7 +173,7 @@ export function EnterGate({ variant, onEnter }: { variant: 'member' | 'leader'; 
         </div>
       )}
 
-      <TabBar variant={variant} />
+      <TabBar variant={variant} showCrossover={crossoverOpenFor(variant)} />
     </div>
   );
 }

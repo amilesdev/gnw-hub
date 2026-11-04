@@ -48,13 +48,18 @@ export function SuggestionsScreen({
   meId,
   initialSuggestions,
   backHref,
+  scope = 'library',
 }: {
   canManage: boolean;
   meId: string;
   initialSuggestions: SongSuggestionDTO[];
-  /** The Song Library this screen opens from. */
+  /** The screen this one opens from (the Song Library, or the Crossover tab). */
   backHref: string;
+  /** Which list: Song Library suggestions, or Crossover's (added to the Crossover songs). */
+  scope?: SongSuggestionDTO['scope'];
 }) {
+  const crossover = scope === 'crossover';
+  const listName = crossover ? 'Crossover songs' : 'library';
   const [items, setItems] = useState(initialSuggestions);
   const [tab, setTab] = useState<Tab>('all');
 
@@ -91,7 +96,7 @@ export function SuggestionsScreen({
     setLooking(true);
     const t = window.setTimeout(async () => {
       try {
-        const p = await apiFetch<Preview>(`/api/suggestions/preview?url=${encodeURIComponent(trimmed)}`);
+        const p = await apiFetch<Preview>(`/api/suggestions/preview?url=${encodeURIComponent(trimmed)}&scope=${scope}`);
         if (cancelled) return;
         setPreview(p);
         setTitle(p.songTitle);
@@ -109,7 +114,7 @@ export function SuggestionsScreen({
       window.clearTimeout(t);
       setLooking(false);
     };
-  }, [link]);
+  }, [link, scope]);
 
   async function submit() {
     if (!preview) return;
@@ -122,7 +127,7 @@ export function SuggestionsScreen({
     try {
       const { suggestion } = await apiFetch<{ suggestion: SongSuggestionDTO }>('/api/suggestions', {
         method: 'POST',
-        body: JSON.stringify({ url: preview.url, songTitle: title.trim(), artist: artist.trim() }),
+        body: JSON.stringify({ url: preview.url, songTitle: title.trim(), artist: artist.trim(), scope }),
       });
       setItems((prev) => [suggestion, ...prev]);
       setLink('');
@@ -183,12 +188,15 @@ export function SuggestionsScreen({
         <Link
           href={backHref}
           className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-          aria-label="Back to Library"
+          aria-label={crossover ? 'Back to Crossover' : 'Back to Library'}
         >
           <ChevronLeft width={18} height={18} />
         </Link>
+        {crossover && <div className="eyebrow mb-2">Crossover</div>}
         <h1 className="page-title">Suggestions</h1>
-        <p className="mt-2 text-sm text-ink-soft">Submit your song suggestions here!</p>
+        <p className="mt-2 text-sm text-ink-soft">
+          {crossover ? 'Got a song in mind for Crossover? Suggest it here!' : 'Submit your song suggestions here!'}
+        </p>
       </header>
 
       {/* Composer */}
@@ -332,7 +340,7 @@ export function SuggestionsScreen({
 
                 {s.status === 'added' && (
                   <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-good">
-                    <Book width={14} height={14} /> In the song library
+                    <Book width={14} height={14} /> {crossover ? 'In the Crossover songs' : 'In the song library'}
                   </p>
                 )}
                 {s.status === 'dismissed' && tab === 'mine' && (
@@ -344,7 +352,7 @@ export function SuggestionsScreen({
                     {s.status === 'open' ? (
                       <>
                         <button type="button" className="btn-primary flex-1 !py-2.5 text-sm" onClick={() => setAdding(s)}>
-                          <Book width={16} height={16} /> Add to library
+                          <Book width={16} height={16} /> Add to {listName}
                         </button>
                         <button
                           type="button"
@@ -373,6 +381,7 @@ export function SuggestionsScreen({
 
       {adding && (
         <AddToLibraryModal
+          listName={listName}
           suggestion={adding}
           onClose={() => setAdding(null)}
           onAdded={(s) => {
@@ -397,10 +406,12 @@ export function SuggestionsScreen({
 
 /** Leader confirms (and can tidy) the title/artist, then the song is created. */
 function AddToLibraryModal({
+  listName,
   suggestion,
   onClose,
   onAdded,
 }: {
+  listName: string;
   suggestion: SongSuggestionDTO;
   onClose: () => void;
   onAdded: (s: SongSuggestionDTO) => void;
@@ -427,16 +438,16 @@ function AddToLibraryModal({
   }
 
   return (
-    <Modal open onClose={onClose} title="Add to library">
+    <Modal open onClose={onClose} title={`Add to ${listName}`}>
       <div className="space-y-3">
         <TextField label="Song title" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} />
         <TextField label="Artist (optional)" maxLength={200} value={artist} onChange={(e) => setArtist(e.target.value)} />
         <p className="text-sm text-ink-faint">
-          The YouTube link comes along. Add parts, charts, and band notes from the library afterwards.
+          The YouTube link comes along. Add parts, charts, and band notes from the {listName} afterwards.
         </p>
         {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
         <button type="button" className="btn-primary w-full" disabled={busy} onClick={add}>
-          <Book width={18} height={18} /> {busy ? 'Adding…' : 'Add to library'}
+          <Book width={18} height={18} /> {busy ? 'Adding…' : `Add to ${listName}`}
         </button>
       </div>
     </Modal>

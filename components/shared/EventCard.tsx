@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { EventDTO, EventAssignmentDTO, CallDTO } from '@/lib/serialize';
-import { EventTypeBadge } from './EventTypeBadge';
+import { EventBadge } from './EventTypeBadge';
 import { Calendar, Clock, MapPin, Shirt, Repeat, Music, Phone } from './Icons';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { canStartPrayerCall, isPrayerCallOpen } from '@/lib/prayer-call';
@@ -52,7 +52,7 @@ export function EventCard({ event, onClick }: { event: EventDTO; onClick?: () =>
       <div className="pointer-events-none relative">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display text-lg font-semibold leading-tight">{event.eventName}</h3>
-          <EventTypeBadge type={event.type} />
+          <EventBadge event={event} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-ink-soft">
           <span className="inline-flex items-center gap-1.5">

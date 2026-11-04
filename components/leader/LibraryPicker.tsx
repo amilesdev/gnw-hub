@@ -8,25 +8,34 @@ import { Check, Music, FileText } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
-/** Pick one or more existing library songs to drop into a setlist. */
+/**
+ * Pick one or more existing songs: library songs to drop into a setlist (or to
+ * import into Crossover), or — scope "crossover" — Crossover-list songs for a set.
+ */
 export function LibraryPicker({
   excludeIds,
   onAdd,
   onClose,
+  scope = 'library',
+  title = 'Add from library',
+  actionLabel = 'Add',
 }: {
   excludeIds: Set<string>;
   onAdd: (songs: LibrarySongDTO[]) => void;
   onClose: () => void;
+  scope?: LibrarySongDTO['scope'];
+  title?: string;
+  actionLabel?: string;
 }) {
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs')
+    apiFetch<{ songs: LibrarySongDTO[] }>(`/api/songs?scope=${scope}`)
       .then(({ songs }) => setSongs(songs))
       .catch(() => setSongs([]));
-  }, []);
+  }, [scope]);
 
   const available = useMemo(() => {
     const list = (songs ?? []).filter((s) => !excludeIds.has(s.id));
@@ -53,11 +62,11 @@ export function LibraryPicker({
 
   return (
     <Overlay
-      title="Add from library"
+      title={title}
       onClose={onClose}
       action={
         <button type="button" className="btn-primary !px-4 !py-2.5" disabled={selected.size === 0} onClick={confirm}>
-          Add{selected.size ? ` ${selected.size}` : ''}
+          {actionLabel}{selected.size ? ` ${selected.size}` : ''}
         </button>
       }
     >
@@ -72,13 +81,15 @@ export function LibraryPicker({
         />
 
         {songs === null ? (
-          <p className="py-6 text-center text-sm text-ink-faint">Loading library…</p>
+          <p className="py-6 text-center text-sm text-ink-faint">Loading songs…</p>
         ) : available.length === 0 ? (
           <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">
             {songs.length === 0
-              ? 'Your library is empty. Add songs from the Song Library screen.'
+              ? scope === 'crossover'
+                ? 'No Crossover songs yet. Add them from Crossover → Sets → Songs.'
+                : 'Your library is empty. Add songs from the Song Library screen.'
               : (songs.length - excludeIds.size) <= 0
-                ? 'Every library song is already in this setlist.'
+                ? 'Every song is already in here.'
                 : 'No songs match that search.'}
           </p>
         ) : (

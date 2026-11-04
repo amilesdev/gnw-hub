@@ -16,11 +16,14 @@ export function AppShell({
   variant,
   header,
   user,
+  showCrossover,
 }: {
   children: ReactNode;
   variant: 'member' | 'leader';
   header?: ReactNode;
   user: { name: string; image: string | null };
+  /** Whether the Crossover tab is in season for this viewer (lib/crossover-season). */
+  showCrossover: boolean;
 }) {
   return (
     <AudioProvider>
@@ -39,7 +42,7 @@ export function AppShell({
         </main>
         <MiniCallBar />
         <MiniPlayer />
-        <TabBar variant={variant} />
+        <TabBar variant={variant} showCrossover={showCrossover} />
         <PollGate />
         <PushSubscriptionSync />
       </div>

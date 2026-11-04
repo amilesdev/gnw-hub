@@ -5,13 +5,17 @@ import { suggestionCreateSchema } from '@/lib/validation';
 import { serializeSuggestion } from '@/lib/serialize';
 import { fetchYouTubeMeta, guessSong, parseYouTubeId, youTubeWatchUrl } from '@/lib/youtube';
 import { duplicateReason, getSuggestions, notifyLeadersOfSuggestion } from '@/lib/suggestions';
+import { scopeClosed, scopeParam } from '@/lib/suggestion-scope';
 
-// GET /api/suggestions — the team's suggestions, newest first (see
-// getSuggestions for who sees passed-on ones).
-export async function GET() {
+// GET /api/suggestions?scope=library|crossover — the team's suggestions for
+// that list, newest first (see getSuggestions for who sees passed-on ones).
+export async function GET(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
-  return NextResponse.json({ suggestions: await getSuggestions(guard.user) });
+  const scope = scopeParam(req);
+  const closed = scopeClosed(scope, guard.user.role);
+  if (closed) return closed;
+  return NextResponse.json({ suggestions: await getSuggestions(guard.user, scope) });
 }
 
 // POST /api/suggestions — suggest a song from a YouTube link. Any user. The
@@ -27,13 +31,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
   const d = parsed.data;
+  const closed = scopeClosed(d.scope, me.role);
+  if (closed) return closed;
 
   const videoId = parseYouTubeId(d.url);
   if (!videoId) {
     return NextResponse.json({ error: 'That doesn’t look like a YouTube link.' }, { status: 400 });
   }
 
-  const duplicate = await duplicateReason(videoId);
+  const duplicate = await duplicateReason(videoId, d.scope);
   if (duplicate) return NextResponse.json({ error: duplicate }, { status: 409 });
 
   const meta = await fetchYouTubeMeta(videoId);
@@ -59,6 +65,7 @@ export async function POST(req: Request) {
       channelName: meta?.channelName ?? null,
       suggestedById: me.id,
       suggestedByName: me.name ?? 'Someone',
+      scope: d.scope,
     },
   });
   const suggestion = serializeSuggestion(created);

@@ -7,6 +7,8 @@ export const partEnum = z.enum(['Soprano', 'Alto', 'Tenor', 'Keys', 'Guitar', 'B
 export const roleEnum = z.enum(['member', 'leader']);
 export const eventTypeEnum = z.enum(['service', 'rehearsal', 'prayer', 'holy_talks', 'encounter_night', 'other']);
 export const repeatEnum = z.enum(['once', 'weekly', 'biweekly', 'monthly']);
+export const crossoverKindEnum = z.enum(['gnw_rehearsal', 'all_team_rehearsal', 'dress_rehearsal', 'setup', 'crossover', 'other']);
+export const songScopeEnum = z.enum(['library', 'crossover']);
 
 /** A part must belong to its section (vocal parts for Vocalist, instruments for Band). */
 function partMatchesSection(section: 'Vocalist' | 'Band', part: string): boolean {
@@ -156,6 +158,8 @@ export const eventSchema = z.object({
   holyTalksNotes: z.string().max(2000).optional().nullable(),
   rehearsalSchedule: rehearsalScheduleSchema.optional().default([]),
   assignments: assignmentsSchema.optional().default([]),
+  // Tags the event as part of a Crossover season (null = a regular event).
+  crossoverKind: crossoverKindEnum.optional().nullable(),
 });
 
 export const prayerRequestSchema = z.object({
@@ -168,6 +172,8 @@ export const suggestionCreateSchema = z.object({
   url: z.string().trim().min(1, 'Paste a YouTube link').max(500),
   songTitle: z.string().trim().max(200).optional().nullable(),
   artist: z.string().trim().max(200).optional().nullable(),
+  // Which list it's for: the Song Library (default) or Crossover.
+  scope: songScopeEnum.optional().default('library'),
 });
 
 // Leader triage: pass on a suggestion, or bring a passed one back.

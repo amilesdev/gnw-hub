@@ -69,11 +69,8 @@ export function minutesToTime(mins: number): string {
 // by the same delta, preserving each following gap. Earlier rows are never
 // touched. No cascade when either the old or new time is blank/invalid (e.g. the
 // first time being set on a freshly-added row) — that row is just assigned.
-export function applyTimeEdit(
-  items: RehearsalScheduleItem[],
-  index: number,
-  newTime: string,
-): RehearsalScheduleItem[] {
+// Works on any timed rows (the Crossover schedules reuse it).
+export function applyTimeEdit<T extends { time: string }>(items: T[], index: number, newTime: string): T[] {
   const withEdit = items.map((it, i) => (i === index ? { ...it, time: newTime } : it));
   const oldMin = timeToMinutes(items[index]?.time ?? '');
   const newMin = timeToMinutes(newTime);

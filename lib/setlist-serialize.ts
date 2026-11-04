@@ -1,4 +1,4 @@
-import type { Setlist, Song, SetlistSong, SongLead, Event } from '@prisma/client';
+import type { Setlist, Song, SetlistSong, SongLead, Event, SongScope } from '@prisma/client';
 
 // A single line of a parsed lyric chart. `section` lines are verse/chorus/etc.
 // labels; `lyric` lines are sung text; `blank` lines are spacers.
@@ -53,7 +53,11 @@ export type SongDTO = {
 // `lastLeads` is who led it in the newest setlist that names anyone — the
 // suggestion the setlist form pre-fills when the song is added again. Empty
 // when the song has never had a lead.
+//
+// `scope` says which list it lives in: the Song Library, or the Crossover song
+// list (where `usageCount` counts Crossover sets instead of setlists).
 export type LibrarySongDTO = Omit<SongDTO, 'position' | 'leads'> & {
+  scope: SongScope;
   lastLeads: LeadDTO[];
   usageCount: number;
   updatedAt: string;
@@ -102,12 +106,16 @@ export function sortSetlistsForListing<T extends { events: { date: Date }[] }>(s
 
 /** Flatten a SetlistSong join (+ its library Song) into the wire DTO. */
 export function serializeSong(row: SongJoin): SongDTO {
-  const { song } = row;
+  // Stable order so the same co-leads always read the same way on every screen.
+  return songToDTO(row.song, row.position, [...row.leads].map((l) => l.user).sort((a, b) => a.name.localeCompare(b.name)));
+}
+
+/** A song at a position (in a setlist, or a Crossover set) as the wire DTO. */
+export function songToDTO(song: Song, position: number, leads: LeadDTO[] = []): SongDTO {
   return {
     id: song.id,
-    position: row.position,
-    // Stable order so the same co-leads always read the same way on every screen.
-    leads: [...row.leads].map((l) => l.user).sort((a, b) => a.name.localeCompare(b.name)),
+    position,
+    leads,
     songTitle: song.songTitle,
     artist: song.artist,
     youtubeLink: song.youtubeLink,

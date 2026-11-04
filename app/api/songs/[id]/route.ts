@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { requireLeader, requireUser } from '@/lib/session';
 import { canEditLyricCharts, canEditVocalParts, type Viewer } from '@/lib/access';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
-import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateSetlists } from '@/lib/cache-tags';
+import { deleteSongFiles, songFileUrls } from '@/lib/song-files';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -91,19 +91,16 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 
   // Clean up any uploaded audio file that's being replaced or cleared — the four
-  // vocal parts plus the single band arrangement.
+  // vocal parts plus the single band arrangement — unless a copy of this song
+  // in the other list still uses it.
   const stale: string[] = [];
   for (const part of AUDIO_PARTS) {
-    if (d[part] !== undefined && existing[part] && d[part] !== existing[part]) {
-      const p = pathFromPublicUrl(existing[part]!);
-      if (p) stale.push(p);
-    }
+    if (d[part] !== undefined && existing[part] && d[part] !== existing[part]) stale.push(existing[part]!);
   }
   if (d.arrangementAudio !== undefined && existing.arrangementAudio && d.arrangementAudio !== existing.arrangementAudio) {
-    const p = pathFromPublicUrl(existing.arrangementAudio);
-    if (p) stale.push(p);
+    stale.push(existing.arrangementAudio);
   }
-  if (stale.length) await deleteObjects(stale);
+  await deleteSongFiles(stale, id);
 
   const song = await prisma.song.update({
     where: { id },
@@ -130,10 +127,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return NextResponse.json({ song });
 }
 
-// DELETE /api/songs/[id] — retire a song from the library. Leader only.
+// DELETE /api/songs/[id] — retire a song from its list. Leader only.
 // This is the one place a song's audio is deleted from storage: freeing the
-// bucket files is the point of retiring. Any SetlistSong links cascade away, so
-// the song also disappears from every setlist that still used it.
+// bucket files is the point of retiring (files a copy in the other list still
+// uses are kept). Any SetlistSong / Crossover set links cascade away, so the
+// song also disappears from every setlist or set that still used it.
 export async function DELETE(_req: Request, { params }: Ctx) {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
@@ -142,11 +140,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const existing = await prisma.song.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'Song not found' }, { status: 404 });
 
-  const paths = [...AUDIO_PARTS.map((p) => existing[p]), existing.arrangementAudio]
-    .filter((u): u is string => !!u)
-    .map(pathFromPublicUrl)
-    .filter((p): p is string => !!p);
-  if (paths.length) await deleteObjects(paths);
+  await deleteSongFiles(songFileUrls(existing), id);
 
   await prisma.song.delete({ where: { id } }); // SetlistSong links cascade
   revalidateSetlists();

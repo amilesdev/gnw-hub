@@ -1,5 +1,7 @@
-import type { EventType } from '@prisma/client';
+import type { CrossoverKind, EventType } from '@prisma/client';
 import { cn } from '@/lib/utils';
+import { CROSSOVER_KIND_LABELS } from '@/lib/crossover-season';
+import { Sparkle } from './Icons';
 
 const LABELS: Record<EventType, string> = {
   service: 'Service',
@@ -37,3 +39,24 @@ export function EventTypeBadge({ type, className }: { type: EventType; className
 }
 
 export const eventTypeLabel = (type: EventType) => LABELS[type];
+
+type BadgeEvent = { type: EventType; crossoverKind: CrossoverKind | null };
+
+/** The badge for an event: its type, or the evergreen Crossover badge for any Crossover event. */
+export function EventBadge({ event, className }: { event: BadgeEvent; className?: string }) {
+  if (!event.crossoverKind) return <EventTypeBadge type={event.type} className={className} />;
+  return (
+    <span className={cn('chip shrink-0 bg-crossover-ever text-crossover-gold-hi', className)}>
+      <Sparkle width={12} height={12} aria-hidden />
+      Crossover
+    </span>
+  );
+}
+
+/** Text label for an event: "Crossover · GNW Rehearsal" for Crossover events, else its type. */
+export function eventLabel(event: BadgeEvent): string {
+  if (!event.crossoverKind) return LABELS[event.type];
+  return event.crossoverKind === 'crossover' || event.crossoverKind === 'other'
+    ? 'Crossover'
+    : `Crossover · ${CROSSOVER_KIND_LABELS[event.crossoverKind]}`;
+}

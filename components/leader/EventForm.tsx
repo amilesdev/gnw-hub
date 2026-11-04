@@ -13,6 +13,13 @@ import { cn, randomToken } from '@/lib/utils';
 import { parseCalendarDate, startOfToday } from '@/lib/dates';
 import { applyTimeEdit, buildRehearsalPreset, songNameForSlot } from '@/lib/rehearsal-schedule';
 import { carriesAssignments, carriesAttire } from '@/lib/event-types';
+import type { CrossoverKind } from '@prisma/client';
+import {
+  CROSSOVER_KINDS,
+  CROSSOVER_KIND_LABELS,
+  crossoverKindToType,
+  crossoverSeasonActive,
+} from '@/lib/crossover-season';
 
 const TYPES = [
   { value: 'service', label: 'Service' },
@@ -33,7 +40,7 @@ const REPEATS = [
 type FormEvent = Partial<EventDTO>;
 
 /** One attire color: a free-text name plus an exact swatch color via the native picker. */
-function AttireColorField({
+export function AttireColorField({
   label,
   name,
   onName,
@@ -101,16 +108,27 @@ function isFutureDate(dateInput: string): boolean {
 export function EventForm({
   mode,
   initial,
+  defaultCrossoverKind,
   onClose,
   onSaved,
 }: {
   mode: 'create' | 'edit';
   initial?: EventDTO;
+  /** Pre-tag a new event as Crossover (the Crossover calendar's "Add event"). */
+  defaultCrossoverKind?: CrossoverKind;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [eventName, setEventName] = useState(initial?.eventName ?? '');
-  const [type, setType] = useState<FormEvent['type']>(initial?.type ?? 'service');
+  const [type, setType] = useState<FormEvent['type']>(
+    initial?.type ?? (defaultCrossoverKind ? crossoverKindToType(defaultCrossoverKind) : 'service'),
+  );
+  // Crossover tag — '' is a regular event. Offered while a season is running,
+  // or whenever the event already carries one.
+  const [crossoverKind, setCrossoverKind] = useState<CrossoverKind | ''>(
+    initial?.crossoverKind ?? defaultCrossoverKind ?? '',
+  );
+  const showCrossover = crossoverSeasonActive() || !!initial?.crossoverKind || !!defaultCrossoverKind;
   const [date, setDate] = useState(toDateInput(initial?.date));
   const [time, setTime] = useState(initial?.time ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
@@ -291,6 +309,7 @@ export function EventForm({
       assignments: showAssignments
         ? Object.entries(assignments).map(([userId, part]) => ({ userId, part }))
         : [],
+      ...(showCrossover ? { crossoverKind: crossoverKind || null } : {}),
     };
     try {
       if (mode === 'create') {
@@ -332,6 +351,34 @@ export function EventForm({
             </option>
           ))}
         </SelectField>
+
+        {showCrossover && (
+          <div className="space-y-1.5">
+            <SelectField
+              label="Crossover"
+              value={crossoverKind}
+              onChange={(e) => {
+                const kind = e.target.value as CrossoverKind | '';
+                setCrossoverKind(kind);
+                // Each kind behaves as a regular type (rehearsals get a run-of-show).
+                if (kind) setType(crossoverKindToType(kind));
+              }}
+            >
+              <option value="">Not a Crossover event</option>
+              {CROSSOVER_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {CROSSOVER_KIND_LABELS[k]}
+                </option>
+              ))}
+            </SelectField>
+            {crossoverKind && (
+              <p className="text-xs text-ink-faint">
+                Shows on the Crossover tab and on Events with a Crossover badge. Dates run Sep 1 – Dec 31; a
+                repeating one stops at Dec 31.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="min-w-0 space-y-1.5">

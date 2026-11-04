@@ -25,12 +25,13 @@ export async function POST(req: Request, { params }: Ctx) {
   const existing = await prisma.songSuggestion.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: 'Suggestion not found' }, { status: 404 });
   if (existing.status === 'added') {
-    return NextResponse.json({ error: 'This one is already in the library.' }, { status: 409 });
+    return NextResponse.json({ error: 'This one was already added.' }, { status: 409 });
   }
 
+  // A Crossover suggestion becomes a Crossover-list song; a library one, a library song.
   const updated = await prisma.$transaction(async (tx) => {
     const song = await tx.song.create({
-      data: { songTitle: d.songTitle, artist: d.artist || null, youtubeLink: existing.url },
+      data: { songTitle: d.songTitle, artist: d.artist || null, youtubeLink: existing.url, scope: existing.scope },
     });
     return tx.songSuggestion.update({
       where: { id },

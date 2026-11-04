@@ -3,72 +3,53 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
 import { revalidateSetlists } from '@/lib/cache-tags';
-import { leadUserSelect, type LeadDTO, type LibrarySongDTO, type LyricChart } from '@/lib/setlist-serialize';
-import type { Song } from '@prisma/client';
+import { libraryInclude, toLibraryDTO } from '@/lib/song-library';
+import { crossoverOpenFor } from '@/lib/crossover-season';
 
-// The rows Prisma hands back for a song's remembered leaders.
-type LastLeadRow = { user: LeadDTO };
+const scopeEnum = z.enum(['library', 'crossover']);
 
-// The `include` a library read needs for `lastLeads` to come out populated.
-const libraryInclude = {
-  _count: { select: { setlistSongs: true } },
-  lastLeads: { include: { user: { select: leadUserSelect } } },
-} as const;
-
-// Shape a library Song (+ its setlist-usage count and remembered leaders) into
-// the wire DTO.
-function toLibraryDTO(s: Song, usageCount: number, lastLeads: LastLeadRow[] = []): LibrarySongDTO {
-  return {
-    id: s.id,
-    lastLeads: lastLeads.map((l) => l.user).sort((a, b) => a.name.localeCompare(b.name)),
-    songTitle: s.songTitle,
-    artist: s.artist,
-    youtubeLink: s.youtubeLink,
-    audioSoprano: s.audioSoprano,
-    audioAlto: s.audioAlto,
-    audioTenor: s.audioTenor,
-    audioAllParts: s.audioAllParts,
-    arrangementAudio: s.arrangementAudio,
-    songKey: s.songKey,
-    bpm: s.bpm,
-    lyricChart: (s.lyricChart as LyricChart | null) ?? null,
-    lyricDocUrl: s.lyricDocUrl,
-    lyricChartUpdatedAt: s.lyricChartUpdatedAt?.toISOString() ?? null,
-    usageCount,
-    updatedAt: s.updatedAt.toISOString(),
-  };
-}
-
-// GET /api/songs?q=...  — the song library, title A→Z. Any active user may browse.
+// GET /api/songs?q=...&scope=library|crossover — a song list, title A→Z. Any
+// active user may browse the Song Library; the Crossover list (its own songs,
+// never mixed in) follows the Crossover season's visibility.
 export async function GET(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
 
-  const q = new URL(req.url).searchParams.get('q')?.trim();
+  const url = new URL(req.url);
+  const scope = scopeEnum.catch('library').parse(url.searchParams.get('scope') ?? 'library');
+  if (scope === 'crossover' && !crossoverOpenFor(guard.user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const q = url.searchParams.get('q')?.trim();
   const songs = await prisma.song.findMany({
-    where: q
-      ? {
-          OR: [
-            { songTitle: { contains: q, mode: 'insensitive' } },
-            { artist: { contains: q, mode: 'insensitive' } },
-          ],
-        }
-      : undefined,
+    where: {
+      scope,
+      ...(q
+        ? {
+            OR: [
+              { songTitle: { contains: q, mode: 'insensitive' } },
+              { artist: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { songTitle: 'asc' },
     include: libraryInclude,
   });
 
-  const library = songs.map((s) => toLibraryDTO(s, s._count.setlistSongs, s.lastLeads));
-  return NextResponse.json({ songs: library });
+  return NextResponse.json({ songs: songs.map(toLibraryDTO) });
 }
 
 const createSchema = z.object({
   songTitle: z.string().min(1, 'Song title required').max(200),
   artist: z.string().max(200).optional().nullable(),
   youtubeLink: z.string().optional().nullable(),
+  scope: scopeEnum.optional().default('library'),
 });
 
-// POST /api/songs — add a new song to the library (no setlist attached). Leader only.
+// POST /api/songs — add a new song to the Song Library (or the Crossover list),
+// with no setlist attached. Leader only.
 export async function POST(req: Request) {
   const guard = await requireLeader();
   if ('error' in guard) return guard.error;
@@ -85,9 +66,10 @@ export async function POST(req: Request) {
       songTitle: d.songTitle,
       artist: d.artist || null,
       youtubeLink: d.youtubeLink || null,
+      scope: d.scope,
     },
   });
 
   revalidateSetlists();
-  return NextResponse.json({ song: toLibraryDTO(song, 0) }, { status: 201 });
+  return NextResponse.json({ song: toLibraryDTO(song) }, { status: 201 });
 }

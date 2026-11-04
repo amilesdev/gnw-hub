@@ -15,6 +15,7 @@
     "db:backup": "dotenv -e .env.local -- node scripts/db-backup.mjs",
     "db:restore": "dotenv -e .env.local -- node scripts/db-restore.mjs",
     "set-vocal-director": "dotenv -e .env.local -- node scripts/set-vocal-director.mjs",
+    "set-attire-reviewer": "dotenv -e .env.local -- node scripts/set-attire-reviewer.mjs",
     "set-admin-assistant": "dotenv -e .env.local -- node scripts/set-admin-assistant.mjs"
   },
   "prisma": {

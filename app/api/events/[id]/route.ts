@@ -7,17 +7,21 @@ import { parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateEvents } from '@/lib/cache-tags';
 import { carriesAssignments } from '@/lib/event-types';
+import { seasonForEventDate } from '@/lib/crossover';
+import { crossoverVisibleTo } from '@/lib/crossover-season';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// GET /api/events/[id] — single event (any authenticated user).
+// GET /api/events/[id] — single event (any authenticated user who may see it).
 export async function GET(_req: Request, { params }: Ctx) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
   const { id } = await params;
 
   const event = await prisma.event.findUnique({ where: { id }, include: eventInclude });
-  if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+  if (!event || !crossoverVisibleTo(event, guard.user.role)) {
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+  }
   return NextResponse.json({ event: serializeEvent(event) });
 }
 
@@ -73,6 +77,28 @@ export async function PATCH(req: Request, { params }: Ctx) {
   } else if (d.type !== undefined) {
     // Switched away from rehearsal — drop the schedule.
     data.rehearsalSchedule = [];
+  }
+
+  // Crossover tag: (re)resolve the season whenever the kind or the date changes,
+  // since a Crossover event belongs to the season of its date. Clearing the kind
+  // makes it a regular event again.
+  const resultingKind = d.crossoverKind !== undefined ? d.crossoverKind : existing.crossoverKind;
+  if (d.crossoverKind !== undefined || (d.date !== undefined && resultingKind)) {
+    if (resultingKind) {
+      const season = await seasonForEventDate((data.date as Date | undefined) ?? existing.date);
+      if (!season) {
+        return NextResponse.json(
+          { error: 'Crossover events have to fall between Sep 1 and Dec 31 of the current season.' },
+          { status: 400 },
+        );
+      }
+      data.crossoverKind = resultingKind;
+      data.crossoverSeasonId = season.id;
+    } else {
+      data.crossoverKind = null;
+      data.crossoverSeasonId = null;
+      data.crossoverLeadersOnly = false;
+    }
   }
 
   // Clean up any attire photos that were removed from the array.

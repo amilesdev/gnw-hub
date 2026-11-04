@@ -1,6 +1,7 @@
 import type { Event, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { seriesHorizonEnd, startOfToday, stepDate } from '@/lib/dates';
+import { seasonEnd, seasonYearForDate } from '@/lib/crossover-season';
 
 // Safety cap so a long-dormant series can't loop forever while catching up.
 const MAX_STEPS = 520;
@@ -21,6 +22,8 @@ function occurrenceFromAnchor(anchor: Event, date: Date): Prisma.EventCreateMany
     location: anchor.location,
     repeats: anchor.repeats,
     seriesId: anchor.seriesId,
+    crossoverKind: anchor.crossoverKind,
+    crossoverSeasonId: anchor.crossoverSeasonId,
     notes: null,
     attirePrimary: null,
     attirePrimaryHex: null,
@@ -76,10 +79,15 @@ export async function ensureRecurringWindow(): Promise<void> {
   for (const anchor of anchors) {
     if (anchor.repeats === 'once') continue; // defensive — series shouldn't be `once`
 
+    // A Crossover series (e.g. weekly GNW rehearsals) ends with its season on Dec 31.
+    const seasonYear = anchor.crossoverKind ? seasonYearForDate(anchor.date) : null;
+    const lastDate = seasonYear != null ? seasonEnd(seasonYear) : null;
+
     const cursor = new Date(anchor.date);
     for (let i = 0; i < MAX_STEPS; i++) {
       stepDate(cursor, anchor.repeats);
       if (cursor >= horizonEnd) break; // reached the edge of the window
+      if (lastDate && cursor > lastDate) break; // the Crossover season is over
       // Materialize future slots inside the horizon, except dates a leader
       // intentionally deleted (past slots are skipped regardless).
       if (cursor >= today && !skipped.has(`${anchor.seriesId}|${cursor.getTime()}`)) {

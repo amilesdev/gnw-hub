@@ -9,14 +9,18 @@ import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { randomToken } from '@/lib/utils';
 import { revalidateEvents } from '@/lib/cache-tags';
 import { carriesAssignments } from '@/lib/event-types';
+import { ensureCrossoverSeason, seasonForEventDate } from '@/lib/crossover';
+import { seasonEnd, visibleEvents } from '@/lib/crossover-season';
 
 // GET /api/events?scope=upcoming|all|month&month=YYYY-MM
 export async function GET(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
 
-  // Keep each recurring series topped up to its rolling window before reading,
-  // and sweep away setlists whose linked events have all passed.
+  // Open the Crossover season if it's due, keep each recurring series topped up
+  // to its rolling window before reading, and sweep away setlists whose linked
+  // events have all passed.
+  await ensureCrossoverSeason();
   await ensureRecurringWindow();
   await pruneExpiredSetlists();
 
@@ -41,7 +45,7 @@ export async function GET(req: Request) {
     include: eventInclude,
   });
 
-  return NextResponse.json({ events: events.map(serializeEvent) });
+  return NextResponse.json({ events: visibleEvents(events.map(serializeEvent), guard.user.role) });
 }
 
 // POST /api/events — create event (and occurrences if recurring). Leader only.
@@ -61,7 +65,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
   }
 
-  const dates = generateOccurrences(seed, d.repeats);
+  // A Crossover event belongs to the season of its date, which must be a
+  // running (or existing) Sep–Dec season; a recurring one stops at Dec 31.
+  const season = d.crossoverKind ? await seasonForEventDate(seed) : null;
+  if (d.crossoverKind && !season) {
+    return NextResponse.json(
+      { error: 'Crossover events have to fall between Sep 1 and Dec 31 of the current season.' },
+      { status: 400 },
+    );
+  }
+
+  const dates = generateOccurrences(seed, d.repeats).filter((date) => !season || date <= seasonEnd(season.year));
   // Recurring series share a seriesId so the UI can show them as one series
   // while each occurrence stays independently editable/deletable.
   const seriesId = d.repeats === 'once' ? null : randomToken(12);
@@ -91,6 +105,8 @@ export async function POST(req: Request) {
     scriptures: isHolyTalks ? d.scriptures ?? [] : [],
     holyTalksNotes: isHolyTalks ? d.holyTalksNotes ?? null : null,
     rehearsalSchedule: isRehearsal ? d.rehearsalSchedule ?? [] : [],
+    crossoverKind: season ? d.crossoverKind : null,
+    crossoverSeasonId: season?.id ?? null,
   };
 
   // The seed occurrence keeps everything entered on the form. The other

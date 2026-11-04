@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { AppShell } from '@/components/shared/AppShell';
+import { crossoverOpenFor } from '@/lib/crossover-season';
 
 // Authoritative gate for every /home/* screen. Middleware only checks that a
 // (validly signed) token exists; this re-validates the account each request, so
@@ -10,7 +11,11 @@ export default async function MemberLayout({ children }: { children: React.React
   const user = await getSessionUser();
   if (!user) redirect('/login');
   return (
-    <AppShell variant="member" user={{ name: user.name ?? '', image: user.image ?? null }}>
+    <AppShell
+      variant="member"
+      user={{ name: user.name ?? '', image: user.image ?? null }}
+      showCrossover={crossoverOpenFor(user.role)}
+    >
       {children}
     </AppShell>
   );

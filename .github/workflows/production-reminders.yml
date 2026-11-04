@@ -10,6 +10,10 @@ name: Production Reminders
 #   - The same CRON_SECRET value set as an environment variable in Vercel
 #
 # GitHub cron can run a few minutes late under load; the 30-minute lead absorbs it.
+#
+# The same run also opens the Crossover season and sends its "It's Crossover
+# Season!" pushes (leaders Sep 1, members Oct 1) — each once, so it shares this
+# schedule instead of needing a once-a-year cron that GitHub might skip.
 
 on:
   schedule:
@@ -34,5 +38,18 @@ jobs:
           fi
           code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 --retry 2 \
             -H "Authorization: Bearer $CRON_SECRET" "${{ vars.APP_URL }}/api/production/reminders")
+          echo "HTTP $code"; cat /tmp/out.json; echo
+          [ "$code" = "200" ]
+      - name: Crossover season kickoff
+        if: always()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${{ vars.APP_URL }}" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL variable or CRON_SECRET secret is not set — skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 --retry 2 \
+            -H "Authorization: Bearer $CRON_SECRET" "${{ vars.APP_URL }}/api/crossover/kickoff")
           echo "HTTP $code"; cat /tmp/out.json; echo
           [ "$code" = "200" ]
