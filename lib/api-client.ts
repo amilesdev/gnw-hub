@@ -1,4 +1,7 @@
+import { announceDataChanged, isAnnouncedWrite } from './data-changed';
+
 // Small client-side fetch helper that throws on non-2xx with the server message.
+// A successful save also tells open screens to refresh (lib/data-changed).
 export async function apiFetch<T = unknown>(
   url: string,
   options?: RequestInit,
@@ -34,5 +37,7 @@ export async function apiFetch<T = unknown>(
     }
     throw new Error(message);
   }
+  // After the caller has applied its own result, so screens reload on top of it.
+  if (isAnnouncedWrite(url, options?.method)) window.setTimeout(announceDataChanged, 0);
   return data as T;
 }

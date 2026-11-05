@@ -3,14 +3,16 @@
  *  • immutable hashed build assets + icons → cache-first
  *  • a small allowlist of GLOBAL, non-user-specific read APIs (events, setlists,
  *    announcements — identical for every member and leader) → stale-while-revalidate,
- *    so revisiting a screen paints instantly then refreshes in the background
+ *    so revisiting a screen paints instantly then refreshes in the background; when
+ *    the refresh differs from what was painted, the page is told to reload it
+ *    (lib/data-changed) instead of showing the old copy until the next visit
  *  • page navigations (per-user HTML) and every other API → network-first / never
  *    cached, which keeps private and role-specific data off disk
  * Safety: only 200 same-origin responses are stored; a 401/403/redirect evicts any
  * stale copy; and ANY write or auth call (login/logout, POST/PATCH/DELETE to /api)
  * wipes the read cache, so nothing survives a sign-out/sign-in on a shared device.
  */
-const VERSION = 'gnw-v3';
+const VERSION = 'gnw-v4';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];
@@ -31,6 +33,25 @@ const API_NON_INVALIDATING_PATHS = new Set(['/api/push/subscribe']);
 // tables, which nothing above caches — so they don't clear the read cache either,
 // or an open chat would wipe it every few seconds.
 const API_NON_INVALIDATING_PREFIX = '/api/chat/';
+
+// Bumped by every invalidating write. A background refresh that was already in
+// flight when a save landed may carry pre-save data, so it isn't stored.
+let writeEpoch = 0;
+// Last "newer copy" notice per URL, so a response that differs on every fetch
+// can never set off a reload loop.
+const lastNotice = new Map();
+const NOTICE_GAP_MS = 10000;
+
+async function noticeIfChanged(url, cached, fresh) {
+  if (!fresh || fresh.status !== 200) return;
+  const [before, after] = await Promise.all([cached.text(), fresh.text()]);
+  if (before === after) return;
+  const now = Date.now();
+  if (now - (lastNotice.get(url) || 0) < NOTICE_GAP_MS) return;
+  lastNotice.set(url, now);
+  const wins = await self.clients.matchAll({ type: 'window' });
+  for (const win of wins) win.postMessage({ type: 'gnw-api-updated', url });
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -60,6 +81,7 @@ self.addEventListener('fetch', (event) => {
       !API_NON_INVALIDATING_PATHS.has(url.pathname) &&
       !url.pathname.startsWith(API_NON_INVALIDATING_PREFIX)
     ) {
+      writeEpoch++;
       event.waitUntil(caches.delete(API_CACHE));
     }
     return;
@@ -89,12 +111,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(API_CACHE).then(async (cache) => {
         const cached = await cache.match(request);
+        const epoch = writeEpoch;
         const network = fetch(request)
           .then((res) => {
             // Store only a good, same-origin response. A 401/403/redirect means the
             // session is gone or forbidden → drop any stale copy rather than serve it.
             if (res && res.status === 200 && res.type === 'basic') {
-              cache.put(request, res.clone());
+              if (epoch === writeEpoch) cache.put(request, res.clone());
             } else {
               cache.delete(request);
             }
@@ -103,7 +126,12 @@ self.addEventListener('fetch', (event) => {
           .catch(() => undefined);
 
         if (cached) {
-          event.waitUntil(network); // keep the background refresh alive
+          // Keep the background refresh alive, and tell the page if it's newer
+          // than the copy it's about to paint.
+          const painted = cached.clone();
+          event.waitUntil(
+            network.then((res) => res && noticeIfChanged(url.href, painted, res.clone())).catch(() => {}),
+          );
           return cached;
         }
         // Nothing cached yet → use the network (re-throw when offline so apiFetch

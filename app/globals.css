@@ -30,6 +30,36 @@
 
 * { -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
+
+/* Native touch feel (Docs/Polish-Pass-Plan.md, Phase 1). A long-press never
+   selects interface text or pops the link/image callout, like a native app.
+   Typing fields and `.selectable` content (lyrics, notes, announcements,
+   scripture) stay copyable; chat copies through its long-press menu. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable='true'], .selectable { -webkit-user-select: text; user-select: text; }
+.selectable { -webkit-touch-callout: default; }
+/* Taps fire the moment the finger lifts — no double-tap-zoom wait. */
+a, button, [role='button'], label, summary, select { touch-action: manipulation; }
+
+/* Typing hides the bottom nav (components/shared/KeyboardWatcher), so it never
+   fights the keyboard for space. */
+html.kb-open .tab-bar { display: none; }
+
+/* Loading placeholder: a soft sheen sweeps across the block. */
+.skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-2)); }
+.skeleton::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: skeleton-sheen 1.4s ease-in-out infinite;
+}
+.dark .skeleton::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent); }
+@keyframes skeleton-sheen { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; opacity: 0; } }
+
+/* Full-screen pages (components/shared/Overlay) push in from the right, the
+   same path their Back button and back swipe take them out. */
+@keyframes overlay-slide-in { from { transform: translateX(100%); } }
+.overlay-slide-in { animation: overlay-slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
 body {
   margin: 0; background: rgb(var(--app-bg)); color: rgb(var(--ink));
   font-family: theme('fontFamily.sans');

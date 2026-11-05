@@ -9,6 +9,7 @@ import { EmptyState } from './EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
 import { Music, ChevronRight, Clock, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate } from '@/lib/dates';
 
 export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDTO[] } = {}) {
@@ -16,18 +17,25 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
   const [loading, setLoading] = useState(initialSetlists === undefined);
   const [song, setSong] = useState<SongDTO | null>(null);
 
+  async function load() {
+    try {
+      const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
+      setSetlists(setlists);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (initialSetlists !== undefined) return; // already seeded on the server — skip the fetch
-    (async () => {
-      try {
-        const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
-        setSetlists(setlists);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A save elsewhere (vocal parts, a lyric chart, the setlist itself) or a newer copy.
+  useDataChanged(() => {
+    load().catch(() => {});
+  });
 
   // One flat list, soonest date first (the API/server already orders it so).
   const visibleSetlists = setlists.filter((s) => s.songs.length > 0);

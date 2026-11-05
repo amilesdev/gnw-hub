@@ -8,6 +8,7 @@ import { EmptyState } from './EmptyState';
 import { Skeleton, SkeletonList } from './Skeleton';
 import { Music, MusicPlus, ChevronRight, ChevronLeft, Book } from './Icons';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 
 /**
  * Strip library-only metadata so a song can feed the SongDetail view. `leads`
@@ -35,6 +36,13 @@ export function SongLibraryBrowser({ backHref, suggestHref }: { backHref: string
       .then(({ songs }) => setSongs(songs))
       .catch(() => setSongs([]));
   }, []);
+
+  // A save from a song card (vocal parts, a lyric chart) — keep the list on a failed reload.
+  useDataChanged(() => {
+    apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs')
+      .then(({ songs }) => setSongs(songs))
+      .catch(() => {});
+  });
 
   const filtered = useMemo(() => {
     const list = songs ?? [];

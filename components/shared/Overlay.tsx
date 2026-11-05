@@ -24,9 +24,12 @@ let nextOverlayId = 1;
  * top of the screen, regardless of any transformed ancestor (the phone shell
  * is translated, which would otherwise re-anchor an absolutely-positioned child).
  *
- * Appears with a simple fade (a "switch", not a slide). It can still be dragged
- * back out with a left-edge swipe on touch devices (the iOS "back" gesture); the
- * edge-zone start keeps it from hijacking horizontal scrollers inside the page.
+ * Slides in from the right and leaves the same way — by its Back button, a
+ * left-edge drag (the edge-zone start keeps it from hijacking horizontal
+ * scrollers inside the page), or the system back gesture. Each open overlay owns
+ * one history entry, so the iOS edge swipe, Android's back gesture and the
+ * browser Back button close exactly the top overlay instead of backing out of
+ * the page underneath it.
  *
  * The drag is driven straight through the DOM (no per-frame React state) so it
  * tracks the finger smoothly. The listeners are attached natively as
@@ -50,6 +53,8 @@ export function Overlay({
   const backdropRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const closingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const vw = () => (typeof window === 'undefined' ? 430 : window.innerWidth);
   const isTop = () => overlayStack[overlayStack.length - 1] === idRef.current;
@@ -65,7 +70,38 @@ export function Overlay({
     };
   }, []);
 
-  // Fade the panel out (the "switch" back), then unmount once it has played.
+  // Own one history entry while open (see the note above). Pushed on a timer so
+  // React's dev-mode double mount doesn't strand an extra entry.
+  useEffect(() => {
+    const id = idRef.current;
+    const href = window.location.href;
+    let pushed = false;
+    let popped = false;
+    const timer = window.setTimeout(() => {
+      window.history.pushState({ gnwOverlay: id }, '');
+      pushed = true;
+    }, 0);
+    const onPopState = () => {
+      if (!pushed || popped || !isTop() || window.history.state?.gnwOverlay === id) return;
+      // The system gesture already animated the page away — just unmount.
+      popped = true;
+      closingRef.current = true;
+      onCloseRef.current();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('popstate', onPopState);
+      // Closed from inside (Back, our drag, a save): drop our entry so the next
+      // back gesture lands where it should. Skipped when the overlay is leaving
+      // because the app navigated — its entry is no longer the current one.
+      if (pushed && !popped && window.history.state?.gnwOverlay === id && window.location.href === href) {
+        window.history.back();
+      }
+    };
+  }, []);
+
+  // Slide the panel back out to the right (the way it came in), then unmount.
   const close = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
@@ -73,15 +109,15 @@ export function Overlay({
     const backdrop = backdropRef.current;
     if (panel) {
       panel.style.animation = 'none';
-      panel.style.transition = 'opacity 0.18s ease-out';
-      panel.style.opacity = '0';
+      panel.style.transition = `transform 0.24s ${EASE}`;
+      panel.style.transform = `translateX(${vw()}px)`;
     }
     if (backdrop) {
       backdrop.style.animation = 'none';
-      backdrop.style.transition = 'opacity 0.18s ease-out';
+      backdrop.style.transition = `opacity 0.24s ${EASE}`;
       backdrop.style.opacity = '0';
     }
-    window.setTimeout(onClose, 180);
+    window.setTimeout(onClose, 240);
   }, [onClose]);
 
   useEffect(() => {
@@ -139,6 +175,23 @@ export function Overlay({
       if (backdrop) backdrop.style.opacity = String(Math.max(0, 1 - drag.dx / vw()));
     };
 
+    const settle = () => {
+      el.style.transition = `transform 0.2s ${EASE}`;
+      el.style.transform = 'translateX(0)';
+      if (backdrop) {
+        backdrop.style.transition = `opacity 0.2s ${EASE}`;
+        backdrop.style.opacity = '1';
+      }
+    };
+
+    // A cancelled touch usually means iOS took over with its own back swipe,
+    // which closes us through popstate — never commit a close from it as well.
+    const onCancel = () => {
+      if (!drag.active) return;
+      drag.active = false;
+      if (drag.horizontal) settle();
+    };
+
     const onEnd = () => {
       if (!drag.active) return;
       drag.active = false;
@@ -155,25 +208,19 @@ export function Overlay({
         }
         window.setTimeout(onClose, 200);
       } else {
-        // Settle back into place.
-        el.style.transition = `transform 0.2s ${EASE}`;
-        el.style.transform = 'translateX(0)';
-        if (backdrop) {
-          backdrop.style.transition = `opacity 0.2s ${EASE}`;
-          backdrop.style.opacity = '1';
-        }
+        settle();
       }
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
     el.addEventListener('touchend', onEnd, { passive: true });
-    el.addEventListener('touchcancel', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onCancel, { passive: true });
     return () => {
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove', onMove);
       el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
+      el.removeEventListener('touchcancel', onCancel);
     };
   }, [mounted, onClose]);
 
@@ -184,7 +231,7 @@ export function Overlay({
       <div ref={backdropRef} className="absolute inset-0 animate-fade-in bg-ink/40" aria-hidden />
       <div
         ref={panelRef}
-        className="relative flex h-full w-full max-w-[430px] flex-col animate-fade-in bg-app shadow-card-lg"
+        className="overlay-slide-in relative flex h-full w-full max-w-[430px] flex-col bg-app shadow-card-lg"
       >
         <header
           className="shrink-0 px-5 pb-3"

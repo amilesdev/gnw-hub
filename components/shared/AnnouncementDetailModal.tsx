@@ -10,7 +10,7 @@ export function AnnouncementDetailModal({ announcement, onClose }: { announcemen
       <p className="eyebrow mb-3">
         {announcement.authorName ? `${announcement.authorName} · ` : ''}Posted {formatPosted(announcement.createdAt)}
       </p>
-      {announcement.body.trim() && <p className="whitespace-pre-wrap text-ink-soft">{announcement.body}</p>}
+      {announcement.body.trim() && <p className="selectable whitespace-pre-wrap text-ink-soft">{announcement.body}</p>}
     </Modal>
   );
 }

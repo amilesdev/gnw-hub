@@ -26,7 +26,7 @@ export function TabBar({ variant, showCrossover }: { variant: 'member' | 'leader
 
   return (
     <nav
-      className="no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
+      className="tab-bar no-print shrink-0 border-t border-line bg-app/95 backdrop-blur"
       // Floor the bottom padding to 1.75rem (env is 0 without viewport-fit=cover);
       // the bar then sits flush at the safe-area bottom — same as GNW Roll Call.
       style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}

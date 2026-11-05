@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
 
-/** A single pulsing placeholder block. Pulse stops under prefers-reduced-motion
- *  (handled globally in globals.css). */
+/** A single placeholder block with a moving sheen (`.skeleton` in globals.css).
+ *  The sheen stops under prefers-reduced-motion. */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-lg bg-surface-2', className)} />;
+  return <div className={cn('skeleton rounded-lg', className)} />;
 }
 
 /** Placeholder shaped like an EventCard — used while the events list loads. */
@@ -111,6 +111,53 @@ export function EventsScreenSkeleton() {
         <EventCardSkeleton />
         <EventCardSkeleton />
       </SkeletonList>
+    </div>
+  );
+}
+
+/** Generic list screen placeholder (title + rows) — Library, Chat, Crossover, Members… */
+export function ListScreenSkeleton() {
+  return (
+    <div className="space-y-5 pt-2">
+      <div className="space-y-2">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-8 w-44" />
+      </div>
+      <SkeletonList>
+        <SetlistSkeleton rows={5} />
+      </SkeletonList>
+    </div>
+  );
+}
+
+/** A chat thread placeholder: header bar, a few bubbles, the composer. Full
+ *  screen like the thread itself, so it covers the tab bar too. */
+export function ChatThreadSkeleton() {
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col bg-chat-canvas" role="status" aria-busy="true" aria-label="Loading">
+      <div
+        className="flex shrink-0 items-center gap-3 border-b border-line bg-app/95 px-4 pb-3"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+      >
+        <Skeleton className="h-8 w-8 rounded-xl" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col justify-end gap-3 px-3 pb-3">
+        <Skeleton className="h-10 w-3/5 rounded-2xl" />
+        <Skeleton className="h-14 w-2/3 rounded-2xl" />
+        <Skeleton className="ml-auto h-10 w-1/2 rounded-2xl" />
+        <Skeleton className="h-10 w-2/5 rounded-2xl" />
+        <Skeleton className="ml-auto h-16 w-3/5 rounded-2xl" />
+      </div>
+      <div
+        className="shrink-0 border-t border-line bg-app px-3 pt-2"
+        style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
+      >
+        <Skeleton className="h-11 w-full rounded-full" />
+      </div>
     </div>
   );
 }

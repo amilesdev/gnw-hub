@@ -7,6 +7,9 @@ import { MiniCallBar } from '@/components/call/MiniCallBar';
 import { PushSubscriptionSync } from './PushSubscriptionSync';
 import { ProfileButton } from './ProfileButton';
 import { ChatProvider } from '@/components/chat/ChatProvider';
+import { KeyboardWatcher } from './KeyboardWatcher';
+import { DataSync } from './DataSync';
+import { HomeHint } from './HomeHint';
 
 /**
  * Fixed, centered phone shell (max 430px) with a scrollable content area, a
@@ -53,6 +56,9 @@ export function AppShell({
         <TabBar variant={variant} showCrossover={showCrossover} />
         <PollGate />
         <PushSubscriptionSync />
+        <KeyboardWatcher />
+        <DataSync />
+        <HomeHint home={variant === 'leader' ? '/dashboard' : '/home'} />
       </div>
     </AudioProvider>
   );

@@ -8,6 +8,9 @@ const config: Config = {
     './lib/**/*.{ts,tsx}',
   ],
   darkMode: 'class',
+  // `hover:` only applies on devices that can really hover, so a tapped row
+  // doesn't stay stuck in its hover style on a phone.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       colors: {

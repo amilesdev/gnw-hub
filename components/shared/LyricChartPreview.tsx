@@ -45,7 +45,7 @@ export function LyricChartPreview({
           )}
         </div>
       )}
-      <div className={cn('leading-relaxed', !bare && 'max-h-96 overflow-y-auto')}>
+      <div className={cn('selectable leading-relaxed', !bare && 'max-h-96 overflow-y-auto')}>
         {chart.lines.map((line, i) => {
           if (line.type === 'blank') return <div key={i} style={{ height: '0.75rem' }} aria-hidden />;
           if (line.type === 'section') {

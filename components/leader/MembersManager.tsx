@@ -7,6 +7,7 @@ import { TextField, FieldLabel } from '@/components/shared/Field';
 import { SegmentedControl } from '@/components/shared/SegmentedControl';
 import { Plus, Pencil, Trash, Repeat, Check, Link } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { isInviteExpired } from '@/lib/invites';
 
 export type Section = 'Vocalist' | 'Band';
@@ -45,6 +46,11 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
     const { members } = await apiFetch<{ members: MemberRow[] }>('/api/members');
     setMembers(members);
   }
+
+  // Another leader's change, picked up when the app comes back to the front.
+  useDataChanged(() => {
+    refresh().catch(() => {});
+  });
 
   async function copyInviteLink(m: MemberRow) {
     if (!m.inviteUrl) return;

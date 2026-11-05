@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import Link from 'next/link';
 import { Plus, Pencil, Trash, Music, ChevronRight, Book } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate } from '@/lib/dates';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; setlist: SetlistDTO } | null;
@@ -24,8 +25,9 @@ export function SetlistManager() {
   const [song, setSong] = useState<SongDTO | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  /** `quiet` keeps what's on screen while it reloads (no skeleton flash). */
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true);
     try {
       const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
       setSetlists(setlists);
@@ -37,6 +39,11 @@ export function SetlistManager() {
   useEffect(() => {
     load();
   }, []);
+
+  // A save elsewhere (vocal parts from a song card, song leads…) or a newer copy.
+  useDataChanged(() => {
+    load(true).catch(() => {});
+  });
 
   async function remove() {
     if (!confirmDelete) return;

@@ -14,6 +14,7 @@ import { SongDetail } from '@/components/shared/SongDetail';
 import { Plus, Music, MusicPlus, Pencil, ChevronLeft, Trash, Book, Sparkle, Upload } from '@/components/shared/Icons';
 import { LibraryPicker } from './LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { crossoverSeasonActive } from '@/lib/crossover-season';
 import Link from 'next/link';
 
@@ -43,14 +44,20 @@ export function SongLibrary({ scope = 'library' }: { scope?: Scope }) {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
-  async function load() {
+  /** `quiet` (a background refresh) keeps the current list if the reload fails. */
+  async function load(quiet = false) {
     try {
       const { songs } = await apiFetch<{ songs: LibrarySongDTO[] }>(`/api/songs?scope=${scope}`);
       setSongs(songs);
     } catch {
-      setSongs([]);
+      if (!quiet) setSongs([]);
     }
   }
+
+  // A save from a song card (vocal parts, a lyric chart) or elsewhere.
+  useDataChanged(() => {
+    void load(true);
+  });
 
   // "Import from library": each picked Song Library song becomes its own
   // Crossover-list copy, free to be rearranged without touching the original.

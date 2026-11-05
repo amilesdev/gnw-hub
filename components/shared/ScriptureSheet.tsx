@@ -181,7 +181,7 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
             {state.status === 'ok' && (
               <>
                 <div
-                  className="font-display text-[1.075rem] leading-[1.8]"
+                  className="selectable font-display text-[1.075rem] leading-[1.8]"
                   style={{ color: '#3a2f1d', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
                 >
                   {state.passage.verses.map((v, i) => (

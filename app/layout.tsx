@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
 import { ThemeScript } from '@/components/shared/ThemeProvider';
+import { splashStartupImages } from '@/lib/splash';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -44,7 +45,8 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   // `default` status bar (tinted to match via theme-color) keeps the layout inside
   // the safe area so the bottom nav sits flush — matches the proven GNW Roll Call setup.
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GNW Hub' },
+  // startupImage: the launch screen shown while the installed app opens (lib/splash).
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GNW Hub', startupImage: splashStartupImages },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

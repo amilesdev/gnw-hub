@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { Plus, Pencil, Trash, CalendarOff } from './Icons';
 import { EventForm } from '@/components/leader/EventForm';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate } from '@/lib/dates';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; event: EventDTO } | null;
@@ -33,8 +34,9 @@ export function EventsScreen({
   const [confirming, setConfirming] = useState<EventDTO | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  /** `quiet` keeps what's on screen while it reloads (no skeleton flash). */
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true);
     try {
       const { events } = await apiFetch<{ events: EventDTO[] }>('/api/events?scope=all');
       setEvents(events);
@@ -42,6 +44,12 @@ export function EventsScreen({
       setLoading(false);
     }
   }
+
+  // A save elsewhere (an event's setlist, availability…) or a newer copy.
+  useDataChanged(() => {
+    load(true).catch(() => {});
+    setRefreshSignal((n) => n + 1);
+  });
 
   // Reload the list and signal the calendar to refetch its visible month.
   function refreshAll() {

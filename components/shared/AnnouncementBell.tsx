@@ -109,7 +109,7 @@ export function AnnouncementBell({
                     )}
                   </div>
                   {a.body.trim() && (
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{a.body}</p>
+                    <p className="selectable mt-2 whitespace-pre-wrap text-sm text-ink-soft">{a.body}</p>
                   )}
                   <p className="mt-3 text-right text-[11px] font-light tracking-wide text-ink-faint">
                     {formatPosted(a.createdAt)}

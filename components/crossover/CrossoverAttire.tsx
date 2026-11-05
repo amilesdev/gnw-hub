@@ -119,7 +119,7 @@ export function CrossoverAttire({
               <Swatch label="Secondary" name={attire.attireSecondary} hex={attire.attireSecondaryHex} />
               <Swatch label="Tertiary" name={attire.attireComplement} hex={attire.attireComplementHex} />
             </div>
-            {attire.attireNotes && <p className="whitespace-pre-wrap text-sm text-ink-soft">{attire.attireNotes}</p>}
+            {attire.attireNotes && <p className="selectable whitespace-pre-wrap text-sm text-ink-soft">{attire.attireNotes}</p>}
             {attire.attirePhotos.length > 0 && <PhotoGrid photos={attire.attirePhotos} />}
           </>
         )}

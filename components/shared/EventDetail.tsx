@@ -14,6 +14,7 @@ import { EventBadge } from './EventTypeBadge';
 import { hasAttire, assignmentsByPart } from './EventCard';
 import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
 import { apiFetch } from '@/lib/api-client';
+import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { resolveScheduleLabel } from '@/lib/rehearsal-schedule';
 
@@ -128,7 +129,7 @@ function PrayerRequests({ eventId }: { eventId: string }) {
                 key={r.id}
                 className="flex items-end gap-3 border-b border-line py-3 leading-relaxed last:border-b-0"
               >
-                <p className="min-w-0 flex-1 whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
+                <p className="selectable min-w-0 flex-1 whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
                 <span className="shrink-0 font-display text-sm italic text-ink-faint">
                   {r.authorName}
                 </span>
@@ -190,6 +191,10 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   // a saved schedule stays in step with setlist changes.
   const setlistTitles = setlist ? setlist.songs.map((s) => s.songTitle) : [];
 
+  // Re-pull the setlist when it may have changed (a save, or a newer cached copy).
+  const [setlistVersion, setSetlistVersion] = useState(0);
+  useDataChanged(() => setSetlistVersion((n) => n + 1));
+
   // Pull in the setlist tied to this event (if any) so it lives on the card.
   useEffect(() => {
     let active = true;
@@ -201,7 +206,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
     return () => {
       active = false;
     };
-  }, [event.id]);
+  }, [event.id, setlistVersion]);
 
   return (
     <Overlay title={event.eventName} onClose={onClose} action={<EventBadge event={event} />}>
@@ -290,7 +295,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
         {event.notes && (
           <section className="card p-4">
             <p className="label mb-1.5">Notes</p>
-            <p className="whitespace-pre-wrap text-ink-soft">{event.notes}</p>
+            <p className="selectable whitespace-pre-wrap text-ink-soft">{event.notes}</p>
           </section>
         )}
 
@@ -329,7 +334,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
             {event.holyTalksNotes && (
               <div>
                 <p className="label mb-1">Notes</p>
-                <p className="whitespace-pre-wrap text-ink-soft">{event.holyTalksNotes}</p>
+                <p className="selectable whitespace-pre-wrap text-ink-soft">{event.holyTalksNotes}</p>
               </div>
             )}
           </section>
@@ -375,7 +380,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
             {event.attireNotes && (
               <div>
                 <p className="label mb-1">Notes</p>
-                <p className="whitespace-pre-wrap text-ink-soft">{event.attireNotes}</p>
+                <p className="selectable whitespace-pre-wrap text-ink-soft">{event.attireNotes}</p>
               </div>
             )}
 
