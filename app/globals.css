@@ -15,6 +15,19 @@
   --ink-faint: 119 112 101; --accent-soft: 42 48 30;
 }
 
+/* === Chat === its own tokens (Tailwind `chat-*`), so the redesign can restyle
+   chat without touching its components' logic. Mine = sage; theirs = warm grey. */
+:root {
+  --chat-mine: 94 112 72; --chat-mine-ink: 255 255 255;
+  --chat-theirs: 239 234 226; --chat-theirs-ink: 28 26 34;
+  --chat-canvas: 250 247 242;
+}
+.dark {
+  --chat-mine: 78 95 58; --chat-mine-ink: 245 243 236;
+  --chat-theirs: 48 44 37; --chat-theirs-ink: 240 236 228;
+  --chat-canvas: 22 20 16;
+}
+
 * { -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body {

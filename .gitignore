@@ -37,5 +37,8 @@ yarn-error.log*
 # database backups (contain user data — keep out of git)
 /backups/
 
+# GroupMe probe/import working files (real names + message samples)
+/groupme/
+
 # claude code (local subagents, settings, skills — not shared)
 /.claude/

@@ -1,5 +1,7 @@
-import { ChatComingSoon } from '@/components/shared/ChatComingSoon';
+import { ChatListPage } from '@/components/chat/pages';
+
+export const dynamic = 'force-dynamic';
 
 export default function LeaderChatPage() {
-  return <ChatComingSoon />;
+  return <ChatListPage base="/dashboard" />;
 }

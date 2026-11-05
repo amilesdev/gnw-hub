@@ -44,6 +44,14 @@ const config: Config = {
           'gold-ink': '#8A6A24',
           champagne: '#F6EEDC',
         },
+        // Chat bubbles + canvas (tokens in globals.css → "Chat"). Chat-only.
+        chat: {
+          mine: 'rgb(var(--chat-mine) / <alpha-value>)',
+          'mine-ink': 'rgb(var(--chat-mine-ink) / <alpha-value>)',
+          theirs: 'rgb(var(--chat-theirs) / <alpha-value>)',
+          'theirs-ink': 'rgb(var(--chat-theirs-ink) / <alpha-value>)',
+          canvas: 'rgb(var(--chat-canvas) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'sans-serif'],

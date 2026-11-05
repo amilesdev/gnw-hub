@@ -5,10 +5,58 @@ import type { MemberSection, Role } from '@prisma/client';
 export type Viewer = {
   role: Role;
   section?: MemberSection | null;
+  isSuperAdmin?: boolean;
   vocalDirector?: boolean;
   adminAssistant?: boolean;
   attireReviewer?: boolean;
+  chatModerator?: boolean;
+  chatEarlyAccess?: boolean;
 };
+
+/**
+ * Chat's soft launch: while false, only leaders, moderators (super admin
+ * included) and `chatEarlyAccess` testers can use chat at all. Members keep the "Coming Soon" tab, the chat
+ * API 404s for them, they can't be added to a chat and get no chat pushes.
+ * Flip to true when members' chats move over (Docs/Chat-Feature.md, Phase 5).
+ */
+export const CHAT_OPEN_TO_MEMBERS = false;
+
+/**
+ * Who can use chat at all (see {@link CHAT_OPEN_TO_MEMBERS}). Being in a chat is
+ * still required to see it. lib/chat/server.ts → `CHAT_USERS` is the same rule
+ * as a DB filter; keep the two in step.
+ *
+ * `chatEarlyAccess` (User.chatEarlyAccess, granted from the backend only) lets a
+ * member in early as a tester. They use chat exactly as a member will: no
+ * creating chats, adding people, @all or moderation.
+ */
+export function canUseChat(v: Viewer): boolean {
+  return CHAT_OPEN_TO_MEMBERS || v.role === 'leader' || v.chatEarlyAccess === true || canModerateChat(v);
+}
+
+/**
+ * Who may create chats and topics, and add people to a chat: the super admin
+ * and anyone with the leader role. (Removing people is moderation — see
+ * {@link canModerateChat}.)
+ */
+export function canCreateChats(v: Viewer): boolean {
+  return v.isSuperAdmin === true || v.role === 'leader';
+}
+
+/**
+ * Who moderates chat — deletes anyone's message, removes people from a chat,
+ * archives a chat or topic: the super admin, plus a user flagged
+ * `chatModerator` (granted from the backend only). Deliberately NOT every
+ * leader. Seeing a chat still requires being in it; this grants no access.
+ */
+export function canModerateChat(v: Viewer): boolean {
+  return v.isSuperAdmin === true || v.chatModerator === true;
+}
+
+/** Who may @all a chat (it breaks through mute): leaders + moderators. */
+export function canMentionAll(v: Viewer): boolean {
+  return v.role === 'leader' || canModerateChat(v);
+}
 
 /**
  * Who reviews Crossover looks — approves a member's submitted outfit or asks

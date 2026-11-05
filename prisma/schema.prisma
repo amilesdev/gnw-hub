@@ -139,7 +139,17 @@ model User {
   // shape as the two above: one narrow capability, granted from the backend
   // only (`npm run set-attire-reviewer`). See lib/access.ts → canReviewLooks.
   attireReviewer Boolean        @default(false)
-  inviteToken    String?        @unique
+  // Whether this user moderates chat: deletes anyone's message, removes chat
+  // members, archives a chat/topic. Same shape as the three above: granted
+  // from the backend only (`npm run set-chat-moderator`). The super admin is
+  // always a moderator regardless. See lib/access.ts → canModerateChat.
+  chatModerator  Boolean        @default(false)
+  // Whether this non-leader may use chat during the soft launch (while
+  // CHAT_OPEN_TO_MEMBERS is false), for a member's-eye view while testing.
+  // Grants nothing beyond what any member gets once chat opens. Backend only
+  // (`npm run set-chat-early-access`). See lib/access.ts → canUseChat.
+  chatEarlyAccess Boolean       @default(false)
+  inviteToken   String?        @unique
   inviteExpiry   DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
   // reset, "sign out everywhere"). The live session check compares the token's
@@ -177,6 +187,17 @@ model User {
 
   crossoverSetSingers CrossoverSetSinger[] // Crossover sets this user sings on
   crossoverLooks      CrossoverLook[] // this user's submitted Crossover looks, one per season
+
+  // Chat. Authorship links are SET NULL (the message stays, shown as a former
+  // member); membership, read state, mentions and reactions CASCADE.
+  createdChats        Chat[]          @relation("ChatCreatedBy")
+  chatMemberships     ChatMember[]
+  chatReadStates      ChatReadState[]
+  chatMessages        ChatMessage[]   @relation("ChatMessageAuthor")
+  deletedChatMessages ChatMessage[]   @relation("ChatMessageDeletedBy")
+  pinnedChatMessages  ChatMessage[]   @relation("ChatMessagePinnedBy")
+  chatMentions        ChatMention[]
+  chatReactions       ChatReaction[]
 }
 
 // A date (or date range) a member has marked themselves unavailable. Whole-day:
@@ -978,4 +999,167 @@ model ProductionTask {
   @@index([eventId])
   @@index([ownerId])
   @@index([templateTaskId])
+}
+
+// ── Chat (replacing GroupMe) ─────────────────────────────────────────────────
+// Plan, decisions and phase status: Docs/Chat-Feature.md.
+//
+// One table holds chats AND topics (a topic is a Chat with a parentId), so every
+// message has a single chatId. Membership lives on the root chat only — topics
+// are open to everyone in their parent. Content never rides Supabase Realtime:
+// writes go through the API, then a content-free ping tells clients to refetch
+// (lib/chat/realtime-server.ts).
+//
+// Search (Phase 3) uses an expression GIN index on to_tsvector('english', text)
+// created in raw SQL (migration 20261105000000_add_chat). Prisma can't declare
+// it — keep it when hand-writing future migrations.
+
+enum ChatAttachmentKind {
+  image
+  video
+}
+
+model Chat {
+  id            String    @id @default(cuid())
+  name          String
+  // null = a chat; set = a topic inside that chat (one level deep only).
+  parentId      String?
+  parent        Chat?     @relation("ChatTopics", fields: [parentId], references: [id], onDelete: Cascade)
+  topics        Chat[]    @relation("ChatTopics")
+  // Order of topics within their chat (chats themselves sort by activity).
+  position      Int       @default(0)
+  // Archived = hidden from the chat list and read-only. Moderators only.
+  archivedAt    DateTime?
+  createdById   String?
+  createdBy     User?     @relation("ChatCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  // Time of the newest message here (denormalized on send/import) — sorts the list.
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  members    ChatMember[]
+  readStates ChatReadState[]
+  messages   ChatMessage[]
+
+  @@index([parentId])
+}
+
+// Who is in a (root) chat. Managed by hand per chat, not derived from role.
+model ChatMember {
+  id       String    @id @default(cuid())
+  chatId   String
+  chat     Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Set = muted (no pushes, except @mentions of you and @all). Covers its topics.
+  mutedAt  DateTime?
+  joinedAt DateTime  @default(now())
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+// Per user, per chat-or-topic: how far they've read (drives unread badges) and
+// whether they're looking at it right now (skips the push).
+model ChatReadState {
+  id         String    @id @default(cuid())
+  chatId     String
+  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime  @default(now())
+  // Heartbeat from the open chat screen; a push is skipped if this is recent.
+  viewingAt  DateTime?
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id                   String        @id @default(cuid())
+  chatId               String
+  chat                 Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  // Null for imported messages from people who aren't Hub members (and if a
+  // member is ever removed) — shown under importedAuthorName as a former member.
+  authorId             String?
+  author               User?         @relation("ChatMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  importedAuthorName   String?
+  importedAuthorAvatar String?
+  // Null for a photo/video-only message.
+  text                 String?
+  replyToId            String?
+  replyTo              ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies              ChatMessage[] @relation("ChatReplies")
+  // @all (leaders + moderators only; breaks through mute).
+  mentionsAll          Boolean       @default(false)
+  editedAt             DateTime?
+  // Soft delete: the row stays (replies keep their anchor), text is withheld.
+  deletedAt            DateTime?
+  deletedById          String?
+  deletedBy            User?         @relation("ChatMessageDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  pinnedAt             DateTime?
+  pinnedById           String?
+  pinnedBy             User?         @relation("ChatMessagePinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+  // Client-generated id for a send, so a retried request never posts twice.
+  clientNonce          String?       @unique
+  // Where an imported message came from ('groupme') + its id there. Unique
+  // together, so the import can be re-run for the final delta without duplicates.
+  importSource         String?
+  importId             String?
+  createdAt            DateTime      @default(now())
+
+  mentions    ChatMention[]
+  attachments ChatAttachment[]
+  reactions   ChatReaction[]
+
+  @@unique([importSource, importId])
+  @@index([chatId, createdAt])
+  @@index([authorId])
+}
+
+model ChatMention {
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId])
+}
+
+// A photo or video on a message. Files live in the PRIVATE `gnw-chat` bucket
+// (SUPABASE_CHAT_BUCKET); store the storage path, never a URL — reads get
+// short-lived signed URLs.
+model ChatAttachment {
+  id          String             @id @default(cuid())
+  messageId   String
+  message     ChatMessage        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  kind        ChatAttachmentKind
+  path        String
+  posterPath  String? // video poster frame
+  width       Int?
+  height      Int?
+  durationSec Float?
+  sizeBytes   Int?
+  position    Int                @default(0)
+  createdAt   DateTime           @default(now())
+
+  @@index([messageId])
+}
+
+model ChatReaction {
+  id             String      @id @default(cuid())
+  messageId      String
+  message        ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  // Null for an imported reaction from someone who isn't a Hub member; then
+  // importedUserId holds their GroupMe user id (so re-imports don't duplicate).
+  userId         String?
+  user           User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importedUserId String?
+  emoji          String
+  createdAt      DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@unique([messageId, importedUserId, emoji])
+  @@index([userId])
 }

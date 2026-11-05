@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { ComponentType, SVGProps } from 'react';
 import { cn } from '@/lib/utils';
 import { memberTabs, leaderTabs } from './navConfig';
+import { useChatUnreadTotal } from '@/components/chat/ChatProvider';
 
 export type TabItem = {
   href: string;
@@ -21,6 +22,7 @@ export function TabBar({ variant, showCrossover }: { variant: 'member' | 'leader
   const tabs = variant === 'leader' ? leaderTabs : memberTabs;
   const items = showCrossover ? tabs : tabs.filter((t) => !t.href.endsWith('/crossover'));
   const pathname = usePathname();
+  const chatUnread = useChatUnreadTotal();
 
   return (
     <nav
@@ -45,7 +47,17 @@ export function TabBar({ variant, showCrossover }: { variant: 'member' | 'leader
                   active ? 'text-accent dark:text-accent-on' : 'text-ink-faint',
                 )}
               >
-                <Icon width={23} height={23} />
+                <span className="relative">
+                  <Icon width={23} height={23} />
+                  {href.endsWith('/chat') && chatUnread > 0 && (
+                    <span
+                      className="absolute -right-2.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-unread px-1 text-[10px] font-bold leading-none text-white ring-2 ring-app"
+                      aria-label={`${chatUnread} unread`}
+                    >
+                      {chatUnread > 99 ? '99+' : chatUnread}
+                    </span>
+                  )}
+                </span>
                 <span className={cn('text-[11px]', active ? 'font-bold' : 'font-semibold')}>{label}</span>
               </Link>
             </li>

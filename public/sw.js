@@ -27,6 +27,10 @@ const API_SWR_PATHS = new Set(['/api/events', '/api/setlists', '/api/announcemen
 // read cache for it would cost a needless network round-trip on the next
 // events/setlists paint.
 const API_NON_INVALIDATING_PATHS = new Set(['/api/push/subscribe']);
+// Chat writes (sends, read marks, the ~25 s "viewing" heartbeat) only touch chat
+// tables, which nothing above caches — so they don't clear the read cache either,
+// or an open chat would wipe it every few seconds.
+const API_NON_INVALIDATING_PREFIX = '/api/chat/';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -53,7 +57,8 @@ self.addEventListener('fetch', (event) => {
     if (
       sameOrigin &&
       url.pathname.startsWith('/api/') &&
-      !API_NON_INVALIDATING_PATHS.has(url.pathname)
+      !API_NON_INVALIDATING_PATHS.has(url.pathname) &&
+      !url.pathname.startsWith(API_NON_INVALIDATING_PREFIX)
     ) {
       event.waitUntil(caches.delete(API_CACHE));
     }

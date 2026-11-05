@@ -6,6 +6,7 @@ import { MiniPlayer } from './MiniPlayer';
 import { MiniCallBar } from '@/components/call/MiniCallBar';
 import { PushSubscriptionSync } from './PushSubscriptionSync';
 import { ProfileButton } from './ProfileButton';
+import { ChatProvider } from '@/components/chat/ChatProvider';
 
 /**
  * Fixed, centered phone shell (max 430px) with a scrollable content area, a
@@ -17,6 +18,7 @@ export function AppShell({
   header,
   user,
   showCrossover,
+  chatTopic,
 }: {
   children: ReactNode;
   variant: 'member' | 'leader';
@@ -24,8 +26,14 @@ export function AppShell({
   user: { name: string; image: string | null };
   /** Whether the Crossover tab is in season for this viewer (lib/crossover-season). */
   showCrossover: boolean;
+  /**
+   * This user's private chat-ping topic (lib/chat/realtime-server → chatUserTopic),
+   * or null when they can't use chat yet (lib/access → canUseChat): no
+   * subscription, no unread fetches, no badge.
+   */
+  chatTopic: string | null;
 }) {
-  return (
+  const shell = (
     <AudioProvider>
       <div className="app-shell">
         {header}
@@ -48,4 +56,5 @@ export function AppShell({
       </div>
     </AudioProvider>
   );
+  return chatTopic ? <ChatProvider topic={chatTopic}>{shell}</ChatProvider> : shell;
 }

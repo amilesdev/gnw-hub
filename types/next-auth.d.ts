@@ -13,6 +13,8 @@ declare module 'next-auth' {
     vocalDirector: boolean;
     adminAssistant: boolean;
     attireReviewer: boolean;
+    chatModerator: boolean;
+    chatEarlyAccess: boolean;
     tokenVersion: number;
   }
 
@@ -32,6 +34,10 @@ declare module 'next-auth' {
       adminAssistant: boolean;
       // Ditto — see lib/access.ts → canReviewLooks (Crossover attire).
       attireReviewer: boolean;
+      // Ditto — see lib/access.ts → canModerateChat.
+      chatModerator: boolean;
+      // Ditto — see lib/access.ts → canUseChat (chat soft-launch testers).
+      chatEarlyAccess: boolean;
     };
   }
 }

@@ -448,3 +448,26 @@ export const Send = (p: P) => (
     <path d="M21 3 14.5 21l-3.5-8-8-3.5L21 3Z" />
   </Base>
 );
+
+export const BellOff = (p: P) => (
+  <Base {...p}>
+    <path d="M8.7 3.9A6 6 0 0 1 18 9c0 3 .5 4.8 1.1 5.9" />
+    <path d="M6.2 6.6A6 6 0 0 0 6 9c0 5-1.5 6.5-2 7h12" />
+    <path d="M10 20a2 2 0 0 0 4 0" />
+    <path d="M3 3l18 18" />
+  </Base>
+);
+
+export const ArrowDown = (p: P) => (
+  <Base {...p}>
+    <path d="M12 5v14" />
+    <path d="m6 13 6 6 6-6" />
+  </Base>
+);
+
+export const Search = (p: P) => (
+  <Base {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.9-3.9" />
+  </Base>
+);

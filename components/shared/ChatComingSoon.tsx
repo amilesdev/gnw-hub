@@ -2,9 +2,9 @@ import { MessageCircle } from './Icons';
 import { ComingSoon } from './ComingSoon';
 
 /**
- * Placeholder for the Chat tab. Chat will come from the wider organization's
- * existing chat app (an integration, not a chat built here); until then the tab
- * holds its place in the nav.
+ * What the Chat tab shows someone who can't use chat yet. During the soft
+ * launch (lib/access → CHAT_OPEN_TO_MEMBERS) that's every member, so the tab
+ * holds its place in the nav while leaders test.
  */
 export function ChatComingSoon() {
   return (

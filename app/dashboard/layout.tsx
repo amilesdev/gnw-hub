@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { AppShell } from '@/components/shared/AppShell';
 import { crossoverOpenFor } from '@/lib/crossover-season';
+import { chatUserTopic } from '@/lib/chat/realtime-server';
 
 // Authoritative gate for every /dashboard/* screen: signed-in AND still a
 // leader, re-checked live each request (middleware can't see a revocation or a
@@ -15,6 +16,7 @@ export default async function LeaderLayout({ children }: { children: React.React
       variant="leader"
       user={{ name: user.name ?? '', image: user.image ?? null }}
       showCrossover={crossoverOpenFor('leader')}
+      chatTopic={chatUserTopic(user.id)}
     >
       {children}
     </AppShell>

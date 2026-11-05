@@ -49,6 +49,8 @@ export const authOptions: NextAuthOptions = {
           vocalDirector: user.vocalDirector,
           adminAssistant: user.adminAssistant,
           attireReviewer: user.attireReviewer,
+          chatModerator: user.chatModerator,
+          chatEarlyAccess: user.chatEarlyAccess,
           tokenVersion: user.tokenVersion,
         };
       },
@@ -86,6 +88,8 @@ export const authOptions: NextAuthOptions = {
           vocalDirector: true,
           adminAssistant: true,
           attireReviewer: true,
+          chatModerator: true,
+          chatEarlyAccess: true,
         },
       });
 
@@ -105,6 +109,8 @@ export const authOptions: NextAuthOptions = {
         session.user.vocalDirector = fresh.vocalDirector;
         session.user.adminAssistant = fresh.adminAssistant;
         session.user.attireReviewer = fresh.attireReviewer;
+        session.user.chatModerator = fresh.chatModerator;
+        session.user.chatEarlyAccess = fresh.chatEarlyAccess;
       }
       return session;
     },
