@@ -4,15 +4,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CHAT_MAX_ATTACHMENTS,
   CHAT_TEXT_MAX,
+  mediaLabel,
   type ChatAttachmentInput,
   type ChatMediaKind,
   type ChatMemberDTO,
 } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
-import { Check, Pencil, Plus, Send, X } from '@/components/shared/Icons';
+import { Check, FileText, Pencil, Plus, Send, X } from '@/components/shared/Icons';
 import { ChatAvatar } from './ChatAvatar';
-import type { ClientMessage } from './ChatMessages';
-import { mediaProblem, prepareMedia, putWithProgress, signUploads } from './media';
+import { ReplyThumb, type ClientMessage } from './ChatMessages';
+import { mediaKindOf, mediaProblem, prepareMedia, putWithProgress, signUploads } from './media';
 
 const MAX_HEIGHT_PX = 132; // ~5 lines, then it scrolls
 
@@ -22,12 +23,22 @@ export type OutgoingMessage = {
   mentionIds: string[];
   mentionsAll: boolean;
   attachments: ChatAttachmentInput[];
-  previews: { kind: ChatMediaKind; url: string; posterUrl: string | null; width: number | null; height: number | null }[];
+  previews: {
+    kind: ChatMediaKind;
+    url: string;
+    posterUrl: string | null;
+    width: number | null;
+    height: number | null;
+    name?: string | null;
+    sizeBytes?: number | null;
+  }[];
 };
 
 type Draft = {
   key: string;
   kind: ChatMediaKind;
+  /** The picked file's name (shown on a PDF's tile). */
+  name: string;
   previewUrl: string;
   posterUrl: string | null;
   status: 'working' | 'done' | 'error';
@@ -56,6 +67,7 @@ export function ChatComposer({
   onCancelEdit,
   onSaveEdit,
   onSend,
+  onTyping,
 }: {
   chatId: string;
   meId: string;
@@ -69,6 +81,8 @@ export function ChatComposer({
   onCancelEdit: () => void;
   onSaveEdit: (text: string) => void;
   onSend: (m: OutgoingMessage) => void;
+  /** Called on every keystroke of a new message: is there text in the box? (The thread throttles it.) */
+  onTyping: (typing: boolean) => void;
 }) {
   const [text, setText] = useState('');
   const [caret, setCaret] = useState(0);
@@ -140,7 +154,7 @@ export function ChatComposer({
     if (!list?.length) return;
     const room = CHAT_MAX_ATTACHMENTS - drafts.length;
     const files = [...list];
-    if (files.length > room) setNotice(`Up to ${CHAT_MAX_ATTACHMENTS} photos or videos per message.`);
+    if (files.length > room) setNotice(`Up to ${CHAT_MAX_ATTACHMENTS} files per message.`);
     for (const file of files.slice(0, Math.max(0, room))) {
       const problem = mediaProblem(file);
       if (problem) {
@@ -148,8 +162,11 @@ export function ChatComposer({
         continue;
       }
       const key = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const kind = file.type.startsWith('video/') || /\.(mov|mp4|m4v|webm)$/i.test(file.name) ? 'video' : 'image';
-      setDrafts((d) => [...d, { key, kind, previewUrl: URL.createObjectURL(file), posterUrl: null, status: 'working', progress: 0 }]);
+      const kind = mediaKindOf(file)!;
+      setDrafts((d) => [
+        ...d,
+        { key, kind, name: file.name, previewUrl: URL.createObjectURL(file), posterUrl: null, status: 'working', progress: 0 },
+      ]);
       void upload(key, file);
     }
   }
@@ -171,6 +188,7 @@ export function ChatComposer({
         input: {
           kind: media.kind,
           path: main.path,
+          name: media.kind === 'file' ? media.file.name : null,
           posterPath: poster?.path ?? null,
           width: media.width,
           height: media.height,
@@ -210,6 +228,8 @@ export function ChatComposer({
         posterUrl: d.posterUrl,
         width: d.input?.width ?? null,
         height: d.input?.height ?? null,
+        name: d.input?.name ?? null,
+        sizeBytes: d.input?.sizeBytes ?? null,
       })),
     });
     setText('');
@@ -220,6 +240,8 @@ export function ChatComposer({
   }
 
   const replyName = replyTo ? (replyTo.author?.name ?? replyTo.importedAuthorName ?? 'Former member') : '';
+  const replyMedia = replyTo?.attachments[0];
+  const replyThumb = replyMedia ? (replyMedia.kind === 'image' ? replyMedia.url : replyMedia.posterUrl) : null;
 
   return (
     <div className="relative shrink-0 border-t border-line bg-app/95 backdrop-blur" style={{ paddingBottom: bottomPad }}>
@@ -261,6 +283,7 @@ export function ChatComposer({
               </>
             )}
           </span>
+          {!editing && replyThumb && <ReplyThumb url={replyThumb} video={replyMedia?.kind === 'video'} size={34} />}
           <button
             type="button"
             aria-label={editing ? 'Cancel editing' : 'Cancel reply'}
@@ -276,7 +299,12 @@ export function ChatComposer({
         <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 pt-2">
           {drafts.map((d) => (
             <div key={d.key} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2">
-              {d.kind === 'image' || d.posterUrl ? (
+              {d.kind === 'file' ? (
+                <span className="flex h-full w-full flex-col items-center justify-center gap-1 px-1.5 text-ink-soft">
+                  <FileText width={24} height={24} />
+                  <span className="line-clamp-2 text-center text-[10px] font-semibold leading-tight [overflow-wrap:anywhere]">{d.name}</span>
+                </span>
+              ) : d.kind === 'image' || d.posterUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local blob preview
                 <img src={d.kind === 'image' ? d.previewUrl : d.posterUrl!} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -327,7 +355,7 @@ export function ChatComposer({
           <>
             <button
               type="button"
-              aria-label="Add photos or videos"
+              aria-label="Add photos, videos or PDFs"
               onClick={() => fileRef.current?.click()}
               disabled={drafts.length >= CHAT_MAX_ATTACHMENTS}
               className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-surface-2 text-ink-soft transition active:scale-95 disabled:opacity-40"
@@ -337,7 +365,7 @@ export function ChatComposer({
             <input
               ref={fileRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/*,video/*,application/pdf,.pdf"
               multiple
               hidden
               onChange={(e) => {
@@ -357,6 +385,7 @@ export function ChatComposer({
           onChange={(e) => {
             setText(e.target.value);
             setCaret(e.target.selectionStart ?? e.target.value.length);
+            if (!editing) onTyping(e.target.value.trim().length > 0);
           }}
           onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
           onKeyDown={(e) => {
@@ -406,7 +435,9 @@ export function snippet(m: Pick<ClientMessage, 'text' | 'attachments' | 'deleted
   if (m.deleted) return 'Message deleted';
   const t = (m.text ?? '').replace(/\s+/g, ' ').trim();
   if (t) return t.length > 80 ? `${t.slice(0, 79)}…` : t;
-  return m.attachments.some((a) => a.kind === 'video') ? 'Video' : 'Photo';
+  const file = m.attachments.find((a) => a.kind === 'file');
+  if (file) return file.name ?? 'PDF';
+  return mediaLabel(m.attachments.some((a) => a.kind === 'video') ? 'video' : 'image');
 }
 
 function ProgressRing({ value }: { value: number }) {

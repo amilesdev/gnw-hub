@@ -36,6 +36,8 @@ export type ChatReplyPreviewDTO = {
   deleted: boolean;
   /** First attachment's kind, so a photo-only original still previews ("Photo"). */
   media: ChatMediaKind | null;
+  /** A small still of that first attachment (the photo, or a video's poster), shown beside the quote. */
+  thumbUrl: string | null;
 };
 
 export type ChatReactionDTO = {
@@ -47,9 +49,10 @@ export type ChatReactionDTO = {
   names: string[];
 };
 
-export type ChatMediaKind = 'image' | 'video';
+/** `file` = a PDF: shown as a file card, opened in the phone's own viewer. */
+export type ChatMediaKind = 'image' | 'video' | 'file';
 
-/** A photo or video. URLs are short-lived signed URLs (private bucket) — never stored. */
+/** A photo, video or PDF. URLs are short-lived signed URLs (private bucket) — never stored. */
 export type ChatAttachmentDTO = {
   id: string;
   kind: ChatMediaKind;
@@ -58,12 +61,16 @@ export type ChatAttachmentDTO = {
   width: number | null;
   height: number | null;
   durationSec: number | null;
+  /** Files only: the original name ("Setlist.pdf") and size, for the card. */
+  name?: string | null;
+  sizeBytes?: number | null;
 };
 
 /** An uploaded file, as the composer sends it with a message (paths, not URLs). */
 export type ChatAttachmentInput = {
   kind: ChatMediaKind;
   path: string;
+  name?: string | null;
   posterPath?: string | null;
   width?: number | null;
   height?: number | null;
@@ -179,8 +186,16 @@ export type ChatPersonDTO = { id: string; name: string; image: string | null; st
  *  - read:    you read chatId on another device — refresh your badges
  *  - chats:   your chat list changed (added to a chat, new topic, archived…)
  *  - update:  a message changed (edited, deleted, reacted to, pinned)
+ *  - typing:  userId started (typing: true) or stopped typing in chatId; sent
+ *             only to people who have that chat open right now
  */
-export type ChatPing = { kind: 'message' | 'read' | 'chats' | 'update'; chatId?: string; messageId?: string };
+export type ChatPing = {
+  kind: 'message' | 'read' | 'chats' | 'update' | 'typing';
+  chatId?: string;
+  messageId?: string;
+  userId?: string;
+  typing?: boolean;
+};
 
 export const CHAT_PING_EVENT = 'chat_ping';
 
@@ -203,7 +218,16 @@ export const CHAT_EDIT_WINDOW_MS = 15 * 60_000;
 export const CHAT_MEDIA_MAX_BYTES = 100 * 1024 * 1024;
 export const CHAT_MAX_ATTACHMENTS = 10;
 /** The one-tap reaction row; anything else comes from the full picker. */
-export const QUICK_REACTIONS = ['❤️', '👍', '😂', '🙌', '🙏', '🔥'] as const;
+export const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '🙌', '🙏', '🔥'] as const;
+/** While someone keeps typing, their client re-announces it this often… */
+export const CHAT_TYPING_PING_MS = 3_000;
+/** …and a "typing" with no refresh fades out after this long. */
+export const CHAT_TYPING_TTL_MS = 6_500;
+
+/** How an attachment-only message reads in previews: "Photo", "Video", "PDF". */
+export function mediaLabel(kind: ChatMediaKind | null | undefined): string {
+  return kind === 'video' ? 'Video' : kind === 'file' ? 'PDF' : 'Photo';
+}
 
 /** Whether a message can still be edited by its author. */
 export function withinEditWindow(createdAt: string | Date, now = Date.now()): boolean {

@@ -1,13 +1,13 @@
 'use client';
 
-import { Fragment, useRef, type ReactNode } from 'react';
-import type { ChatAttachmentDTO, ChatMessageDTO } from '@/lib/chat/types';
+import { Fragment, forwardRef, useRef, type ReactNode } from 'react';
+import { mediaLabel, type ChatAttachmentDTO, type ChatMessageDTO } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
-import { MoreHorizontal, Pin, Play } from '@/components/shared/Icons';
+import { FileText, MoreHorizontal, Pin, Play } from '@/components/shared/Icons';
 import { ChatAvatar } from './ChatAvatar';
 import { dayKey, formatDayDivider, formatTime, linkify } from './format';
-import { formatDuration } from './media';
+import { formatBytes, formatDuration } from './media';
 
 /** A message as the open chat holds it: confirmed, or the sender's optimistic copy. */
 export type ClientMessage = ChatMessageDTO & { pending?: boolean; failed?: boolean };
@@ -31,11 +31,18 @@ function sameGroup(a: ChatMessageDTO | undefined, b: ChatMessageDTO | undefined)
 
 export type MessageHandlers = {
   onRetry: (m: ClientMessage) => void;
-  onOpenActions: (m: ClientMessage) => void;
+  /** Long-press / right-click / "⋯": `bubble` is the bubble's element, which the menu lifts out of the list. */
+  onOpenActions: (m: ClientMessage, bubble: HTMLElement) => void;
   onToggleReaction: (m: ClientMessage, emoji: string) => void;
   onJumpTo: (messageId: string) => void;
+  /** `index` counts photos/videos only (PDFs open on their own, not in the viewer). */
   onOpenMedia: (m: ClientMessage, index: number) => void;
 };
+
+/** A message's photos/videos (the grid + viewer) and its PDFs (file cards). */
+export function splitAttachments(list: ChatAttachmentDTO[]) {
+  return { media: list.filter((a) => a.kind !== 'file'), files: list.filter((a) => a.kind === 'file') };
+}
 
 /**
  * The message column: day dividers, then runs of bubbles grouped by sender.
@@ -116,10 +123,11 @@ function Bubble({
   const former = !m.author;
   const name = m.author?.name ?? m.importedAuthorName ?? 'Former member';
   const settled = !m.pending && !m.failed;
-  const press = useLongPress(() => settled && !m.deleted && onOpenActions(m));
-  const hasMedia = m.attachments.length > 0;
-  const hasText = !!m.text;
-  const mentionsMe = m.mentionsAll || m.mentionIds.includes(meId);
+  const body = useRef<HTMLDivElement>(null);
+  const open = () => {
+    if (settled && !m.deleted && body.current) onOpenActions(m, body.current);
+  };
+  const press = useLongPress(open);
 
   return (
     <div
@@ -136,7 +144,7 @@ function Bubble({
           {last && <ChatAvatar name={name} image={m.author?.image ?? m.importedAuthorAvatar} size={32} former={former} />}
         </span>
       )}
-      {mine && settled && !m.deleted && <HoverMenu onClick={() => onOpenActions(m)} />}
+      {mine && settled && !m.deleted && <HoverMenu onClick={open} />}
 
       <div className={cn('flex min-w-0 max-w-[78%] flex-col', mine ? 'items-end' : 'items-start')}>
         {!mine && first && (
@@ -149,40 +157,17 @@ function Bubble({
         {m.deleted ? (
           <div className="rounded-2xl border border-line px-3.5 py-2 text-[15px] italic text-ink-faint">Message deleted</div>
         ) : (
-          <div
+          <BubbleBody
+            ref={body}
             {...press}
-            className={cn(
-              'select-none overflow-hidden rounded-[1.25rem] text-[15px] leading-snug [-webkit-touch-callout:none]',
-              mine ? 'bg-chat-mine text-chat-mine-ink' : 'bg-chat-theirs text-chat-theirs-ink',
-              mine ? (last ? 'rounded-br-md' : '') : last ? 'rounded-bl-md' : '',
-              hasMedia && !hasText && !m.replyTo && 'bg-transparent',
-              mentionsMe && !mine && 'ring-2 ring-unread/70',
-              m.pending && 'opacity-60',
-              m.failed && 'opacity-60 ring-2 ring-bad/60',
-            )}
-          >
-            {m.replyTo && (
-              <button
-                type="button"
-                onClick={() => onJumpTo(m.replyTo!.id)}
-                className={cn(
-                  'mx-1.5 mt-1.5 block w-[calc(100%-0.75rem)] min-w-[9rem] rounded-xl border-l-[3px] px-2.5 py-1.5 text-left text-[13px] leading-snug',
-                  mine ? 'border-white/70 bg-white/15' : 'border-accent bg-black/5 dark:bg-white/10',
-                )}
-              >
-                <span className="block font-semibold">{m.replyTo.authorName ?? 'Former member'}</span>
-                <span className="line-clamp-2 opacity-80">
-                  {m.replyTo.deleted ? 'Message deleted' : m.replyTo.text || (m.replyTo.media === 'video' ? 'Video' : 'Photo')}
-                </span>
-              </button>
-            )}
-            {hasMedia && <MediaGrid items={m.attachments} padded={hasText || !!m.replyTo} onOpen={(i) => onOpenMedia(m, i)} />}
-            {hasText && (
-              <div className="whitespace-pre-wrap break-words px-3.5 py-2 [overflow-wrap:anywhere]">
-                {renderText(m, memberNames, meId)}
-              </div>
-            )}
-          </div>
+            message={m}
+            mine={mine}
+            last={last}
+            meId={meId}
+            memberNames={memberNames}
+            onJumpTo={onJumpTo}
+            onOpenMedia={(i) => onOpenMedia(m, i)}
+          />
         )}
 
         {m.reactions.length > 0 && !m.deleted && (
@@ -229,7 +214,145 @@ function Bubble({
         )}
       </div>
 
-      {!mine && settled && !m.deleted && <HoverMenu onClick={() => onOpenActions(m)} />}
+      {!mine && settled && !m.deleted && <HoverMenu onClick={open} />}
+    </div>
+  );
+}
+
+type BubbleBodyProps = {
+  message: ClientMessage;
+  mine: boolean;
+  /** Last of a run: gets the "tail" corner. */
+  last: boolean;
+  meId: string;
+  memberNames: Map<string, string>;
+  onJumpTo: (messageId: string) => void;
+  onOpenMedia: (index: number) => void;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>;
+
+/**
+ * The bubble itself: reply quote, photos/videos, text. Shared by the list and
+ * the long-press menu, which shows a lifted copy of it above the blur.
+ */
+export const BubbleBody = forwardRef<HTMLDivElement, BubbleBodyProps>(function BubbleBody(
+  { message: m, mine, last, meId, memberNames, onJumpTo, onOpenMedia, className, ...div },
+  ref,
+) {
+  const { media, files } = splitAttachments(m.attachments);
+  const hasMedia = media.length > 0;
+  const hasText = !!m.text;
+  const mentionsMe = m.mentionsAll || m.mentionIds.includes(meId);
+  return (
+    <div
+      ref={ref}
+      {...div}
+      className={cn(
+        'select-none overflow-hidden rounded-[1.25rem] text-[15px] leading-snug [-webkit-touch-callout:none]',
+        mine ? 'bg-chat-mine text-chat-mine-ink' : 'bg-chat-theirs text-chat-theirs-ink',
+        mine ? (last ? 'rounded-br-md' : '') : last ? 'rounded-bl-md' : '',
+        hasMedia && !hasText && !m.replyTo && !files.length && 'bg-transparent',
+        mentionsMe && !mine && 'ring-2 ring-unread/70',
+        m.pending && 'opacity-60',
+        m.failed && 'opacity-60 ring-2 ring-bad/60',
+        className,
+      )}
+    >
+      {m.replyTo && (
+        <button
+          type="button"
+          onClick={() => onJumpTo(m.replyTo!.id)}
+          className={cn(
+            'mx-1.5 mt-1.5 flex w-[calc(100%-0.75rem)] min-w-[9rem] items-center gap-2 rounded-xl border-l-[3px] py-1.5 pl-2.5 pr-1.5 text-left text-[13px] leading-snug',
+            mine ? 'border-white/70 bg-white/15' : 'border-accent bg-black/5 dark:bg-white/10',
+          )}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{m.replyTo.authorName ?? 'Former member'}</span>
+            <span className="line-clamp-2 opacity-80">
+              {m.replyTo.deleted ? 'Message deleted' : m.replyTo.text || mediaLabel(m.replyTo.media)}
+            </span>
+          </span>
+          {m.replyTo.thumbUrl && <ReplyThumb url={m.replyTo.thumbUrl} video={m.replyTo.media === 'video'} />}
+        </button>
+      )}
+      {hasMedia && <MediaGrid items={media} padded={hasText || !!m.replyTo || files.length > 0} onOpen={onOpenMedia} />}
+      {files.map((a) => (
+        <FileCard key={a.id} a={a} mine={mine} pending={!!m.pending} />
+      ))}
+      {hasText && (
+        <div className="whitespace-pre-wrap break-words px-3.5 py-2 [overflow-wrap:anywhere]">
+          {renderText(m, memberNames, meId)}
+        </div>
+      )}
+    </div>
+  );
+});
+
+/**
+ * A PDF: icon, name, size. Tapping opens it in the phone's own PDF viewer (a
+ * new tab / Safari sheet), which pages, zooms and saves/shares properly; an
+ * in-app frame only shows the first page on iPhone.
+ */
+function FileCard({ a, mine, pending }: { a: ChatAttachmentDTO; mine: boolean; pending: boolean }) {
+  const body = (
+    <>
+      <span className={cn('grid h-11 w-10 shrink-0 place-items-center rounded-lg', mine ? 'bg-white/20' : 'bg-bad/10 text-bad')}>
+        <FileText width={22} height={22} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{a.name ?? 'Document.pdf'}</span>
+        <span className="block text-xs opacity-75">{['PDF', formatBytes(a.sizeBytes)].filter(Boolean).join(' · ')}</span>
+      </span>
+    </>
+  );
+  const className = cn(
+    'mx-1.5 mt-1.5 flex w-[15rem] max-w-[calc(100%-0.75rem)] items-center gap-2.5 rounded-xl px-2.5 py-2 text-left last:mb-1.5',
+    mine ? 'bg-white/15' : 'bg-black/5 dark:bg-white/10',
+  );
+  // While sending, the URL is a local preview; nothing to open yet.
+  if (pending) return <span className={className}>{body}</span>;
+  return (
+    <a href={a.url} target="_blank" rel="noreferrer noopener" className={className} aria-label={`Open ${a.name ?? 'PDF'}`}>
+      {body}
+    </a>
+  );
+}
+
+/** The small still of a replied-to photo/video, beside the quote (and in the composer's reply bar). */
+export function ReplyThumb({ url, video, size = 40 }: { url: string; video: boolean; size?: number }) {
+  return (
+    <span className="relative shrink-0 overflow-hidden rounded-lg bg-black/10" style={{ width: size, height: size }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL */}
+      <img src={url} alt="" loading="lazy" draggable={false} className="h-full w-full object-cover" />
+      {video && (
+        <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
+          <Play width={14} height={14} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * "Aleena is typing…" — small, gray and italic under the last message, so it
+ * reads as a hint rather than a message.
+ */
+export function TypingIndicator({ names }: { names: string[] }) {
+  if (names.length === 0) return null;
+  const who =
+    names.length === 1
+      ? `${names[0]} is typing`
+      : names.length === 2
+        ? `${names[0]} and ${names[1]} are typing`
+        : 'Several people are typing';
+  return (
+    <div className="ml-10 mt-2 flex animate-fade-in items-center gap-1.5 text-[13px] italic text-ink-faint" role="status" aria-live="polite">
+      <span className="inline-flex gap-[3px]" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="h-[5px] w-[5px] animate-typing-dot rounded-full bg-ink-faint" style={{ animationDelay: `${i * 150}ms` }} />
+        ))}
+      </span>
+      {who}…
     </div>
   );
 }

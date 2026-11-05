@@ -31,7 +31,7 @@ const messageInclude = {
       deletedAt: true,
       importedAuthorName: true,
       author: { select: { name: true } },
-      attachments: { select: { kind: true }, orderBy: { position: 'asc' }, take: 1 },
+      attachments: { select: { kind: true, path: true, posterPath: true }, orderBy: { position: 'asc' }, take: 1 },
     },
   },
   reactions: {
@@ -44,9 +44,19 @@ const messageInclude = {
 
 type MessageRow = Prisma.ChatMessageGetPayload<{ include: typeof messageInclude }>;
 
-/** Serialize rows for one viewer, signing every attachment URL in a single storage call. */
+/** A replied-to message's still: its first photo, or that video's poster. */
+function replyThumbPath(m: MessageRow): string | null {
+  const a = m.deletedAt || !m.replyTo || m.replyTo.deletedAt ? undefined : m.replyTo.attachments[0];
+  if (!a) return null;
+  return a.kind === 'image' ? a.path : a.posterPath;
+}
+
+/** Serialize rows for one viewer, signing every attachment URL (and reply thumbnail) in a single storage call. */
 export async function serializeMessages(rows: MessageRow[], viewerId: string): Promise<ChatMessageDTO[]> {
-  const paths = rows.flatMap((m) => (m.deletedAt ? [] : m.attachments.flatMap((a) => [a.path, a.posterPath ?? ''])));
+  const paths = rows.flatMap((m) => [
+    ...(m.deletedAt ? [] : m.attachments.flatMap((a) => [a.path, a.posterPath ?? ''])),
+    replyThumbPath(m) ?? '',
+  ]);
   const signed = await signChatReads(paths);
 
   return rows.map((m) => {
@@ -62,6 +72,7 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
       }
     }
     const rt = m.replyTo;
+    const thumbPath = replyThumbPath(m);
     return {
       id: m.id,
       chatId: m.chatId,
@@ -81,6 +92,7 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
               text: rt.deletedAt ? null : rt.text,
               deleted: rt.deletedAt !== null,
               media: rt.deletedAt ? null : (rt.attachments[0]?.kind ?? null),
+              thumbUrl: thumbPath ? (signed.get(thumbPath) ?? null) : null,
             }
           : null,
       pinnedAt: m.pinnedAt?.toISOString() ?? null,
@@ -100,6 +112,7 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
               width: a.width,
               height: a.height,
               durationSec: a.durationSec,
+              ...(a.kind === 'file' ? { name: a.name, sizeBytes: a.sizeBytes } : {}),
             })),
       clientNonce: m.clientNonce,
     };
@@ -242,14 +255,16 @@ export async function sendMessage(
 
   if (!text && attachments.length === 0) throw new ChatInputError('Type a message.');
   if (attachments.length > CHAT_MAX_ATTACHMENTS) {
-    throw new ChatInputError(`Up to ${CHAT_MAX_ATTACHMENTS} photos or videos per message.`);
+    throw new ChatInputError(`Up to ${CHAT_MAX_ATTACHMENTS} files per message.`);
   }
   for (const a of attachments) {
     // Only files this person uploaded to this chat (see lib/chat/storage.ts).
     if (!isOwnChatUpload(a.path, rootId, viewer.id) || (a.posterPath && !isOwnChatUpload(a.posterPath, rootId, viewer.id))) {
       throw new ChatInputError('That file wasn’t uploaded to this chat.', 403);
     }
-    if (a.sizeBytes > CHAT_MEDIA_MAX_BYTES) throw new ChatInputError('Each photo or video can be up to 100 MB.');
+    // A PDF is stored as one (signed upload paths end in the type's extension).
+    if ((a.kind === 'file') !== a.path.endsWith('.pdf')) throw new ChatInputError('Only photos, videos and PDFs can be shared.');
+    if (a.sizeBytes > CHAT_MEDIA_MAX_BYTES) throw new ChatInputError('Each file can be up to 100 MB.');
   }
   if (input.mentionsAll && !canMentionAll(viewer)) {
     throw new ChatInputError('Only leaders and moderators can @all.', 403);
@@ -289,6 +304,7 @@ export async function sendMessage(
               data: attachments.map((a, position) => ({
                 kind: a.kind,
                 path: a.path,
+                name: a.kind === 'file' ? (a.name ?? null) : null,
                 posterPath: a.posterPath ?? null,
                 width: a.width ?? null,
                 height: a.height ?? null,

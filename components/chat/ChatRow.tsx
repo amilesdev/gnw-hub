@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import type { ChatLastMessageDTO, ChatListItemDTO } from '@/lib/chat/types';
+import { mediaLabel, type ChatLastMessageDTO, type ChatListItemDTO } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 import { BellOff, MessageCircle } from '@/components/shared/Icons';
 import { formatListStamp } from './format';
@@ -28,7 +28,7 @@ export function previewText(m: ChatLastMessageDTO | null): string | null {
   if (!m) return null;
   const who = m.authorName ? `${m.authorName.split(' ')[0]}: ` : '';
   if (m.deleted) return `${who}Message deleted`;
-  return `${who}${(m.text ?? 'Photo').replace(/\s+/g, ' ')}`;
+  return `${who}${(m.text ?? mediaLabel(m.media)).replace(/\s+/g, ' ')}`;
 }
 
 const tileClass = 'grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white';

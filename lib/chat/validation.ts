@@ -31,13 +31,14 @@ const id = z.string().min(1).max(64);
 const storagePath = z.string().min(1).max(300);
 
 const attachmentInput = z.object({
-  kind: z.enum(['image', 'video']),
+  kind: z.enum(['image', 'video', 'file']),
   path: storagePath,
+  name: z.string().trim().max(200).nullish(),
   posterPath: storagePath.nullish(),
   width: z.number().int().positive().max(20000).nullish(),
   height: z.number().int().positive().max(20000).nullish(),
   durationSec: z.number().nonnegative().max(24 * 3600).nullish(),
-  sizeBytes: z.number().int().positive().max(CHAT_MEDIA_MAX_BYTES, 'Each photo or video can be up to 100 MB.'),
+  sizeBytes: z.number().int().positive().max(CHAT_MEDIA_MAX_BYTES, 'Each file can be up to 100 MB.'),
 });
 
 // Text is optional when there are photos/videos (sendMessage checks one or the other).
@@ -47,7 +48,7 @@ export const chatMessageSendSchema = z.object({
   replyToId: id.optional(),
   mentionIds: z.array(id).max(200).optional(),
   mentionsAll: z.boolean().optional(),
-  attachments: z.array(attachmentInput).max(CHAT_MAX_ATTACHMENTS, `Up to ${CHAT_MAX_ATTACHMENTS} photos or videos per message.`).optional(),
+  attachments: z.array(attachmentInput).max(CHAT_MAX_ATTACHMENTS, `Up to ${CHAT_MAX_ATTACHMENTS} files per message.`).optional(),
 });
 
 export const chatMessagePatchSchema = z
@@ -63,8 +64,8 @@ export const chatUploadSchema = z.object({
   files: z
     .array(
       z.object({
-        type: z.string().regex(/^(image|video)\/[\w.+-]+$/, 'Only photos and videos can be shared.'),
-        size: z.number().int().positive().max(CHAT_MEDIA_MAX_BYTES, 'Each photo or video can be up to 100 MB.'),
+        type: z.string().regex(/^((image|video)\/[\w.+-]+|application\/pdf)$/, 'Only photos, videos and PDFs can be shared.'),
+        size: z.number().int().positive().max(CHAT_MEDIA_MAX_BYTES, 'Each file can be up to 100 MB.'),
       }),
     )
     .min(1)
@@ -73,6 +74,8 @@ export const chatUploadSchema = z.object({
 });
 
 export const chatReadSchema = z.object({ viewing: z.boolean().optional() });
+
+export const chatTypingSchema = z.object({ typing: z.boolean() });
 
 export const chatSearchSchema = z.object({
   q: z.string().trim().min(1, 'Type something to search for.').max(CHAT_SEARCH_MAX, 'That search is too long.'),

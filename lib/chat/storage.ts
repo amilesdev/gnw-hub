@@ -2,7 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// Chat photos/videos live in the PRIVATE `gnw-chat` bucket (no public URLs, no
+// Chat photos/videos/PDFs live in the PRIVATE `gnw-chat` bucket (no public URLs, no
 // storage policies — only the service role touches it). The DB stores paths;
 // readers get short-lived signed URLs with each page of messages.
 //
@@ -26,6 +26,7 @@ const EXT_BY_TYPE: Record<string, string> = {
   'video/quicktime': 'mov',
   'video/webm': 'webm',
   'video/x-m4v': 'm4v',
+  'application/pdf': 'pdf',
 };
 
 export function chatUploadPrefix(rootId: string, userId: string): string {

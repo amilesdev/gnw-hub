@@ -79,6 +79,7 @@ const config: Config = {
         breathe: { '0%, 100%': { transform: 'scale(1)' }, '50%': { transform: 'scale(1.04)' } },
         floaty: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-5px)' } },
         'pulse-ring': { '0%': { transform: 'scale(0.92)', opacity: '0.55' }, '80%': { opacity: '0' }, '100%': { transform: 'scale(1.9)', opacity: '0' } },
+        'typing-dot': { '0%, 60%, 100%': { transform: 'translateY(0)', opacity: '0.35' }, '30%': { transform: 'translateY(-3px)', opacity: '1' } },
       },
       animation: {
         shake: 'shake 0.4s ease-in-out',
@@ -91,6 +92,7 @@ const config: Config = {
         breathe: 'breathe 3.5s ease-in-out infinite',
         floaty: 'floaty 4s ease-in-out infinite',
         'pulse-ring': 'pulse-ring 3s cubic-bezier(0.16, 1, 0.3, 1) infinite',
+        'typing-dot': 'typing-dot 1.1s ease-in-out infinite',
       },
     },
   },

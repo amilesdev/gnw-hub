@@ -60,8 +60,10 @@ export function ChatProvider({ topic, children }: { topic: string; children: Rea
     const channel = supabase
       .channel(topic)
       .on('broadcast', { event: CHAT_PING_EVENT }, (msg) => {
-        emit(msg.payload as ChatPing);
-        refreshUnread();
+        const ping = msg.payload as ChatPing;
+        emit(ping);
+        // Typing changes nothing the badge counts.
+        if (ping.kind !== 'typing') refreshUnread();
       })
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return;

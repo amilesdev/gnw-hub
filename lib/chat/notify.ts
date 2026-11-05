@@ -70,6 +70,9 @@ function preview(message: ChatMessageDTO, firstName: string): string {
   if (!text) {
     const n = message.attachments.length;
     const video = message.attachments.some((a) => a.kind === 'video');
+    const files = message.attachments.filter((a) => a.kind === 'file');
+    if (files.length === n) return `${firstName} sent ${n > 1 ? `${n} PDFs` : (files[0].name ?? 'a PDF')}`;
+    if (files.length) return `${firstName} sent ${n} files`;
     return `${firstName} sent ${n > 1 ? `${n} ${video ? 'photos & videos' : 'photos'}` : video ? 'a video' : 'a photo'}`;
   }
   return `${firstName}: ${text.length > PREVIEW_MAX ? `${text.slice(0, PREVIEW_MAX - 1)}…` : text}`;

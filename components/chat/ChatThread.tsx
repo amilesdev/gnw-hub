@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  CHAT_TYPING_PING_MS,
+  CHAT_TYPING_TTL_MS,
   CHAT_VIEWING_HEARTBEAT_MS,
   type ChatAttachmentDTO,
   type ChatDetailDTO,
@@ -14,11 +16,12 @@ import { apiFetch } from '@/lib/api-client';
 import { Modal } from '@/components/shared/Modal';
 import { ArrowDown, BellOff, ChevronLeft, MoreHorizontal, Pin, Search, X } from '@/components/shared/Icons';
 import { useChat, useChatSignals } from './ChatProvider';
-import { ChatMessages, type ClientMessage } from './ChatMessages';
+import { ChatMessages, TypingIndicator, splitAttachments, type ClientMessage } from './ChatMessages';
 import { ChatComposer, snippet, type OutgoingMessage } from './ChatComposer';
 import { ChatSettingsSheet } from './ChatSettingsSheet';
 import { ChatSearch } from './ChatSearch';
-import { MessageActionsSheet } from './MessageActionsSheet';
+import { MessageMenu } from './MessageMenu';
+import { EmojiPicker, rememberEmoji } from './EmojiPicker';
 import { MediaViewer } from './MediaViewer';
 import { newClientNonce } from './format';
 import { useVisualViewportBox } from './viewport';
@@ -78,7 +81,12 @@ export function ChatThread({
   const [pinsOpen, setPinsOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<ClientMessage | null>(null);
   const [editing, setEditing] = useState<ClientMessage | null>(null);
-  const [actionFor, setActionFor] = useState<ClientMessage | null>(null);
+  /** Long-pressed message + its bubble element (the menu lifts a copy of it). */
+  const [actionFor, setActionFor] = useState<{ id: string; el: HTMLElement } | null>(null);
+  /** The full emoji picker, open for this message id. */
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** Who's typing here → when that fades if not refreshed. */
+  const [typing, setTyping] = useState<Map<string, number>>(new Map());
   const [viewer, setViewer] = useState<{ items: ChatAttachmentDTO[]; start: number } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -195,6 +203,8 @@ export function ChatThread({
         if (page.hasMore) return void (await loadLatest());
         if (page.messages.length === 0) return;
         const fromOthers = page.messages.filter((m) => m.author?.id !== me.id).length;
+        // Whoever just sent is done typing (their "typing" doesn't linger under their message).
+        stopTyping(page.messages.map((m) => m.author?.id ?? ''));
         stickToBottom.current = atBottom.current;
         if (!atBottom.current && fromOthers) setNewBelow((n) => n + fromOthers);
         setMessages((prev) => mergeIncoming(prev, page.messages));
@@ -255,8 +265,73 @@ export function ChatThread({
       void reloadPins();
     } else if (s.kind === 'chats' && (s.chatId === chatId || s.chatId === detail.rootId)) {
       void reloadDetail();
+    } else if (s.kind === 'typing' && s.chatId === chatId && s.userId && s.userId !== me.id) {
+      const who = s.userId;
+      if (s.typing) setTyping((prev) => new Map(prev).set(who, Date.now() + CHAT_TYPING_TTL_MS));
+      else stopTyping([who]);
     }
   });
+
+  // ── typing ─────────────────────────────────────────────────────────────────
+  function stopTyping(ids: string[]) {
+    setTyping((prev) => {
+      if (!ids.some((id) => prev.has(id))) return prev;
+      const next = new Map(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  }
+
+  // Fade out anyone whose "typing" stopped being refreshed (closed the app, lost signal).
+  useEffect(() => {
+    if (typing.size === 0) return;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setTyping((prev) => {
+        const next = new Map([...prev].filter(([, until]) => until > now));
+        return next.size === prev.size ? prev : next;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [typing.size]);
+
+  const typingNames = useMemo(
+    () =>
+      [...typing.keys()]
+        .map((id) => detail.members.find((m) => m.userId === id)?.name.split(' ')[0])
+        .filter((n): n is string => !!n),
+    [typing, detail.members],
+  );
+
+  // The indicator appearing shouldn't push the newest message out of view.
+  useLayoutEffect(() => {
+    if (atBottom.current && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
+  }, [typingNames.length]);
+
+  /** Tell the people looking at this chat that I'm typing — at most every few seconds, plus once when I stop. */
+  const typingSentAt = useRef(0);
+  const announceTyping = useCallback(
+    (on: boolean) => {
+      if (detail.archived) return;
+      if (on) {
+        if (Date.now() - typingSentAt.current < CHAT_TYPING_PING_MS) return;
+        typingSentAt.current = Date.now();
+      } else {
+        if (!typingSentAt.current) return; // never announced
+        typingSentAt.current = 0;
+      }
+      void fetch(`/api/chat/${chatId}/typing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ typing: on }),
+        keepalive: true,
+      }).catch(() => {});
+    },
+    [chatId, detail.archived],
+  );
+
+  // Leaving mid-sentence: say so, rather than leaving "typing…" up for others.
+  useEffect(() => () => announceTyping(false), [announceTyping]);
 
   const loadOlder = useCallback(async () => {
     const first = messagesRef.current.find((m) => !m.pending && !m.failed);
@@ -411,6 +486,11 @@ export function ChatThread({
             text: replyTo.text,
             deleted: replyTo.deleted,
             media: replyTo.attachments[0]?.kind ?? null,
+            thumbUrl: replyTo.attachments[0]
+              ? replyTo.attachments[0].kind === 'image'
+                ? replyTo.attachments[0].url
+                : replyTo.attachments[0].posterUrl
+              : null,
           }
         : null,
       pinnedAt: null,
@@ -432,6 +512,8 @@ export function ChatThread({
     });
     stickToBottom.current = true;
     atBottom.current = true;
+    // The message itself ends my "typing" for everyone; the next one announces afresh.
+    typingSentAt.current = 0;
     setNewBelow(0);
     setReplyTo(null);
     setMessages((prev) => [...prev, optimistic]);
@@ -462,6 +544,7 @@ export function ChatThread({
   function toggleReaction(m: ClientMessage, emoji: string) {
     const existing = m.reactions.find((r) => r.emoji === emoji);
     const on = !existing?.mine;
+    if (on) rememberEmoji(emoji);
     const reactions = on
       ? existing
         ? m.reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count + 1, mine: true, names: [...r.names, me.name] } : r))
@@ -510,6 +593,9 @@ export function ChatThread({
   const backHref = detail.parent || hasTopics ? `${base}/chat/${detail.rootId}/topics` : `${base}/chat`;
   const bottomPad = keyboardOpen ? '0.5rem' : 'max(1.75rem, env(safe-area-inset-bottom))';
   const topPin = pins[0];
+  // Looked up live, so a reaction landing while the menu/picker is open shows in it.
+  const actionMessage = actionFor ? messages.find((m) => m.id === actionFor.id) : undefined;
+  const pickerMessage = pickerFor ? messages.find((m) => m.id === pickerFor) : undefined;
 
   return (
     <div
@@ -597,11 +683,12 @@ export function ChatThread({
           memberNames={memberNames}
           highlightId={highlightId}
           onRetry={retry}
-          onOpenActions={setActionFor}
+          onOpenActions={(m, el) => setActionFor({ id: m.id, el })}
           onToggleReaction={toggleReaction}
           onJumpTo={(id) => void jumpTo(id)}
-          onOpenMedia={(m, i) => setViewer({ items: m.attachments, start: i })}
+          onOpenMedia={(m, i) => setViewer({ items: splitAttachments(m.attachments).media, start: i })}
         />
+        {!hasNewer && <TypingIndicator names={typingNames} />}
       </div>
 
       {(newBelow > 0 || hasNewer || notice || jumping) && (
@@ -656,27 +743,41 @@ export function ChatThread({
           onCancelEdit={() => setEditing(null)}
           onSaveEdit={saveEdit}
           onSend={send}
+          onTyping={announceTyping}
         />
       )}
 
-      {actionFor && (
-        <MessageActionsSheet
-          message={actionFor}
+      {actionMessage && actionFor && (
+        <MessageMenu
+          key={actionMessage.id}
+          message={actionMessage}
+          bubble={actionFor.el}
           meId={me.id}
+          memberNames={memberNames}
           canModerate={detail.can.moderate}
           readOnly={detail.archived}
           onClose={() => setActionFor(null)}
-          onReact={(e) => toggleReaction(actionFor, e)}
+          onReact={(e) => toggleReaction(actionMessage, e)}
+          onMoreReactions={() => setPickerFor(actionMessage.id)}
           onReply={() => {
             setEditing(null);
-            setReplyTo(actionFor);
+            setReplyTo(actionMessage);
           }}
           onEdit={() => {
             setReplyTo(null);
-            setEditing(actionFor);
+            setEditing(actionMessage);
           }}
-          onPin={(p) => setPinned(actionFor, p)}
-          onDelete={() => remove(actionFor)}
+          onPin={(p) => setPinned(actionMessage, p)}
+          onDelete={() => remove(actionMessage)}
+          onCopied={() => flash('Copied')}
+        />
+      )}
+
+      {pickerMessage && (
+        <EmojiPicker
+          selected={new Set(pickerMessage.reactions.filter((r) => r.mine).map((r) => r.emoji))}
+          onPick={(e) => toggleReaction(pickerMessage, e)}
+          onClose={() => setPickerFor(null)}
         />
       )}
 

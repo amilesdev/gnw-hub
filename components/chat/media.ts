@@ -4,9 +4,10 @@ import { fitImageFile } from '@/lib/image-resize';
 import { apiFetch } from '@/lib/api-client';
 import { CHAT_MEDIA_MAX_BYTES, type ChatMediaKind } from '@/lib/chat/types';
 
-// Browser side of chat photos/videos: shrink photos, grab a video's poster
-// frame, then PUT each file straight to the private bucket via a signed URL
-// (with progress — fetch can't report upload progress, so this uses XHR).
+// Browser side of chat photos/videos/PDFs: shrink photos, grab a video's
+// poster frame (PDFs go as they are), then PUT each file straight to the
+// private bucket via a signed URL (with progress — fetch can't report upload
+// progress, so this uses XHR).
 
 const PHOTO_MAX_EDGE = 2048;
 
@@ -23,22 +24,28 @@ export type PreparedMedia = {
 export function mediaKindOf(file: File): ChatMediaKind | null {
   if (file.type.startsWith('image/')) return 'image';
   if (file.type.startsWith('video/')) return 'video';
+  if (file.type === 'application/pdf') return 'file';
   // iOS sometimes hands over HEIC/MOV with an empty type — go by extension.
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   if (['heic', 'heif', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
   if (['mov', 'mp4', 'm4v', 'webm'].includes(ext)) return 'video';
+  if (ext === 'pdf') return 'file';
   return null;
 }
 
 /** Why a picked file can't be sent, or null if it's fine. */
 export function mediaProblem(file: File): string | null {
-  if (!mediaKindOf(file)) return `“${file.name}” isn’t a photo or video.`;
+  if (!mediaKindOf(file)) return `“${file.name}” isn’t a photo, video or PDF.`;
   if (file.size > CHAT_MEDIA_MAX_BYTES) return `“${file.name}” is over 100 MB.`;
   return null;
 }
 
 export async function prepareMedia(file: File): Promise<PreparedMedia> {
   const kind = mediaKindOf(file)!;
+  if (kind === 'file') {
+    // Sent untouched; the type is pinned so the signed upload gets a .pdf path.
+    return { kind, file: new File([file], file.name || 'document.pdf', { type: 'application/pdf' }), poster: null, width: null, height: null, durationSec: null };
+  }
   if (kind === 'image') {
     // GIFs keep their animation; everything else is resized to JPEG (also turns HEIC into JPEG).
     const out = file.type === 'image/gif' ? file : await fitImageFile(file, PHOTO_MAX_EDGE).catch(() => file);
@@ -146,6 +153,13 @@ export function putWithProgress(signedUrl: string, file: File, onProgress: (p: n
     xhr.onerror = () => reject(new Error('Upload failed — check your connection.'));
     xhr.send(file);
   });
+}
+
+/** "840 KB", "2.3 MB" */
+export function formatBytes(n: number | null | undefined): string {
+  if (!n) return '';
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
 /** "1:05" */
