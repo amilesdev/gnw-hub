@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import type { LeadDTO } from '@/lib/setlist-serialize';
 import type { MemberRow } from './MembersManager';
 import { Overlay } from '@/components/shared/Overlay';
-import { Avatar } from '@/components/shared/Avatar';
+import { MemberAvatar } from '@/components/shared/Avatar';
+import { listCard } from '@/lib/ui-classes';
 import { Mic, Check, X } from '@/components/shared/Icons';
 import { cn } from '@/lib/utils';
 
@@ -55,20 +56,15 @@ export function SongLeadPicker({
         {value.map((lead) => (
           <span
             key={lead.id}
-            className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent/10 py-1.5 pl-1.5 pr-2.5 text-sm font-semibold"
+            className="inline-flex h-9 items-center gap-2 rounded-full bg-accent-soft pl-1.5 text-sm font-semibold text-accent-ink"
           >
-            <Avatar
-              image={lead.image}
-              alt=""
-              className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-ink text-[11px] font-bold text-white"
-            >
-              {lead.name.charAt(0).toUpperCase()}
-            </Avatar>
+            <MemberAvatar name={lead.name} image={lead.image} size={24} />
             <span className="max-w-28 truncate">{lead.name}</span>
             <button
               type="button"
               onClick={() => onChange(value.filter((l) => l.id !== lead.id))}
-              className="row-press rounded-full p-0.5 text-ink-faint"
+              // 44px hit area around the small X.
+              className="relative grid h-9 w-8 place-items-center rounded-full text-accent-ink/70 after:absolute after:-inset-1 after:content-['']"
               aria-label={`Remove ${lead.name} as lead`}
             >
               <X width={14} height={14} />
@@ -78,7 +74,7 @@ export function SongLeadPicker({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="row-press inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink-soft"
+          className="btn-outline btn-sm rounded-full text-ink-soft"
         >
           <Mic width={16} height={16} />
           {value.length === 0 ? 'Add lead' : 'Change'}
@@ -90,22 +86,22 @@ export function SongLeadPicker({
           title="Song lead"
           onClose={() => setOpen(false)}
           action={
-            <button type="button" className="btn-primary !px-4 !py-2.5" onClick={() => setOpen(false)}>
+            <button type="button" className="btn-primary btn-sm h-11" onClick={() => setOpen(false)}>
               Done
             </button>
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-ink-faint">
+            <p className="text-[13px] leading-[18px] text-ink-faint">
               Tap to set who leads this song. Pick more than one if they share it.
             </p>
 
             {options.length === 0 ? (
               <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">
-                No active vocalists yet — invite some members first.
+                No active vocalists yet. Invite some members first.
               </p>
             ) : (
-              <div className="card overflow-hidden">
+              <div className={listCard}>
                 {options.map((c) => {
                   const on = value.some((l) => l.id === c.id);
                   return (
@@ -116,24 +112,18 @@ export function SongLeadPicker({
                       onClick={() =>
                         onChange(on ? value.filter((l) => l.id !== c.id) : [...value, c])
                       }
-                      className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-0"
+                      className="row-press flex min-h-[60px] w-full items-center gap-3 px-4 py-3 text-left"
                     >
                       <span
                         className={cn(
                           'grid h-6 w-6 shrink-0 place-items-center rounded-md',
-                          on ? 'bg-accent text-white' : 'border border-line',
+                          on ? 'bg-accent text-accent-fg' : 'border border-line',
                         )}
                       >
                         {on && <Check width={14} height={14} />}
                       </span>
-                      <Avatar
-                        image={c.image}
-                        alt=""
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent-ink font-semibold text-white"
-                      >
-                        {c.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                      <MemberAvatar name={c.name} image={c.image} size={36} />
+                      <span className="row-title min-w-0 flex-1 truncate">{c.name}</span>
                     </button>
                   );
                 })}
@@ -141,7 +131,7 @@ export function SongLeadPicker({
             )}
 
             {value.length > 0 && (
-              <button type="button" className="btn-ghost w-full !text-bad" onClick={() => onChange([])}>
+              <button type="button" className="btn-danger-text w-full" onClick={() => onChange([])}>
                 Clear leads
               </button>
             )}

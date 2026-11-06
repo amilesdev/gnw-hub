@@ -10,5 +10,5 @@ export default async function LeaderSuggestionsPage() {
   if (!session?.id) redirect('/login');
   if (session.role !== 'leader') redirect('/home/library/suggestions');
   const suggestions = await getSuggestions(session);
-  return <SuggestionsScreen canManage meId={session.id} initialSuggestions={suggestions} backHref="/dashboard/library" />;
+  return <SuggestionsScreen canManage meId={session.id} initialSuggestions={suggestions} backHref="/dashboard/setlist?view=library" />;
 }

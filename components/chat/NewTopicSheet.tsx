@@ -43,7 +43,7 @@ export function NewTopicSheet({
       title="New topic"
       footer={
         <div className="space-y-2">
-          {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
           <button type="button" className="btn-primary w-full" disabled={busy || !name.trim()} onClick={create}>
             {busy ? 'Creating…' : 'Create topic'}
           </button>

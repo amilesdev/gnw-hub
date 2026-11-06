@@ -336,9 +336,9 @@ function Item({ icon, label, danger, onClick }: { icon: ReactNode; label: string
     <button
       type="button"
       onClick={onClick}
-      className={cn('row-press flex w-full items-center gap-3.5 px-4 py-3 text-left text-[16px]', danger ? 'text-bad' : 'text-ink')}
+      className={cn('row-press flex w-full items-center gap-3.5 px-4 py-3 text-left text-[16px]', danger ? 'text-bad-ink' : 'text-ink')}
     >
-      <span className={cn('grid w-5 place-items-center', danger ? 'text-bad' : 'text-ink-soft')}>{icon}</span>
+      <span className={cn('grid w-5 place-items-center', danger ? 'text-bad-ink' : 'text-ink-soft')}>{icon}</span>
       {label}
     </button>
   );

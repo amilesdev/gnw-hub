@@ -3,6 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/session';
 import { deleteObjects, pathFromPublicUrl, publicUrl } from '@/lib/supabase';
 import { isOwnAvatarPath } from '@/lib/upload-path';
+import { revalidateAnnouncements, revalidateMembers, revalidateSetlists } from '@/lib/cache-tags';
+
+// Faces are baked into the shared team caches (members, assignments, song
+// leads, announcement authors), so a photo change refreshes them all.
+function revalidateFaces() {
+  revalidateMembers();
+  revalidateSetlists();
+  revalidateAnnouncements();
+}
 
 // Best-effort remove the object a public URL points at, if it's one of ours.
 async function deleteByPublicUrl(url: string | null | undefined) {
@@ -40,6 +49,7 @@ export async function POST(req: Request) {
   });
 
   await prisma.user.update({ where: { id: guard.user.id }, data: { image: canonical } });
+  revalidateFaces();
 
   // Drop the old file (best effort) unless it's the same object being replaced.
   if (existing?.image && existing.image !== canonical) {
@@ -60,6 +70,7 @@ export async function DELETE() {
   });
 
   await prisma.user.update({ where: { id: guard.user.id }, data: { image: null } });
+  revalidateFaces();
   await deleteByPublicUrl(existing?.image);
 
   return NextResponse.json({ ok: true });

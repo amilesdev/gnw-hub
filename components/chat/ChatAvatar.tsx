@@ -23,16 +23,12 @@ export function ChatAvatar({
       image={image}
       alt=""
       className={cn(
-        'grid shrink-0 place-items-center rounded-full font-semibold text-white',
-        former && 'opacity-60 grayscale',
+        // The one avatar style (CMP-13); a former member is greyed out.
+        'grid shrink-0 place-items-center rounded-full font-display font-semibold leading-none',
+        former ? 'bg-surface-2 text-ink-faint opacity-70 grayscale' : 'bg-accent-soft text-accent-ink',
         className,
       )}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.42),
-        background: former ? 'rgb(var(--ink-faint))' : 'linear-gradient(150deg, #5E7048, #3c4a2c)',
-      }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
     >
       {name.trim().slice(0, 1).toUpperCase() || '?'}
     </Avatar>

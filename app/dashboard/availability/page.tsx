@@ -11,5 +11,5 @@ export default async function LeaderAvailabilityPage() {
   const session = await getSessionUser();
   if (!session?.id) redirect('/login');
   if (session.role !== 'leader') redirect('/home');
-  return <AvailabilityManager />;
+  return <AvailabilityManager profileHref="/dashboard/settings" />;
 }

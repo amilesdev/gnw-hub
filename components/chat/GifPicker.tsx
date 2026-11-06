@@ -102,7 +102,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (gif: ChatGifResultDTO)
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      <div className="absolute inset-0 animate-fade-in bg-ink/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-scrim" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
@@ -153,7 +153,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (gif: ChatGifResultDTO)
               onClick={() => setTab(t)}
               className={cn(
                 'flex-1 rounded-full py-1.5 text-sm font-semibold transition',
-                tab === t ? 'bg-accent text-white' : 'bg-surface-2 text-ink-soft',
+                tab === t ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-ink-soft',
               )}
             >
               {t === 'gifs' ? 'GIFs' : 'Stickers'}
@@ -189,7 +189,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (gif: ChatGifResultDTO)
           {error ? (
             <div className="py-10 text-center text-sm text-ink-faint">
               <p>{error}</p>
-              <button type="button" onClick={() => void load(results.length)} className="mt-2 font-semibold text-accent dark:text-accent-on">
+              <button type="button" onClick={() => void load(results.length)} className="mt-2 font-semibold text-accent-ink">
                 Try again
               </button>
             </div>

@@ -5,6 +5,8 @@ import type { ChatListDTO, ChatListItemDTO } from '@/lib/chat/types';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
+import { listCard } from '@/lib/ui-classes';
 import { ChevronDown, MessageCircle, Plus, Search } from '@/components/shared/Icons';
 import { useChatSignals } from './ChatProvider';
 import { ChatSearch } from './ChatSearch';
@@ -48,30 +50,34 @@ export function ChatList({
   useChatSignals(refresh);
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between gap-3 pr-12">
-        <h1 className="page-title">Chat</h1>
-        <div className="flex shrink-0 items-center gap-1">
-          {data.chats.length > 0 && (
-            <button
-              type="button"
-              className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
-              onClick={() => {
-                setSearchMounted(true);
-                setSearching(true);
-              }}
-              aria-label="Search all chats"
-            >
-              <Search width={21} height={21} />
-            </button>
-          )}
-          {canCreate && (
-            <button type="button" className="btn-ghost px-3 py-2 text-sm" onClick={() => setCreating(true)}>
-              <Plus width={16} height={16} /> New chat
-            </button>
-          )}
-        </div>
-      </header>
+    <div className="space-y-6">
+      <ScreenHeader
+        eyebrow="GNW Hub"
+        title="Chat"
+        className="mb-0"
+        actions={
+          <>
+            {data.chats.length > 0 && (
+              <button
+                type="button"
+                className="glass grid h-11 w-11 place-items-center rounded-full text-ink-soft transition-transform duration-150 active:scale-[0.97]"
+                onClick={() => {
+                  setSearchMounted(true);
+                  setSearching(true);
+                }}
+                aria-label="Search all chats"
+              >
+                <Search width={20} height={20} />
+              </button>
+            )}
+            {canCreate && (
+              <button type="button" className="btn-primary btn-sm h-11" onClick={() => setCreating(true)}>
+                <Plus width={16} height={16} /> New
+              </button>
+            )}
+          </>
+        }
+      />
 
       {data.chats.length === 0 ? (
         <EmptyState
@@ -79,7 +85,7 @@ export function ChatList({
           message={canCreate ? 'No chats yet. Start one for your team!' : 'You’re not in any chats yet. A leader will add you.'}
         />
       ) : (
-        <ul className="card divide-y divide-line overflow-hidden">
+        <ul className={listCard}>
           {data.chats.map((c) => (
             <li key={c.id}>
               <ListRow base={base} item={c} />
@@ -100,7 +106,7 @@ export function ChatList({
             Archived ({data.archived.length})
           </button>
           {showArchived && (
-            <ul className="card divide-y divide-line overflow-hidden opacity-80">
+            <ul className={cn(listCard, 'opacity-80')}>
               {data.archived.map((c) => (
                 <li key={c.id}>
                   <ListRow base={base} item={c} />

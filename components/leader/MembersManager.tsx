@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { useToast } from '@/components/shared/Toast';
 import { TextField, FieldLabel } from '@/components/shared/Field';
 import { SegmentedControl } from '@/components/shared/SegmentedControl';
-import { Plus, Pencil, Trash, Repeat, Check, Link } from '@/components/shared/Icons';
+import { Plus, Pencil, Trash, Repeat, Check, Link, X } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { useDataChanged } from '@/lib/data-changed';
 import { isInviteExpired } from '@/lib/invites';
@@ -39,8 +40,10 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
   const [editing, setEditing] = useState<MemberRow | null>(null);
   const [confirming, setConfirming] = useState<MemberRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Notice banner (CMP-16): success, or error when something went wrong.
+  const [notice, setNoticeState] = useState<{ text: string; error: boolean } | null>(null);
+  const setNotice = (text: string | null, error = false) => setNoticeState(text ? { text, error } : null);
+  const toast = useToast();
 
   async function refresh() {
     const { members } = await apiFetch<{ members: MemberRow[] }>('/api/members');
@@ -56,8 +59,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
     if (!m.inviteUrl) return;
     try {
       await navigator.clipboard.writeText(m.inviteUrl);
-      setCopiedId(m.id);
-      setTimeout(() => setCopiedId((id) => (id === m.id ? null : id)), 2000);
+      toast.show({ message: 'Link copied.' });
     } catch {
       // Clipboard API can be blocked (e.g. non-HTTPS); show the link to copy by hand.
       setNotice(`Copy this invite link for ${m.name}: ${m.inviteUrl}`);
@@ -69,15 +71,15 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
     try {
       const res = await apiFetch<{ emailSkipped: boolean; emailSent: boolean; emailError?: string }>(`/api/members/${m.id}/reinvite`, { method: 'POST' });
       if (res.emailSkipped) {
-        setNotice('Invite regenerated (email not configured — check server logs for the link).');
+        setNotice('Invite regenerated. Email isn’t configured, so the link is in the server logs.', true);
       } else if (res.emailSent) {
         setNotice(`Re-invite sent to ${m.email}.`);
       } else {
-        setNotice(`Invite regenerated, but the email failed to send: ${res.emailError ?? 'unknown error'}.`);
+        setNotice(`Invite regenerated, but the email failed to send: ${res.emailError ?? 'unknown error'}.`, true);
       }
       await refresh();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Could not re-invite.');
+      setNotice(e instanceof Error ? e.message : 'Could not re-invite.', true);
     } finally {
       setBusyId(null);
     }
@@ -91,7 +93,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
       setConfirming(null);
       await refresh();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Could not revoke.');
+      setNotice(e instanceof Error ? e.message : 'Could not revoke.', true);
     } finally {
       setBusyId(null);
     }
@@ -101,22 +103,30 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
   const active = members.filter((m) => m.status === 'active');
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between">
+    <div className="space-y-5">
+      {/* A section of Settings (LD-7), so a section heading, not a second page title. */}
+      <header className="flex items-end justify-between gap-3">
         <div>
           <div className="eyebrow">Leader tools</div>
-          <h1 className="page-title mt-2">Members</h1>
+          <h2 className="t-title mt-1">Members</h2>
         </div>
-        <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setInviteOpen(true)}>
-          <Plus width={18} height={18} /> Invite
+        <button type="button" className="btn-primary btn-sm h-11" onClick={() => setInviteOpen(true)}>
+          <Plus width={16} height={16} /> Invite
         </button>
       </header>
 
       {notice && (
-        <div className="card flex items-start gap-2 bg-accent/5 p-4 text-sm text-accent-ink dark:text-accent-on">
-          <Check width={16} height={16} className="mt-0.5 shrink-0" />
-          <span>{notice}</span>
-          <button className="row-press ml-auto rounded-lg px-1.5 py-0.5 text-ink-faint" onClick={() => setNotice(null)} type="button">
+        <div
+          role={notice.error ? 'alert' : 'status'}
+          className={
+            notice.error
+              ? 'flex items-center gap-3 rounded-2xl border border-bad/30 bg-bad/[0.08] py-3 pl-3.5 pr-1.5 text-[15px] font-semibold text-bad-ink'
+              : 'flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent/[0.08] py-3 pl-3.5 pr-1.5 text-[15px] font-semibold text-good-ink'
+          }
+        >
+          {notice.error ? <X width={18} height={18} className="shrink-0" /> : <Check width={18} height={18} className="shrink-0" />}
+          <span className="selectable min-w-0 flex-1 break-words">{notice.text}</span>
+          <button className="btn-ghost btn-sm shrink-0" onClick={() => setNotice(null)} type="button">
             Dismiss
           </button>
         </div>
@@ -136,15 +146,15 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {m.section && <span className="chip bg-surface-2 text-ink-soft">{m.section}</span>}
                       {m.part && <span className="chip bg-surface-2 text-ink-soft">{m.part}</span>}
-                      {expired && <span className="chip bg-bad/15 text-bad">Expired</span>}
+                      {expired && <span className="chip bg-bad/15 text-bad-ink">Expired</span>}
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    <button className="btn-ghost !py-2 text-sm" onClick={() => setEditing(m)} type="button">
+                    <button className="btn-ghost btn-sm" onClick={() => setEditing(m)} type="button">
                       <Pencil width={15} height={15} /> Edit
                     </button>
                     <button
-                      className="btn-ghost !py-2 text-sm text-bad"
+                      className="btn-ghost btn-sm text-bad-ink"
                       onClick={() => setConfirming(m)}
                       type="button"
                     >
@@ -154,7 +164,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
-                    className="btn-ghost !py-2 text-sm"
+                    className="btn-ghost btn-sm"
                     onClick={() => reinvite(m)}
                     disabled={busyId === m.id}
                     type="button"
@@ -163,19 +173,11 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                   </button>
                   {m.inviteUrl && !expired && (
                     <button
-                      className="btn-ghost !py-2 text-sm"
+                      className="btn-ghost btn-sm"
                       onClick={() => copyInviteLink(m)}
                       type="button"
                     >
-                      {copiedId === m.id ? (
-                        <>
-                          <Check width={15} height={15} /> Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Link width={15} height={15} /> Copy link
-                        </>
-                      )}
+                      <Link width={16} height={16} /> Copy link
                     </button>
                   )}
                 </div>
@@ -199,12 +201,12 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
-                <button className="btn-ghost !py-2 text-sm" onClick={() => setEditing(m)} type="button">
+                <button className="btn-ghost btn-sm" onClick={() => setEditing(m)} type="button">
                   <Pencil width={15} height={15} /> Edit
                 </button>
                 {!m.isSuperAdmin && (
                   <button
-                    className="btn-ghost !py-2 text-sm text-bad"
+                    className="btn-ghost btn-sm text-bad-ink"
                     onClick={() => setConfirming(m)}
                     type="button"
                   >
@@ -221,9 +223,9 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
       <InviteModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        onDone={async (msg) => {
+        onDone={async (msg, error) => {
           setInviteOpen(false);
-          setNotice(msg);
+          setNotice(msg, error);
           await refresh();
         }}
       />
@@ -263,7 +265,7 @@ function InviteModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onDone: (msg: string) => void;
+  onDone: (msg: string, error?: boolean) => void;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -288,11 +290,11 @@ function InviteModal({
         body: JSON.stringify({ name, email, section, part, role }),
       });
       if (res.emailSkipped) {
-        onDone(`Invite created for ${email} (email not configured — link is in server logs).`);
+        onDone(`Invite created for ${email}. Email isn’t configured, so the link is in the server logs.`, true);
       } else if (res.emailSent) {
         onDone(`Invite sent to ${email}.`);
       } else {
-        onDone(`Invite created for ${email}, but the email failed to send: ${res.emailError ?? 'unknown error'}.`);
+        onDone(`Invite created for ${email}, but the email failed to send: ${res.emailError ?? 'unknown error'}.`, true);
       }
       setName('');
       setEmail('');
@@ -353,7 +355,7 @@ function InviteModal({
             ]}
           />
         </div>
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Sending…' : 'Send invite'}
         </button>
@@ -442,7 +444,7 @@ function EditModal({
         {member.isSuperAdmin && (
           <p className="-mt-2 text-xs text-ink-faint">Heads up: this is the super-admin account.</p>
         )}
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Saving…' : 'Save changes'}
         </button>

@@ -48,7 +48,7 @@ export function NewChatSheet({ base, meId, onClose }: { base: string; meId: stri
       title="New chat"
       footer={
         <div className="space-y-2">
-          {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
           <button type="button" className="btn-primary w-full" disabled={busy} onClick={create}>
             {busy ? 'Creating…' : `Create chat${selected.size ? ` with ${selected.size} ${selected.size === 1 ? 'person' : 'people'}` : ''}`}
           </button>
@@ -66,7 +66,7 @@ export function NewChatSheet({ base, meId, onClose }: { base: string; meId: stri
         <div className="space-y-2">
           <span className="label">Who’s in it</span>
           {loadError ? (
-            <p className="text-sm font-semibold text-bad">{loadError}</p>
+            <p className="text-sm font-semibold text-bad-ink">{loadError}</p>
           ) : !people ? (
             <p className="text-sm text-ink-faint">Loading people…</p>
           ) : (

@@ -8,32 +8,41 @@ import { apiFetch } from './api-client';
  * route, so it isn't subject to Vercel's ~4.5 MB serverless request-body limit
  * (which was surfacing as "Request failed (413)" for larger audio/photos).
  * Returns the public URL of the stored object.
+ *
+ * `onProgress` gets 0–100 as the bytes go up ("Uploading 42%"), which is why
+ * this is an XHR rather than fetch: fetch has no upload progress events.
  */
-export async function uploadFile(path: string, file: File): Promise<string> {
+export async function uploadFile(path: string, file: File, onProgress?: (pct: number) => void): Promise<string> {
   const { signedUrl, publicUrl, contentType } = await apiFetch<{
     signedUrl: string;
     publicUrl: string;
     contentType: string;
   }>('/api/upload/sign', { method: 'POST', body: JSON.stringify({ path }) });
 
-  const res = await fetch(signedUrl, {
-    method: 'PUT',
-    body: file,
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl);
+    xhr.setRequestHeader('content-type', contentType);
     // `x-upsert` lets a re-upload replace an existing object (e.g. "Replace").
-    headers: { 'content-type': contentType, 'x-upsert': 'true' },
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+    };
+    xhr.onerror = () => reject(new Error('Upload failed. Check your connection and try again.'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      if (xhr.status === 413) return reject(new Error('That file is too large to upload.'));
+      let message = `Upload failed (${xhr.status})`;
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data?.message || data?.error) message = String(data.message ?? data.error);
+      } catch {
+        /* non-JSON error body */
+      }
+      reject(new Error(message));
+    };
+    xhr.send(file);
   });
-
-  if (!res.ok) {
-    if (res.status === 413) throw new Error('That file is too large to upload.');
-    let message = `Upload failed (${res.status})`;
-    try {
-      const data = await res.json();
-      if (data?.message || data?.error) message = String(data.message ?? data.error);
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new Error(message);
-  }
 
   return publicUrl;
 }

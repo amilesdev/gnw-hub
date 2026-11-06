@@ -5,22 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Offline · GNW Hub</title>
     <style>
-      :root { color-scheme: light dark; }
+      /* AU-6: the 3a tokens, inline (this page has no CSS bundle). */
+      :root {
+        color-scheme: light dark;
+        --app: #faf7f2; --ink: #1c1a17; --ink-soft: #625d55; --glow-top: #eef0e3;
+        --accent: #5e7048; --accent-fg: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --app: #161410; --ink: #f1ece4; --ink-soft: #b3ac9f; --glow-top: #1b1d16;
+          --accent: #aebe8a; --accent-fg: #1c2410;
+        }
+      }
       html, body { height: 100%; margin: 0; }
       body {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         gap: 1rem; padding: max(env(safe-area-inset-top), 2rem) 2rem max(env(safe-area-inset-bottom), 2rem);
-        background: #faf7f2; color: #1c1a22; text-align: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+        background: linear-gradient(180deg, var(--glow-top), var(--app) 96px) var(--app);
+        color: var(--ink); text-align: center;
+        font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       }
-      @media (prefers-color-scheme: dark) { body { background: #161410; color: #f0ece4; } }
       img { width: 88px; height: 88px; border-radius: 22px; }
-      h1 { font-family: Georgia, Cambria, serif; font-size: 1.6rem; margin: .25rem 0 0; }
-      p { margin: 0; max-width: 22rem; line-height: 1.5; color: #68635c; }
-      @media (prefers-color-scheme: dark) { p { color: #a8a195; } }
+      h1 { font-family: Literata, Georgia, serif; font-size: 26px; line-height: 32px; font-weight: 600; margin: .25rem 0 0; }
+      p { margin: 0; max-width: 22rem; font-size: 16px; line-height: 24px; color: var(--ink-soft); }
       button {
-        margin-top: .5rem; border: 0; border-radius: 1rem; padding: .85rem 1.5rem;
-        background: #5e7048; color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer;
+        margin-top: .5rem; border: 0; border-radius: 16px; height: 48px; padding: 0 18px;
+        background: var(--accent); color: var(--accent-fg); font: inherit; font-weight: 600; font-size: 15px; cursor: pointer;
       }
     </style>
   </head>

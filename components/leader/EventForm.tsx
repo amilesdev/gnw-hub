@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { EventDTO, RehearsalScheduleItemDTO } from '@/lib/serialize';
 import type { SetlistDTO } from '@/lib/setlist-serialize';
 import { Overlay } from '@/components/shared/Overlay';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { TextField, TextArea, SelectField, FieldLabel } from '@/components/shared/Field';
 import { Plus, X, ChevronDown, Upload, Book, Shirt, Trash, Calendar, Clock, Music } from '@/components/shared/Icons';
 import { AssignmentsSection, toAssignmentMap, type AssignmentMap } from './AssignmentsSection';
@@ -145,6 +146,7 @@ export function EventForm({
   // by hand. A saved schedule loads as-is; otherwise a FUTURE rehearsal pre-loads
   // the preset (nothing is persisted until the leader saves the form). Song rows
   // carry a songSlot and resolve their title from the attached setlist below.
+  const [confirmPreset, setConfirmPreset] = useState(false);
   const [schedule, setSchedule] = useState<RehearsalScheduleItemDTO[]>(() => {
     if (initial?.rehearsalSchedule && initial.rehearsalSchedule.length > 0) {
       return initial.rehearsalSchedule;
@@ -240,7 +242,7 @@ export function EventForm({
   }
 
   function applyPreset() {
-    if (schedule.length > 0 && !window.confirm('Replace the current schedule with the preset?')) return;
+    if (schedule.length > 0) return setConfirmPreset(true);
     setSchedule(buildRehearsalPreset());
   }
 
@@ -329,7 +331,7 @@ export function EventForm({
       title={mode === 'create' ? 'New event' : 'Edit event'}
       onClose={onClose}
       action={
-        <button type="submit" form="event-form" className="btn-primary !px-4 !py-2.5" disabled={busy}>
+        <button type="submit" form="event-form" className="btn-primary btn-sm" disabled={busy}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       }
@@ -438,7 +440,7 @@ export function EventForm({
         </SelectField>
         {mode === 'create' && repeats !== 'once' && (
           <p className="-mt-2 text-xs text-ink-faint">
-            Generates a separate, independently editable event for each occurrence this {repeats === 'monthly' ? 'year' : 'month'}.
+            Creates the next 4 weeks of dates and keeps adding more as time passes. Each date can be edited on its own.
           </p>
         )}
         {mode === 'edit' && initial?.repeats !== 'once' && (
@@ -449,7 +451,7 @@ export function EventForm({
 
         {/* Holy Talks — only when type is holy_talks */}
         {isHolyTalks && (
-          <section className="card animate-rise space-y-4 bg-surface-2/40 p-4">
+          <section className="card animate-rise space-y-4 p-4">
             <p className="eyebrow inline-flex items-center gap-1.5">
               <Book width={14} height={14} /> Holy Talks
             </p>
@@ -477,7 +479,7 @@ export function EventForm({
               {scriptures.length > 0 && (
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                   {scriptures.map((s, i) => (
-                    <li key={i} className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
+                    <li key={i} className="chip bg-accent/10 text-accent-ink">
                       {s}
                       <button
                         type="button"
@@ -500,7 +502,7 @@ export function EventForm({
             (edits cascade to later rows), an editable label on the right. Song
             rows fill their name live from the setlist. */}
         {isRehearsal && (
-          <section className="card animate-rise space-y-3 bg-surface-2/40 p-4">
+          <section className="card animate-rise space-y-3 p-4">
             <div className="flex items-baseline justify-between gap-2">
               <p className="eyebrow inline-flex items-center gap-1.5">
                 <Clock width={14} height={14} /> Schedule
@@ -542,7 +544,7 @@ export function EventForm({
                       />
                       {item.songSlot != null && (
                         <div className="flex flex-wrap items-center gap-1.5 pl-1">
-                          <span className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
+                          <span className="chip bg-accent/10 text-accent-ink">
                             <Music width={12} height={12} />
                             {songNameForSlot(item.songSlot, setlistTitles)}
                           </span>
@@ -563,7 +565,7 @@ export function EventForm({
                       type="button"
                       onClick={() => removeScheduleItem(i)}
                       aria-label={`Remove item ${i + 1}`}
-                      className="row-press mt-1 shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-bad"
+                      className="row-press mt-1 shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-bad-ink"
                     >
                       <Trash width={16} height={16} />
                     </button>
@@ -580,7 +582,7 @@ export function EventForm({
                 Apply preset
               </button>
               {schedule.length > 0 && (
-                <button type="button" onClick={clearSchedule} className="btn-ghost flex-1 !text-bad">
+                <button type="button" onClick={clearSchedule} className="btn-ghost flex-1 !text-bad-ink">
                   Clear
                 </button>
               )}
@@ -607,7 +609,7 @@ export function EventForm({
             className="row-press flex w-full items-center justify-between px-4 py-3.5 text-left"
           >
             <span className="inline-flex items-center gap-2 font-semibold">
-              <Shirt width={18} height={18} className="text-accent dark:text-accent-on" /> Attire (optional)
+              <Shirt width={18} height={18} className="text-accent-ink" /> Attire (optional)
             </span>
             <ChevronDown width={20} height={20} className={cn('text-ink-faint transition', attireOpen && 'rotate-180')} />
           </button>
@@ -677,11 +679,23 @@ export function EventForm({
         </div>
         )}
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Saving…' : mode === 'create' ? 'Create event' : 'Save changes'}
         </button>
       </form>
+
+      <ConfirmDialog
+        open={confirmPreset}
+        title="Replace the schedule?"
+        message="The current schedule is replaced with the standard rehearsal preset."
+        confirmLabel="Replace"
+        onConfirm={() => {
+          setSchedule(buildRehearsalPreset());
+          setConfirmPreset(false);
+        }}
+        onClose={() => setConfirmPreset(false)}
+      />
     </Overlay>
   );
 }

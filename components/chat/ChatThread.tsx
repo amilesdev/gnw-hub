@@ -600,19 +600,20 @@ export function ChatThread({
 
   return (
     <div
-      className="fixed inset-x-0 z-40 flex flex-col bg-chat-canvas"
+      className="fixed inset-x-0 z-[45] flex flex-col bg-chat-canvas"
       style={box ? { top: box.top, height: box.height } : { top: 0, bottom: 0 }}
     >
       {/* Header */}
       <header
-        className="shrink-0 border-b border-line bg-app/95 backdrop-blur"
+        // glow-top continues the status strip down into the header (CMP-1).
+        className="shrink-0 border-b border-line bg-glow-top/95 backdrop-blur"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
       >
         <div className="flex items-center gap-2 px-3 pb-2">
           <Link
             href={backHref}
             replace
-            className="row-press grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft"
+            className="btn-icon"
             aria-label={detail.parent || hasTopics ? `Back to ${detail.parent?.name ?? detail.name}` : 'Back to chats'}
           >
             <ChevronLeft width={22} height={22} />
@@ -624,7 +625,7 @@ export function ChatThread({
               </span>
               {detail.muted && <BellOff width={14} height={14} className="shrink-0 text-ink-faint" aria-label="Muted" />}
             </span>
-            <span className="block truncate text-xs text-ink-faint">
+            <span className="block truncate text-[13px] leading-[18px] text-ink-faint">
               {detail.parent
                 ? detail.parent.name
                 : hasTopics
@@ -638,18 +639,18 @@ export function ChatThread({
               setSearchMounted(true);
               setSearchOpen(true);
             }}
-            className="row-press grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft"
+            className="btn-icon"
             aria-label="Search messages"
           >
-            <Search width={21} height={21} />
+            <Search width={20} height={20} />
           </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="row-press grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft"
+            className="btn-icon"
             aria-label="Chat settings"
           >
-            <MoreHorizontal width={22} height={22} />
+            <MoreHorizontal width={20} height={20} />
           </button>
         </div>
 
@@ -659,7 +660,7 @@ export function ChatThread({
             onClick={() => (pins.length > 1 ? setPinsOpen(true) : void jumpTo(topPin.id))}
             className="flex w-full items-center gap-2 border-t border-line px-4 py-2 text-left text-sm"
           >
-            <Pin width={15} height={15} className="shrink-0 text-accent dark:text-accent-on" />
+            <Pin width={15} height={15} className="shrink-0 text-accent-ink" />
             <span className="min-w-0 flex-1 truncate">
               <span className="font-semibold">{topPin.author?.name.split(' ')[0] ?? topPin.importedAuthorName ?? 'Pinned'}: </span>
               <span className="text-ink-soft">{snippet(topPin)}</span>
@@ -714,7 +715,7 @@ export function ChatThread({
             <button
               type="button"
               onClick={jumpToLatest}
-              className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-2 text-sm font-semibold text-white shadow-pop"
+              className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg shadow-pop"
             >
               <ArrowDown width={16} height={16} />{' '}
               {hasNewer ? 'Jump to latest' : `${newBelow} new ${newBelow === 1 ? 'message' : 'messages'}`}

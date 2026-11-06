@@ -6,23 +6,22 @@
 // are wall-clock in this zone, with no timezone of their own.
 const TEAM_TIME_ZONE = 'America/New_York';
 
-// Only these specific people may start a Prayer call. Matched on display name
-// (set by a leader and revalidated each request), normalized for casing/spacing.
-export const PRAYER_CALLER_NAMES = ['Alonzo Miles', 'Aleena Figueroa', 'Judy Felix'];
+// Only these specific people may start a Prayer call: Alonzo Miles, Aleena
+// Figueroa and Judy Felix. Matched on sign-in email, NOT display name: members
+// can rename themselves from Profile, so a name would let anyone claim the
+// button (and would drop it from one of these three after a rename). Email is
+// the username and nobody can edit it.
+export const PRAYER_CALLER_EMAILS = ['alonzomilesjr1@gmail.com', 'figueroafam6@gmail.com', 'judcine77@gmail.com'];
 
 // Window: opens 15 min before the event start and closes 60 min after it.
 const OPEN_BEFORE_MS = 15 * 60_000;
 const CLOSE_AFTER_MS = 60 * 60_000;
 
-function normalizeName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ').toLowerCase();
-}
+const prayerCallerSet = new Set(PRAYER_CALLER_EMAILS);
 
-const prayerCallerSet = new Set(PRAYER_CALLER_NAMES.map(normalizeName));
-
-/** Whether a user (by display name) is one of the designated Prayer-call starters. */
-export function canStartPrayerCall(name: string | null | undefined): boolean {
-  return !!name && prayerCallerSet.has(normalizeName(name));
+/** Whether a user (by sign-in email) is one of the designated Prayer-call starters. */
+export function canStartPrayerCall(email: string | null | undefined): boolean {
+  return !!email && prayerCallerSet.has(email.trim().toLowerCase());
 }
 
 /** Offset (ms) of `tz` from UTC at the given instant — DST-aware. */

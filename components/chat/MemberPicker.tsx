@@ -74,7 +74,7 @@ export function MemberPicker({
                   <span
                     className={cn(
                       'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2',
-                      on ? 'border-accent bg-accent text-white' : 'border-line',
+                      on ? 'border-accent bg-accent text-accent-fg' : 'border-line',
                     )}
                     aria-hidden
                   >

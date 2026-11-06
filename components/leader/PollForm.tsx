@@ -53,7 +53,7 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
   }
 
   return (
-    <Modal open onClose={onClose} title="New Poll">
+    <Modal open onClose={onClose} title="New poll">
       <form onSubmit={submit} className="space-y-5">
         <TextField
           label="Question"
@@ -90,9 +90,9 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
             <button
               type="button"
               onClick={addChoice}
-              className="row-press inline-flex items-center gap-1.5 rounded-xl bg-surface-2 px-3 py-2 text-sm font-semibold text-ink-soft"
+              className="btn-ghost btn-sm"
             >
-              <Plus width={16} height={16} /> Add More
+              <Plus width={16} height={16} /> Add choice
             </button>
           )}
         </div>
@@ -118,7 +118,7 @@ export function PollForm({ onClose, onSaved }: { onClose: () => void; onSaved: (
           </label>
         </div>
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Posting…' : 'Post poll'}
         </button>

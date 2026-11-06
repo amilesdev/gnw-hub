@@ -73,7 +73,7 @@ export function StageMapView({
           <span className="text-xs text-ink-soft">{highlight ? 'Showing one traced sound.' : 'Tap any piece of gear to see what plugs into it.'}</span>
           <span className="flex items-center gap-3">
             {highlight && (
-              <button type="button" onClick={onClearHighlight} className="text-xs font-semibold text-accent-ink underline underline-offset-2 dark:text-accent-on">
+              <button type="button" onClick={onClearHighlight} className="text-xs font-semibold text-accent-ink underline underline-offset-2">
                 Clear trace
               </button>
             )}
@@ -661,7 +661,7 @@ function AddGearSheet({
           </select>
           <span className="block text-xs text-ink-faint">Only open inputs are listed. The DI box is full, so new instruments go straight into the stage box.</span>
         </label>
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy || !open.length}>
           {busy ? 'Adding…' : 'Add to the map'}
         </button>

@@ -68,15 +68,15 @@ export function ChatHub({
   });
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-app">
+    <div className="fixed inset-0 z-[45] flex flex-col bg-app">
       <header
-        className="flex shrink-0 items-center justify-between px-3 pb-1"
+        className="flex shrink-0 items-center justify-between bg-glow-top px-3 pb-1"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
       >
         <Link
           href={`${base}/chat`}
           replace
-          className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
+          className="btn-icon"
           aria-label="Back to chats"
         >
           <ChevronLeft width={22} height={22} />
@@ -88,15 +88,15 @@ export function ChatHub({
               setSearchMounted(true);
               setSearching(true);
             }}
-            className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
+            className="btn-icon"
             aria-label={`Search ${item.name}`}
           >
-            <Search width={21} height={21} />
+            <Search width={20} height={20} />
           </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
+            className="btn-icon"
             aria-label="Chat settings"
           >
             <MoreHorizontal width={22} height={22} />

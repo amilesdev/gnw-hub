@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import type { CrossoverSetDTO } from '@/lib/crossover-sets';
 import type { ProgramItem, TimedRow } from '@/lib/crossover-schedule';
 import { Overlay } from '@/components/shared/Overlay';
-import { ChevronDown, ChevronLeft, Clock, Pencil, Plus, Trash } from '@/components/shared/Icons';
+import { ChevronDown, Clock, Pencil, Plus, Trash } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { applyTimeEdit } from '@/lib/rehearsal-schedule';
@@ -49,24 +49,21 @@ export function CrossoverSchedule({
 
   return (
     <div className="space-y-5 pt-2">
-      <Link
-        href={`${base}/crossover`}
-        className="row-press -ml-1 inline-flex items-center gap-0.5 rounded-lg py-1 text-[15px] font-semibold text-accent-ink dark:text-accent-on"
-      >
-        <ChevronLeft width={18} height={18} /> Crossover
-      </Link>
-
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">Crossover {year}</div>
-          <h1 className="page-title mt-2">Schedule</h1>
-        </div>
-        {canManage && (
-          <button type="button" className="btn-ghost border border-line !px-4 !py-3" onClick={() => setEditing(true)}>
-            <Pencil width={16} height={16} /> Edit
-          </button>
-        )}
-      </header>
+      <ScreenHeader
+        back={{ href: `${base}/crossover`, label: 'Crossover' }}
+        eyebrow={`Crossover ${year}`}
+        title="Schedule"
+        className="mb-0"
+        actions={
+          <>
+            {canManage && (
+              <button type="button" className="btn-outline btn-sm h-11" onClick={() => setEditing(true)}>
+                <Pencil width={16} height={16} /> Edit
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-1 rounded-2xl bg-surface-2 p-1">
         {VIEWS.map((v) => (
@@ -106,7 +103,9 @@ export function CrossoverSchedule({
                     </span>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn('font-semibold', set && 'font-display text-lg')}>{set ? set.name : item.label}</span>
+                        <span className={cn('font-semibold', set && 'font-display text-lg')}>
+                          {set ? set.name : item.label}
+                        </span>
                         {set?.minutes != null && (
                           <span className="chip bg-surface-2 text-ink-soft">
                             <Clock width={12} height={12} /> {set.minutes} min
@@ -122,7 +121,7 @@ export function CrossoverSchedule({
                         </p>
                       )}
                       {item.cue && (
-                        <p className="inline-flex items-center gap-1.5 text-sm font-medium text-[#8F5E1C] dark:text-[#E0A75E]">
+                        <p className="inline-flex items-center gap-1.5 text-sm font-medium text-warn-ink">
                           <span className="chip bg-warn/15 !px-1.5 !py-0.5 text-[10px] tracking-wider">CUE</span>
                           {item.cue}
                         </p>
@@ -149,7 +148,7 @@ export function CrossoverSchedule({
             <ul>
               {schedule[view].map((r, i) => (
                 <li key={i} className="flex items-baseline gap-4 border-t border-line py-3">
-                  <span className="w-[4.5rem] shrink-0 text-sm font-bold text-accent-ink tabular-nums dark:text-accent-on">
+                  <span className="w-[4.5rem] shrink-0 text-sm font-bold text-accent-ink tabular-nums">
                     {r.time ? formatTimeLabel(r.time) : '—'}
                   </span>
                   <span className="min-w-0">
@@ -231,14 +230,15 @@ function ScheduleEditor({
     }
   }
 
-  const title = view === 'program' ? 'Edit program' : view === 'dayOf' ? 'Edit day-of schedule' : 'Edit Dress Rehearsal';
+  const title =
+    view === 'program' ? 'Edit program' : view === 'dayOf' ? 'Edit day-of schedule' : 'Edit Dress Rehearsal';
 
   return (
     <Overlay
       title={title}
       onClose={onClose}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={busy} onClick={save}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={save}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       }
@@ -261,7 +261,9 @@ function ScheduleEditor({
                         <input
                           className="field min-w-0 flex-1 !py-2.5"
                           value={item.label ?? ''}
-                          onChange={(e) => setItems((p) => p.map((x) => (x.id === item.id ? { ...x, label: e.target.value } : x)))}
+                          onChange={(e) =>
+                            setItems((p) => p.map((x) => (x.id === item.id ? { ...x, label: e.target.value } : x)))
+                          }
                           placeholder="Welcome, Poem, Message…"
                           aria-label={`Item ${i + 1}`}
                         />
@@ -275,7 +277,9 @@ function ScheduleEditor({
                     <input
                       className="field !py-2.5 text-sm"
                       value={item.cue ?? ''}
-                      onChange={(e) => setItems((p) => p.map((x) => (x.id === item.id ? { ...x, cue: e.target.value } : x)))}
+                      onChange={(e) =>
+                        setItems((p) => p.map((x) => (x.id === item.id ? { ...x, cue: e.target.value } : x)))
+                      }
                       placeholder="Cue (optional), e.g. Line up for Set 2"
                       aria-label={`Cue for item ${i + 1}`}
                     />
@@ -319,7 +323,9 @@ function ScheduleEditor({
                         className={cn('field min-w-0 !py-2.5 px-3', !r.time && 'text-transparent')}
                       />
                       {!r.time && (
-                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-faint">Time</span>
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-faint">
+                          Time
+                        </span>
                       )}
                     </div>
                     <input
@@ -347,12 +353,16 @@ function ScheduleEditor({
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn-ghost w-full" onClick={() => setRows((p) => [...p, { time: '', label: '' }])}>
+            <button
+              type="button"
+              className="btn-ghost w-full"
+              onClick={() => setRows((p) => [...p, { time: '', label: '' }])}
+            >
               <Plus width={16} height={16} /> Add row
             </button>
           </>
         )}
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       </div>
     </Overlay>
   );
@@ -382,7 +392,7 @@ function MoveButtons({ onUp, onDown, onRemove }: { onUp?: () => void; onDown?: (
       <button
         type="button"
         onClick={onRemove}
-        className="row-press grid h-8 w-8 place-items-center rounded-lg text-ink-faint hover:text-bad"
+        className="row-press grid h-8 w-8 place-items-center rounded-lg text-ink-faint hover:text-bad-ink"
         aria-label="Remove"
       >
         <Trash width={15} height={15} />

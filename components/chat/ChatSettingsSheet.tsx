@@ -70,7 +70,7 @@ export function ChatSettingsSheet({
     <>
       <Modal open onClose={onClose} title={isTopic ? `# ${detail.name}` : detail.name}>
         <div className="space-y-6">
-          {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
 
           {/* Mute — per chat, covers its topics */}
           <section className="flex items-center justify-between gap-4">
@@ -113,7 +113,7 @@ export function ChatSettingsSheet({
             <div className="flex items-center justify-between">
               <h3 className="label">{detail.members.length} {detail.members.length === 1 ? 'member' : 'members'}</h3>
               {detail.can.addMembers && (
-                <button type="button" className="text-sm font-semibold text-accent dark:text-accent-on" onClick={() => setAdding(true)}>
+                <button type="button" className="text-sm font-semibold text-accent-ink" onClick={() => setAdding(true)}>
                   Add people
                 </button>
               )}
@@ -130,7 +130,7 @@ export function ChatSettingsSheet({
                     {m.status === 'pending' && <span className="text-xs text-ink-faint">Invited — hasn’t joined Hub yet</span>}
                   </span>
                   {m.hasPush === false && (
-                    <BellOff width={16} height={16} className="shrink-0 text-warn" aria-label="No notifications set up" />
+                    <BellOff width={16} height={16} className="shrink-0 text-warn-ink" aria-label="No notifications set up" />
                   )}
                   {detail.can.removeMembers && m.userId !== meId && (
                     <button
@@ -147,7 +147,7 @@ export function ChatSettingsSheet({
             </ul>
             {showPush && detail.members.some((m) => m.hasPush === false) && (
               <p className="flex items-center gap-1.5 text-xs text-ink-faint">
-                <BellOff width={13} height={13} className="text-warn" /> = no device set up for notifications yet
+                <BellOff width={13} height={13} className="text-warn-ink" /> = no device set up for notifications yet
               </p>
             )}
           </section>
@@ -182,14 +182,14 @@ export function ChatSettingsSheet({
             <section>
               <button
                 type="button"
-                className="btn-ghost w-full text-bad"
+                className="btn-ghost w-full text-bad-ink"
                 disabled={busy}
                 onClick={() => (detail.archived ? patch({ archived: false }) : setArchiving(true))}
               >
                 {detail.archived ? `Restore this ${isTopic ? 'topic' : 'chat'}` : `Archive this ${isTopic ? 'topic' : 'chat'}`}
               </button>
               {detail.can.delete && (
-                <button type="button" className="btn-ghost mt-2 w-full text-bad" disabled={busy} onClick={() => setDeleting(true)}>
+                <button type="button" className="btn-ghost mt-2 w-full text-bad-ink" disabled={busy} onClick={() => setDeleting(true)}>
                   Delete permanently
                 </button>
               )}
@@ -291,7 +291,7 @@ function AddPeopleSheet({ detail, onClose, onAdded }: { detail: ChatDetailDTO; o
       title="Add people"
       footer={
         <div className="space-y-2">
-          {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+          {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
           <button type="button" className="btn-primary w-full" disabled={busy || selected.size === 0} onClick={add}>
             {busy ? 'Adding…' : selected.size ? `Add ${selected.size} ${selected.size === 1 ? 'person' : 'people'}` : 'Add'}
           </button>
@@ -299,7 +299,7 @@ function AddPeopleSheet({ detail, onClose, onAdded }: { detail: ChatDetailDTO; o
       }
     >
       {loadError ? (
-        <p className="text-sm font-semibold text-bad">{loadError}</p>
+        <p className="text-sm font-semibold text-bad-ink">{loadError}</p>
       ) : !people ? (
         <p className="text-sm text-ink-faint">Loading people…</p>
       ) : (

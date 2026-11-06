@@ -104,7 +104,7 @@ function ResetFlow() {
           Request a new link
         </Link>
         <p className="mt-5 text-center text-sm">
-          <Link href="/login" className="font-semibold text-accent-ink dark:text-accent-on">
+          <Link href="/login" className="font-semibold text-accent-ink">
             Back to sign in
           </Link>
         </p>
@@ -133,7 +133,7 @@ function ResetFlow() {
           placeholder="Re-enter password"
           enterKeyHint="go"
         />
-        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Saving…' : 'Reset password'}
         </button>

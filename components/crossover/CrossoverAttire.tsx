@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import type { LookStatus } from '@prisma/client';
 import type { LookDTO, SeasonAttireDTO } from '@/lib/crossover-attire';
 import { Overlay } from '@/components/shared/Overlay';
@@ -9,7 +9,7 @@ import { FieldLabel, TextArea } from '@/components/shared/Field';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Avatar } from '@/components/shared/Avatar';
 import { AttireColorField } from '@/components/leader/EventForm';
-import { Camera, Check, ChevronLeft, Pencil, Shirt, Trash, Upload, X } from '@/components/shared/Icons';
+import { Camera, Check, Pencil, Shirt, Trash, Upload, X } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { uploadFile } from '@/lib/upload-client';
 import { fitImageFile } from '@/lib/image-resize';
@@ -18,9 +18,9 @@ import { cn, randomToken } from '@/lib/utils';
 type Base = '/home' | '/dashboard';
 
 const STATUS: Record<LookStatus, { label: string; chip: string }> = {
-  pending: { label: 'Waiting on review', chip: 'bg-warn/15 text-[#8F5E1C] dark:text-[#E0A75E]' },
-  changes_requested: { label: 'Changes requested', chip: 'bg-bad/15 text-bad dark:text-[#D98A84]' },
-  approved: { label: 'Approved', chip: 'bg-accent/10 text-accent-ink dark:text-accent-on' },
+  pending: { label: 'Waiting on review', chip: 'bg-warn/15 text-warn-ink' },
+  changes_requested: { label: 'Changes requested', chip: 'bg-bad/15 text-bad-ink' },
+  approved: { label: 'Approved', chip: 'bg-accent/10 text-accent-ink' },
 };
 
 /**
@@ -79,29 +79,30 @@ export function CrossoverAttire({
   const sentBack = others.filter((l) => l.status === 'changes_requested');
   const approved = looks.filter((l) => l.status === 'approved');
   const hasAttire = Boolean(
-    attire.attirePrimary || attire.attireSecondary || attire.attireComplement || attire.attireNotes || attire.attirePhotos.length,
+    attire.attirePrimary ||
+    attire.attireSecondary ||
+    attire.attireComplement ||
+    attire.attireNotes ||
+    attire.attirePhotos.length,
   );
 
   return (
     <div className="space-y-5 pt-2">
-      <Link
-        href={`${base}/crossover`}
-        className="row-press -ml-1 inline-flex items-center gap-0.5 rounded-lg py-1 text-[15px] font-semibold text-accent-ink dark:text-accent-on"
-      >
-        <ChevronLeft width={18} height={18} /> Crossover
-      </Link>
-
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">Crossover {year}</div>
-          <h1 className="page-title mt-2">Attire</h1>
-        </div>
-        {canManage && (
-          <button type="button" className="btn-ghost border border-line !px-4 !py-3" onClick={() => setEditingAttire(true)}>
-            <Pencil width={16} height={16} /> Edit
-          </button>
-        )}
-      </header>
+      <ScreenHeader
+        back={{ href: `${base}/crossover`, label: 'Crossover' }}
+        eyebrow={`Crossover ${year}`}
+        title="Attire"
+        className="mb-0"
+        actions={
+          <>
+            {canManage && (
+              <button type="button" className="btn-outline btn-sm h-11" onClick={() => setEditingAttire(true)}>
+                <Pencil width={16} height={16} /> Edit
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* This year's look */}
       <section className="card space-y-4 p-4">
@@ -110,7 +111,9 @@ export function CrossoverAttire({
         </p>
         {!hasAttire ? (
           <p className="text-sm text-ink-faint">
-            {canManage ? 'No attire yet. Tap Edit to set the colors and notes.' : 'The attire for Crossover hasn’t been posted yet.'}
+            {canManage
+              ? 'No attire yet. Tap Edit to set the colors and notes.'
+              : 'The attire for Crossover hasn’t been posted yet.'}
           </p>
         ) : (
           <>
@@ -119,7 +122,9 @@ export function CrossoverAttire({
               <Swatch label="Secondary" name={attire.attireSecondary} hex={attire.attireSecondaryHex} />
               <Swatch label="Tertiary" name={attire.attireComplement} hex={attire.attireComplementHex} />
             </div>
-            {attire.attireNotes && <p className="selectable whitespace-pre-wrap text-sm text-ink-soft">{attire.attireNotes}</p>}
+            {attire.attireNotes && (
+              <p className="selectable whitespace-pre-wrap text-sm text-ink-soft">{attire.attireNotes}</p>
+            )}
             {attire.attirePhotos.length > 0 && <PhotoGrid photos={attire.attirePhotos} />}
           </>
         )}
@@ -141,7 +146,7 @@ export function CrossoverAttire({
               <div
                 className={cn(
                   'rounded-2xl px-3.5 py-2.5 text-sm',
-                  mine.status === 'changes_requested' ? 'bg-bad/10 text-bad dark:text-[#D98A84]' : 'bg-accent-soft text-ink',
+                  mine.status === 'changes_requested' ? 'bg-bad/10 text-bad-ink' : 'bg-accent-soft text-ink',
                 )}
               >
                 <strong>{mine.reviewedByName?.split(' ')[0] ?? 'Reviewer'}:</strong> {mine.reviewNote}
@@ -155,7 +160,12 @@ export function CrossoverAttire({
             {!mine ? 'Submit my look' : mine.status === 'changes_requested' ? 'Resubmit' : 'Update my look'}
           </button>
           {mine && (
-            <button type="button" className="btn-ghost !px-3.5 text-bad" onClick={() => setWithdrawing(true)} aria-label="Withdraw my look">
+            <button
+              type="button"
+              className="btn-ghost text-bad-ink"
+              onClick={() => setWithdrawing(true)}
+              aria-label="Withdraw my look"
+            >
               <Trash width={17} height={17} />
             </button>
           )}
@@ -167,7 +177,9 @@ export function CrossoverAttire({
         <section className="space-y-3">
           <h2 className="eyebrow">To review · {toReview.length}</h2>
           {toReview.length === 0 ? (
-            <p className="rounded-2xl bg-surface-2 px-4 py-4 text-center text-sm text-ink-faint">You&rsquo;re all caught up.</p>
+            <p className="rounded-2xl bg-surface-2 px-4 py-4 text-center text-sm text-ink-faint">
+              You&rsquo;re all caught up.
+            </p>
           ) : (
             toReview.map((l) => <ReviewCard key={l.id} look={l} onReviewed={upsertLook} />)
           )}
@@ -180,7 +192,12 @@ export function CrossoverAttire({
           <h2 className="eyebrow">Waiting on changes · {sentBack.length}</h2>
           <div className="card divide-y divide-line">
             {sentBack.map((l) => (
-              <button key={l.id} type="button" onClick={() => setViewing(l)} className="row-press flex w-full items-center gap-3 px-4 py-3 text-left">
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setViewing(l)}
+                className="row-press flex w-full items-center gap-3 px-4 py-3 text-left"
+              >
                 <Face name={l.name} image={l.image} size={32} />
                 <span className="min-w-0 flex-1 truncate font-semibold">{l.name}</span>
                 <span className={cn('chip', STATUS.changes_requested.chip)}>Changes</span>
@@ -199,14 +216,22 @@ export function CrossoverAttire({
       <section className="space-y-3">
         <h2 className="eyebrow">Approved looks · {approved.length}</h2>
         {approved.length === 0 ? (
-          <p className="rounded-2xl bg-surface-2 px-4 py-4 text-center text-sm text-ink-faint">No approved looks yet.</p>
+          <p className="rounded-2xl bg-surface-2 px-4 py-4 text-center text-sm text-ink-faint">
+            No approved looks yet.
+          </p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {approved.map((l) => (
               <button key={l.id} type="button" onClick={() => setViewing(l)} className="row-press text-left">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={l.photos[0]} alt={`${l.name}'s look`} className="aspect-[3/4] w-full rounded-2xl border border-line object-cover" />
-                <span className="mt-1 block truncate text-xs font-semibold">{l.userId === userId ? 'You' : l.name}</span>
+                <img
+                  src={l.photos[0]}
+                  alt={`${l.name}'s look`}
+                  className="aspect-[3/4] w-full rounded-2xl border border-line object-cover"
+                />
+                <span className="mt-1 block truncate text-xs font-semibold">
+                  {l.userId === userId ? 'You' : l.name}
+                </span>
               </button>
             ))}
           </div>
@@ -237,7 +262,10 @@ export function CrossoverAttire({
         />
       )}
       {viewing && (
-        <Overlay title={viewing.userId === userId ? 'Your look' : `${viewing.name}'s look`} onClose={() => setViewing(null)}>
+        <Overlay
+          title={viewing.userId === userId ? 'Your look' : `${viewing.name}'s look`}
+          onClose={() => setViewing(null)}
+        >
           <div className="space-y-3">
             <span className={cn('chip', STATUS[viewing.status].chip)}>{STATUS[viewing.status].label}</span>
             <PhotoGrid photos={viewing.photos} large />
@@ -268,7 +296,7 @@ function Face({ name, image, size }: { name: string; image: string | null; size:
   return (
     <Avatar
       image={image}
-      className="grid shrink-0 place-items-center rounded-full bg-accent-soft font-display font-semibold text-accent-ink dark:text-accent-on"
+      className="grid shrink-0 place-items-center rounded-full bg-accent-soft font-display font-semibold text-accent-ink"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
       {name.charAt(0)}
@@ -352,14 +380,19 @@ function ReviewCard({ look, onReviewed }: { look: LookDTO; onReviewed: (look: Lo
           autoFocus
         />
       )}
-      {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+      {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       <div className="flex gap-2">
         {asking ? (
           <>
             <button type="button" className="btn-ghost flex-1" onClick={() => setAsking(false)} disabled={busy}>
               Cancel
             </button>
-            <button type="button" className="btn-primary flex-1" onClick={() => review('changes_requested')} disabled={busy || !note.trim()}>
+            <button
+              type="button"
+              className="btn-primary flex-1"
+              onClick={() => review('changes_requested')}
+              disabled={busy || !note.trim()}
+            >
               {busy ? 'Sending…' : 'Send back'}
             </button>
           </>
@@ -442,7 +475,7 @@ function LookEditor({
       title={initial ? 'Update your look' : 'Submit your look'}
       onClose={onClose}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={busy || uploading} onClick={submit}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy || uploading} onClick={submit}>
           {busy ? 'Sending…' : 'Submit'}
         </button>
       }
@@ -454,7 +487,11 @@ function LookEditor({
             {photos.map((url) => (
               <div key={url} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="Your look" className="aspect-[3/4] w-full rounded-2xl border border-line object-cover" />
+                <img
+                  src={url}
+                  alt="Your look"
+                  className="aspect-[3/4] w-full rounded-2xl border border-line object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => setPhotos((prev) => prev.filter((u) => u !== url))}
@@ -479,12 +516,24 @@ function LookEditor({
               </button>
             )}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => addFiles(e.target.files)}
+          />
           <p className="mt-2 text-xs text-ink-faint">A full-length photo works best. Up to 6.</p>
         </div>
-        <TextArea label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything Judy should know" />
+        <TextArea
+          label="Note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Anything Judy should know"
+        />
         {initial && <p className="text-xs text-ink-faint">Resubmitting sends your look back for review.</p>}
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       </div>
     </Overlay>
   );
@@ -530,7 +579,10 @@ function AttireEditor({
     setBusy(true);
     setError(null);
     try {
-      const res = await apiFetch<{ attire: SeasonAttireDTO }>('/api/crossover/attire', { method: 'PATCH', body: JSON.stringify(a) });
+      const res = await apiFetch<{ attire: SeasonAttireDTO }>('/api/crossover/attire', {
+        method: 'PATCH',
+        body: JSON.stringify(a),
+      });
       onSaved(res.attire);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save the attire.');
@@ -543,7 +595,7 @@ function AttireEditor({
       title="Crossover attire"
       onClose={onClose}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={busy || uploading} onClick={save}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy || uploading} onClick={save}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       }
@@ -608,9 +660,16 @@ function AttireEditor({
               </span>
             </button>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => addFiles(e.target.files)}
+          />
         </div>
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       </div>
     </Overlay>
   );

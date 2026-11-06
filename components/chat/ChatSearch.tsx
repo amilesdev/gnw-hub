@@ -197,7 +197,7 @@ export function ChatSearch({
             {scopeChat ? `Search messages in ${scopeChat.name}.` : 'Search messages in all your chats.'}
           </p>
         ) : error && !shown ? (
-          <p className="px-8 pt-10 text-center text-sm text-bad">{error}</p>
+          <p className="px-8 pt-10 text-center text-sm text-bad-ink">{error}</p>
         ) : !shown ? (
           <p className="px-8 pt-10 text-center text-sm text-ink-faint">Searching…</p>
         ) : shown.hits.length === 0 ? (
@@ -236,7 +236,7 @@ function ScopeChip({ on, onClick, children }: { on: boolean; onClick: () => void
       onClick={onClick}
       className={cn(
         'max-w-[60%] truncate rounded-full border px-3 py-1 text-sm font-semibold transition-colors',
-        on ? 'border-accent bg-accent text-white' : 'border-line text-ink-soft',
+        on ? 'border-accent bg-accent text-accent-fg' : 'border-line text-ink-soft',
       )}
     >
       {children}

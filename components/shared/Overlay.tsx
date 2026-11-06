@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft } from './Icons';
+import { cn } from '@/lib/utils';
+import { BackPill } from './ScreenHeader';
 
 /** How far (px) the page must be dragged right before it commits to going back. */
 const CLOSE_THRESHOLD = 80;
@@ -42,11 +43,23 @@ export function Overlay({
   onClose,
   children,
   action,
+  backLabel = 'Back',
+  eyebrow,
+  canClose,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   action?: ReactNode;
+  /** The parent's name on the back pill ("Events", "Setlist", "Library"). */
+  backLabel?: string;
+  eyebrow?: ReactNode;
+  /**
+   * Asked before any close (Back, Esc, edge swipe, system back). Return false
+   * to stay open — e.g. to ask "Discard changes?" first; the caller then closes
+   * for real through its own `onClose`.
+   */
+  canClose?: () => boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -55,6 +68,9 @@ export function Overlay({
   const closingRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const canCloseRef = useRef(canClose);
+  canCloseRef.current = canClose;
+  const allowClose = () => canCloseRef.current?.() ?? true;
 
   const vw = () => (typeof window === 'undefined' ? 430 : window.innerWidth);
   const isTop = () => overlayStack[overlayStack.length - 1] === idRef.current;
@@ -83,6 +99,11 @@ export function Overlay({
     }, 0);
     const onPopState = () => {
       if (!pushed || popped || !isTop() || window.history.state?.gnwOverlay === id) return;
+      // Held open (unsaved changes): put our entry back and stay.
+      if (!allowClose()) {
+        window.history.pushState({ gnwOverlay: id }, '');
+        return;
+      }
       // The system gesture already animated the page away — just unmount.
       popped = true;
       closingRef.current = true;
@@ -103,7 +124,7 @@ export function Overlay({
 
   // Slide the panel back out to the right (the way it came in), then unmount.
   const close = useCallback(() => {
-    if (closingRef.current) return;
+    if (closingRef.current || !allowClose()) return;
     closingRef.current = true;
     const panel = panelRef.current;
     const backdrop = backdropRef.current;
@@ -197,7 +218,7 @@ export function Overlay({
       drag.active = false;
       if (!drag.horizontal) return;
 
-      if (drag.dx > CLOSE_THRESHOLD) {
+      if (drag.dx > CLOSE_THRESHOLD && allowClose()) {
         // Commit: finish the slide off-screen, then unmount.
         closingRef.current = true;
         el.style.transition = `transform 0.2s ${EASE}`;
@@ -228,29 +249,25 @@ export function Overlay({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-center">
-      <div ref={backdropRef} className="absolute inset-0 animate-fade-in bg-ink/40" aria-hidden />
+      <div ref={backdropRef} className="absolute inset-0 animate-fade-in bg-scrim" aria-hidden />
       <div
         ref={panelRef}
         className="overlay-slide-in relative flex h-full w-full max-w-[430px] flex-col bg-app shadow-card-lg"
       >
+        <div className="app-wash" aria-hidden />
         <header
-          className="shrink-0 px-5 pb-3"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+          className="relative shrink-0 px-5 pb-3"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}
         >
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={close}
-              className="row-press -ml-2 grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
-              aria-label="Back"
-            >
-              <ChevronLeft width={24} height={24} />
-            </button>
-            {action}
+          <div className="flex h-11 items-center justify-between gap-3">
+            <BackPill label={backLabel} onClick={close} />
+            {/* Header buttons are 44 tall (CMP-4), small or not. */}
+            <div className="flex shrink-0 items-center [&_.btn-sm]:h-11">{action}</div>
           </div>
-          <h1 className="page-title mt-2">{title}</h1>
+          {eyebrow && <p className="eyebrow mt-4">{eyebrow}</p>}
+          <h1 className={cn('page-title', eyebrow ? 'mt-2' : 'mt-4')}>{title}</h1>
         </header>
-        <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-10 pt-2">{children}</div>
+        <div className="no-scrollbar relative flex-1 overflow-y-auto px-5 pb-10 pt-2">{children}</div>
       </div>
     </div>,
     document.body,

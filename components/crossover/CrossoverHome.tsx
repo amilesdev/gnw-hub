@@ -2,6 +2,7 @@
 
 import { useState, type ComponentType, type SVGProps } from 'react';
 import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import type { EventDTO } from '@/lib/serialize';
 import { EventDetail } from '@/components/shared/EventDetail';
 import { ChevronRight, Clock, Music, MusicPlus, Shirt, Video } from '@/components/shared/Icons';
@@ -47,17 +48,14 @@ export function CrossoverHome({
   );
 
   return (
-    <div className="animate-enter-home space-y-6 pb-2 pt-2">
-      <header className="pr-12">
-        <div className="eyebrow">GNW Hub</div>
-        <h1 className="page-title mt-2">Crossover</h1>
-      </header>
+    <div className="animate-enter-home space-y-6 pb-2">
+      <ScreenHeader eyebrow="GNW Hub" title="Crossover" className="mb-0" />
 
       <CrossoverHero year={year} serverNow={serverNow} />
 
       <section className="space-y-3" aria-label="Road to Crossover">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-display text-xl font-semibold">Road to Crossover</h2>
+          <h2 className="t-title">Road to Crossover</h2>
           <Link
             href={`${base}/crossover/calendar`}
             className="row-press inline-flex items-center gap-0.5 rounded-lg text-sm font-semibold text-crossover-gold-ink dark:text-crossover-gold"

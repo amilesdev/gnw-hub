@@ -12,26 +12,36 @@ const LABELS: Record<EventType, string> = {
   other: 'Other',
 };
 
-// Tinted badge pattern (§3): light bubble + deeper text of the same hue.
-// Muted, earthy hues per the brand doc — service=sage green, rehearsal=amber,
-// holy_talks=slate-blue, prayer=brick red, encounter_night=plum, other=pink.
+// Event-type colours (EV-C2) are tokens (`--type-*` in globals.css): service
+// sage, rehearsal amber, prayer rose, holy talks blue, encounter night plum,
+// other a neutral stone. Chip = tinted bg + deeper text of the same hue.
 const STYLES: Record<EventType, string> = {
-  service: 'bg-accent/10 text-accent-ink dark:text-accent-on',
-  rehearsal: 'bg-warn/15 text-[#8F5E1C] dark:text-[#E0A75E]',
-  holy_talks: 'bg-info/15 text-info',
-  prayer: 'bg-bad/15 text-bad dark:text-[#D98A84]',
-  encounter_night: 'bg-[#6E5A9E]/15 text-[#56448A] dark:text-[#B9A8E3]',
-  other: 'bg-[#A8708A]/15 text-[#8A4E6A] dark:text-[#CFA0B8]',
+  service: 'bg-type-service-bg text-type-service',
+  rehearsal: 'bg-type-rehearsal-bg text-type-rehearsal',
+  holy_talks: 'bg-type-holytalks-bg text-type-holytalks',
+  prayer: 'bg-type-prayer-bg text-type-prayer',
+  encounter_night: 'bg-type-encounter-bg text-type-encounter',
+  other: 'bg-type-other-bg text-type-other',
 };
 
-// Solid version of the same hues, for calendar day dots.
+// Text colour alone, for the dot + eyebrow in event rows.
+export const EVENT_TEXT_STYLES: Record<EventType, string> = {
+  service: 'text-type-service',
+  rehearsal: 'text-type-rehearsal',
+  holy_talks: 'text-type-holytalks',
+  prayer: 'text-type-prayer',
+  encounter_night: 'text-type-encounter',
+  other: 'text-type-other',
+};
+
+// Solid version of the same hues, for row and calendar dots.
 export const EVENT_DOT_STYLES: Record<EventType, string> = {
-  service: 'bg-accent',
-  rehearsal: 'bg-warn',
-  holy_talks: 'bg-info',
-  prayer: 'bg-bad',
-  encounter_night: 'bg-[#6E5A9E]',
-  other: 'bg-[#A8708A]',
+  service: 'bg-type-service-dot',
+  rehearsal: 'bg-type-rehearsal-dot',
+  holy_talks: 'bg-type-holytalks-dot',
+  prayer: 'bg-type-prayer-dot',
+  encounter_night: 'bg-type-encounter-dot',
+  other: 'bg-type-other-dot',
 };
 
 export function EventTypeBadge({ type, className }: { type: EventType; className?: string }) {
@@ -49,6 +59,26 @@ export function EventBadge({ event, className }: { event: BadgeEvent; className?
     <span className={cn('chip shrink-0 bg-crossover-ever text-crossover-gold-hi', className)}>
       <Sparkle width={12} height={12} aria-hidden />
       Crossover
+    </span>
+  );
+}
+
+/** Row eyebrow (EV-C1): a 6px type dot + the label in the type's text colour. */
+export function EventTypeEyebrow({ event, className }: { event: BadgeEvent; className?: string }) {
+  const crossover = !!event.crossoverKind;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 text-[11px] font-bold uppercase leading-[14px] tracking-[0.06em]',
+        crossover ? 'text-crossover-gold-ink dark:text-crossover-gold' : EVENT_TEXT_STYLES[event.type],
+        className,
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn('h-1.5 w-1.5 rounded-full', crossover ? 'bg-crossover-gold' : EVENT_DOT_STYLES[event.type])}
+      />
+      {eventLabel(event)}
     </span>
   );
 }

@@ -8,7 +8,7 @@ import { PollForm } from './PollForm';
 import { PollResults } from '@/components/shared/PollResults';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
-import { ChevronDown, ChevronRight, Trash, Upload, Check } from '@/components/shared/Icons';
+import { ChevronRight, Trash, Download, Check } from '@/components/shared/Icons';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -83,15 +83,15 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
 
   return (
     <section className="space-y-3 pb-2">
-      <h2 className="eyebrow">Polls</h2>
+      <h2 className="t-title">Polls</h2>
 
       {!loaded ? (
         <SkeletonList>
-          <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
-          <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
+          <Skeleton className="h-16 w-full rounded-3xl" />
+          <Skeleton className="h-16 w-full rounded-3xl" />
         </SkeletonList>
       ) : polls.length === 0 ? (
-        <div className="card p-5 text-center text-sm text-ink-faint">No active polls. Use “Add Poll” to poll the team.</div>
+        <div className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No active polls. Use “Add Poll” to poll the team.</div>
       ) : (
         polls.map((p) => {
           const open = openId === p.id;
@@ -100,22 +100,18 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
               <button
                 type="button"
                 onClick={() => setOpenId(open ? null : p.id)}
-                className="row-press flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                className="row-press flex w-full items-center gap-3 py-3.5 pl-4 pr-3 text-left"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{p.question}</span>
-                  <span className="block text-xs text-ink-faint">
+                  <span className="row-title block truncate">{p.question}</span>
+                  <span className="block text-[13px] leading-[18px] text-ink-faint">
                     {p.ended ? 'Ended' : 'Active'} · {formatEnds(p.endsAt)} · {p.totalVoters} voted
                   </span>
                 </span>
-                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent/15 text-accent-ink dark:text-accent-on'}`}>
+                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent-soft text-accent-ink'}`}>
                   {p.ended ? 'Ended' : 'Live'}
                 </span>
-                {open ? (
-                  <ChevronDown width={18} height={18} className="text-ink-faint" />
-                ) : (
-                  <ChevronRight width={18} height={18} className="text-ink-faint" />
-                )}
+                <ChevronRight width={18} height={18} className={`shrink-0 text-ink-faint transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
               </button>
 
               {open && (
@@ -125,9 +121,9 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
                     <button
                       type="button"
                       onClick={() => setEnding(p)}
-                      className="btn-ghost w-full !py-2 text-sm"
+                      className="btn-ghost w-full"
                     >
-                      <Check width={16} height={16} /> End poll now
+                      <Check width={18} height={18} /> End poll now
                     </button>
                   )}
                   <div className="flex gap-2">
@@ -135,17 +131,17 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
                       type="button"
                       onClick={() => download(p)}
                       disabled={!p.ended}
-                      className="btn-ghost flex-1 !py-2 text-sm disabled:opacity-40"
+                      className="btn-ghost flex-1"
                       title={p.ended ? 'Download results' : 'Available once the poll ends'}
                     >
-                      <Upload width={16} height={16} /> Download
+                      <Download width={18} height={18} /> Download
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirming(p)}
-                      className="btn-ghost !py-2 text-sm text-bad"
+                      className="btn-danger-text"
                     >
-                      <Trash width={16} height={16} /> Delete
+                      <Trash width={18} height={18} /> Delete
                     </button>
                   </div>
                 </div>

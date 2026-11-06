@@ -3,11 +3,14 @@
 import { Modal } from './Modal';
 import { haptics } from '@/lib/haptics';
 
+/** A sheet you must answer (CMP-6): no close button, Cancel + Confirm side by side. */
 export function ConfirmDialog({
   open,
   title,
   message,
   confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  busyLabel = 'Working…',
   destructive = true,
   onConfirm,
   onClose,
@@ -17,6 +20,8 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
+  busyLabel?: string;
   destructive?: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -28,23 +33,19 @@ export function ConfirmDialog({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
-      <p className="text-ink-soft">{message}</p>
+    <Modal open={open} onClose={busy ? () => {} : onClose} title={title} hideClose>
+      <p className="text-base leading-6 text-ink-soft">{message}</p>
       <div className="mt-5 flex gap-3">
         <button type="button" className="btn-ghost flex-1" onClick={onClose} disabled={busy}>
-          Cancel
+          {cancelLabel}
         </button>
         <button
           type="button"
           onClick={confirm}
           disabled={busy}
-          className={
-            destructive
-              ? 'inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-bad px-5 py-3.5 font-semibold text-white shadow-pop transition active:scale-[0.97] disabled:opacity-40'
-              : 'btn-primary flex-1'
-          }
+          className={destructive ? 'btn-danger flex-1' : 'btn-primary flex-1'}
         >
-          {busy ? 'Working…' : confirmLabel}
+          {busy ? busyLabel : confirmLabel}
         </button>
       </div>
     </Modal>

@@ -45,21 +45,21 @@ export function LyricChartPreview({
           )}
         </div>
       )}
-      <div className={cn('selectable leading-relaxed', !bare && 'max-h-96 overflow-y-auto')}>
+      <div className={cn('selectable', !bare && 'max-h-96 overflow-y-auto leading-relaxed')}>
         {chart.lines.map((line, i) => {
           if (line.type === 'blank') return <div key={i} style={{ height: '0.75rem' }} aria-hidden />;
           if (line.type === 'section') {
             return (
               <p
                 key={i}
-                className="mb-1 mt-3 text-xs font-bold uppercase tracking-[0.1em] text-accent-ink first:mt-0 dark:text-accent-on"
+                className="eyebrow mb-1 mt-4 text-accent-ink first:mt-0"
               >
                 {line.text}
               </p>
             );
           }
           return (
-            <p key={i} className="text-ink">
+            <p key={i} className={cn(bare ? 'lyric' : 'leading-relaxed', 'text-ink')}>
               {line.text}
             </p>
           );

@@ -2,33 +2,35 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Avatar } from './Avatar';
+import { MemberAvatar } from './Avatar';
 
 /**
- * Floating avatar pinned to the top-right of the shell — the way into Profile
- * (members) or Settings (leaders), which aren't bottom tabs. It stays put while
- * the screen scrolls beneath it, so headers with right-side controls reserve
- * room for it with `pr-12`. Hidden on the destination itself.
+ * Floating avatar (CMP-21): a 44px glass droplet pinned top-right of the shell,
+ * the way into Profile (members) or Settings (leaders), which aren't tabs. It
+ * stays put while the screen scrolls beneath it, so every header reserves 56px
+ * on the right (ScreenHeader). Hidden on Profile/Settings and My Availability
+ * (reached from Profile).
  */
 export function ProfileButton({ href, name, image }: { href: string; name: string; image: string | null }) {
   const pathname = usePathname();
-  if (pathname === href || pathname.startsWith(`${href}/`)) return null;
+  const base = href.startsWith('/dashboard') ? '/dashboard' : '/home';
+  const ownAvailability = pathname === `${base}/availability`;
+  if (pathname === href || pathname.startsWith(`${href}/`) || ownAvailability) return null;
 
   return (
     <Link
       href={href}
       aria-label={href.endsWith('settings') ? 'Settings' : 'Profile'}
-      className="no-print row-press absolute right-5 z-30 rounded-full shadow-pop ring-2 ring-surface"
-      style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      className="no-print absolute right-5 z-avatar rounded-full transition-transform duration-150 ease-soft active:scale-[0.94] focus-visible:outline-none focus-visible:[box-shadow:var(--focus-ring)]"
+      style={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
     >
-      <Avatar
+      <MemberAvatar
+        name={name}
         image={image}
-        alt={name}
-        className="grid h-10 w-10 place-items-center rounded-full font-display text-[17px] font-semibold text-white"
-        style={{ background: 'linear-gradient(150deg, #5E7048, #3c4a2c)' }}
-      >
-        {name.slice(0, 1).toUpperCase()}
-      </Avatar>
+        size={44}
+        variant="drop"
+        className={image ? 'border border-[var(--drop-border)]' : undefined}
+      />
     </Link>
   );
 }

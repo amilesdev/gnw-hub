@@ -129,7 +129,7 @@ function InviteFlow() {
           placeholder="Re-enter password"
           enterKeyHint="go"
         />
-        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Setting up…' : 'Join the team'}
         </button>

@@ -1,21 +1,67 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
+import type { SongSheetContext } from './AudioProvider';
 import { SongDetail } from './SongDetail';
-import { SongLeadFaces } from './SongLeads';
 import { EmptyState } from './EmptyState';
-import { Skeleton, SetlistSkeleton, SkeletonList } from './Skeleton';
-import { Music, ChevronRight, Clock, Book } from './Icons';
+import { SetlistSkeleton, SkeletonList, Skeleton } from './Skeleton';
+import { SongRow } from './HomeSections';
+import { setlistTitle } from '@/lib/setlist-title';
+import { Clock } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate } from '@/lib/dates';
+import { listCard } from '@/lib/ui-classes';
+import { cn } from '@/lib/utils';
 
+/** Heading for one setlist: its name (Literata) and its dates joined " · ". */
+export function SetlistHeading({ setlist, action }: { setlist: SetlistDTO; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">
+        <h2 className="t-title">{setlistTitle(setlist, 'Unlinked setlist')}</h2>
+        {setlist.events.length > 0 && (
+          <p className="text-sm text-ink-faint">
+            {setlist.events.map((e) => formatEventDate(new Date(e.date))).join(' · ')}
+          </p>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/** The song rows card for one setlist, opening each song with its context. */
+export function SetlistSongs({
+  setlist,
+  onSong,
+}: {
+  setlist: SetlistDTO;
+  onSong: (song: SongDTO, context: SongSheetContext) => void;
+}) {
+  const total = setlist.songs.length;
+  return (
+    <div className={cn(listCard, 'animate-rise')}>
+      {setlist.songs.map((s, i) => (
+        <SongRow
+          key={s.id}
+          song={s}
+          index={i}
+          onClick={() =>
+            onSong(s, { backLabel: 'Setlist', eyebrow: `${setlistTitle(setlist)} · Song ${i + 1} of ${total}` })
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Songs › Setlists for members (SG-1). The Songs tab supplies the header. */
 export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDTO[] } = {}) {
   const [setlists, setSetlists] = useState<SetlistDTO[]>(initialSetlists ?? []);
   const [loading, setLoading] = useState(initialSetlists === undefined);
-  const [song, setSong] = useState<SongDTO | null>(null);
+  const [open, setOpen] = useState<{ song: SongDTO; context: SongSheetContext } | null>(null);
 
   async function load() {
     try {
@@ -41,74 +87,27 @@ export function SetlistScreen({ initialSetlists }: { initialSetlists?: SetlistDT
   const visibleSetlists = setlists.filter((s) => s.songs.length > 0);
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">GNW Hub</div>
-          <h1 className="page-title mt-2">Setlist</h1>
-        </div>
-        <Link href="/home/library" className="btn-ghost !px-4 !py-3 border border-line">
-          <Book width={18} height={18} /> Library
-        </Link>
-      </header>
-
+    <>
       {loading ? (
         <SkeletonList>
-          <Skeleton className="h-6 w-44" />
+          <Skeleton className="h-5 w-44" />
+          <Skeleton className="h-3.5 w-24" />
           <SetlistSkeleton />
         </SkeletonList>
       ) : visibleSetlists.length === 0 ? (
-        <EmptyState icon={Clock} message="No setlists yet. Sit tight — your leaders are picking the songs." />
+        <EmptyState icon={Clock} message="No setlists yet. Sit tight. Your leaders are picking the songs." />
       ) : (
         <div className="space-y-6">
           {visibleSetlists.map((sl) => (
             <section key={sl.id} className="space-y-3">
-              <div>
-                <h2 className="font-display text-xl font-semibold">
-                  {sl.name
-                    ? sl.name
-                    : sl.events.length
-                      ? Array.from(new Set(sl.events.map((e) => e.eventName))).join(' · ')
-                      : 'Setlist'}
-                </h2>
-                {sl.events.length > 0 && (
-                  <p className="text-sm text-ink-faint">
-                    {sl.events.map((e) => formatEventDate(new Date(e.date))).join(' • ')}
-                  </p>
-                )}
-              </div>
-              <div className="card overflow-hidden">
-                {sl.songs.map((s, i) => {
-                  const partCount = [s.audioSoprano, s.audioAlto, s.audioTenor, s.audioAllParts].filter(Boolean).length;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setSong(s)}
-                      className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
-                    >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink dark:text-accent-on">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold">{s.songTitle}</span>
-                        <span className="flex items-center gap-1 text-xs text-ink-faint">
-                          <Music width={12} height={12} />
-                          {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
-                        </span>
-                      </span>
-                      <SongLeadFaces leads={s.leads} />
-                      <ChevronRight width={20} height={20} className="text-ink-faint" />
-                    </button>
-                  );
-                })}
-              </div>
+              <SetlistHeading setlist={sl} />
+              <SetlistSongs setlist={sl} onSong={(song, context) => setOpen({ song, context })} />
             </section>
           ))}
         </div>
       )}
 
-      {song && <SongDetail song={song} onClose={() => setSong(null)} />}
-    </div>
+      {open && <SongDetail song={open.song} context={open.context} onClose={() => setOpen(null)} />}
+    </>
   );
 }

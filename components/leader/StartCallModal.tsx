@@ -49,7 +49,7 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
         />
 
         <div className="space-y-1.5">
-          <span className="text-sm font-semibold text-ink-soft">Who can join</span>
+          <span className="label">Who can join</span>
           <SegmentedControl<Audience>
             value={audience}
             onChange={setAudience}
@@ -75,7 +75,7 @@ export function StartCallModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       </form>
     </Modal>
   );

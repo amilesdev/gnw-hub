@@ -4,22 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS, PART_LABELS, PART_SLUG, type AudioPart } from '@/lib/setlist-serialize';
+import type { SongSheetContext } from './AudioProvider';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
-import { Play, Upload, Trash, Pencil } from './Icons';
+import { PartRow } from './PartRow';
+import { Upload, Trash, Pencil } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { uploadFile } from '@/lib/upload-client';
-import { cn } from '@/lib/utils';
 
 /**
- * The four vocal-part tiles inside the song card.
+ * The song sheet's parts list (SG-C1): Soprano, Alto, Tenor, All Parts, each a
+ * row with the inline player. "You sing {Part}" sits on the heading when the
+ * viewer has a vocal part.
  *
- * Read-only for everyone (tap to play; an empty part reads "Soon") — except the
- * vocal director, whose only two additions are an Add tile wherever a part is
- * still missing, and an Edit button on the "Vocal parts" heading row once at
- * least one part exists. Replace/Remove live inside the dialog that button
- * opens, so a filled tile always reads exactly as it does for everyone else and
- * the grid never turns into a control panel.
+ * Read-only for everyone — except the vocal director, whose only additions are
+ * an Upload button on each part still missing, and an Edit button on the
+ * heading once at least one part exists. Replace/Remove live inside the dialog
+ * that button opens, so a filled row always reads exactly as it does for
+ * everyone else.
  *
  * Uploads go browser → Supabase via a signed URL (`uploadFile`), so a big .wav
  * doesn't hit Vercel's ~4.5 MB request-body cap; the PATCH that follows only
@@ -29,21 +31,23 @@ import { cn } from '@/lib/utils';
 export function VocalPartsGrid({
   song,
   canEdit,
-  activePart,
-  onSelect,
+  myPart,
+  context,
   onChanged,
 }: {
   song: SongDTO;
   canEdit: boolean;
-  activePart: AudioPart | null;
-  onSelect: (part: AudioPart) => void;
+  /** The viewer's vocal part label ("Alto"), if they sing one. */
+  myPart?: string | null;
+  context?: SongSheetContext;
   onChanged: (song: SongDTO) => void;
 }) {
   const router = useRouter();
   const [busyPart, setBusyPart] = useState<AudioPart | null>(null);
+  const [progress, setProgress] = useState(0);
   const [confirming, setConfirming] = useState<AudioPart | null>(null);
   const [editing, setEditing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ part: AudioPart | null; message: string } | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const filled = AUDIO_PARTS.filter((p) => Boolean(song[p]));
@@ -69,15 +73,16 @@ export function VocalPartsGrid({
 
   async function upload(part: AudioPart, file: File) {
     setBusyPart(part);
+    setProgress(0);
     setError(null);
     try {
       const ext = file.name.split('.').pop() || 'mp3';
       // Keyed by the library song, not by month: a song lives in the library and
       // may sit on several setlists. The id suffix keeps two same-titled songs apart.
       const path = `audio/library/${slug(song.songTitle)}-${song.id.slice(-6)}/${PART_SLUG[part]}.${ext}`;
-      await save(part, await uploadFile(path, file));
+      await save(part, await uploadFile(path, file, setProgress));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Try again.');
+      setError({ part, message: e instanceof Error ? e.message : 'Upload failed. Try again.' });
     } finally {
       setBusyPart(null);
     }
@@ -90,88 +95,76 @@ export function VocalPartsGrid({
       await save(part, null);
       setConfirming(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not remove that part.');
+      setError({ part, message: e instanceof Error ? e.message : 'Could not remove that part.' });
     } finally {
       setBusyPart(null);
     }
   }
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="label !mb-0">Vocal parts</p>
-        {canEdit && filled.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setEditing(true);
-            }}
-            className="row-press -my-1 -mr-1.5 inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-[0.08em] text-accent dark:text-accent-on"
-          >
-            <Pencil width={13} height={13} />
-            Edit
-          </button>
-        )}
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="eyebrow">Parts</p>
+        <div className="flex items-center gap-3">
+          {myPart && <p className="text-sm font-bold text-accent-ink">You sing {myPart}</p>}
+          {canEdit && filled.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setEditing(true);
+              }}
+              className="btn-outline btn-sm"
+            >
+              <Pencil width={16} height={16} />
+              Edit
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="space-y-2">
         {AUDIO_PARTS.map((p) => {
-          const available = Boolean(song[p]);
-          const active = activePart === p;
           const busy = busyPart === p;
-
-          // Empty slot, editor: the whole tile is the file picker. It stays put
-          // once other parts are filled — the Edit dialog is for what's already
-          // there; this is how the rest get added.
-          if (!available && canEdit) {
-            return (
-              <button
-                key={p}
-                type="button"
-                disabled={busy}
-                onClick={() => fileRefs.current[p]?.click()}
-                className="row-press flex items-center justify-between rounded-2xl border border-dashed border-line bg-surface-2 px-4 py-4 text-left font-semibold text-ink-soft disabled:opacity-60"
-              >
-                <span>{PART_LABELS[p]}</span>
-                {busy ? (
-                  <span className="text-[11px] font-bold uppercase tracking-wide">Adding…</span>
-                ) : (
-                  <Upload width={18} height={18} className="text-accent dark:text-accent-on" />
-                )}
-              </button>
-            );
-          }
-
-          // Everyone else's tile — and hers, once a part is filled: tap to play,
-          // nothing more.
+          const uploading = busy && !song[p];
           return (
-            <button
+            <PartRow
               key={p}
-              type="button"
-              disabled={!available}
-              onClick={() => onSelect(p)}
-              className={cn(
-                'row-press flex items-center justify-between rounded-2xl border px-4 py-4 text-left font-semibold',
-                active
-                  ? 'border-accent bg-accent text-white shadow-pop'
-                  : available
-                    ? 'border-line bg-surface text-ink'
-                    : 'border-line bg-surface-2 text-ink-faint',
-              )}
-            >
-              <span>{PART_LABELS[p]}</span>
-              {available ? (
-                <Play width={18} height={18} className={active ? 'text-white' : 'text-accent dark:text-accent-on'} />
-              ) : (
-                <span className="text-[11px] font-bold uppercase tracking-wide">Soon</span>
-              )}
-            </button>
+              id={`${song.id}:${p}`}
+              label={PART_LABELS[p]}
+              src={song[p]}
+              song={song}
+              context={context}
+              mine={myPart === PART_LABELS[p]}
+              trailing={
+                canEdit && !song[p] ? (
+                  uploading ? (
+                    <span className="shrink-0 text-[13px] font-bold tabular-nums text-accent-ink">Uploading {progress}%</span>
+                  ) : (
+                    <button type="button" onClick={() => fileRefs.current[p]?.click()} className="btn-ghost btn-sm shrink-0">
+                      <Upload width={16} height={16} /> Upload
+                    </button>
+                  )
+                ) : undefined
+              }
+              below={
+                <>
+                  {busy && (
+                    <div className="mx-4 mt-1 h-[3px] overflow-hidden rounded-full bg-track" aria-hidden>
+                      <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                  {error?.part === p && !editing && (
+                    <p role="alert" className="mt-1.5 px-1 text-[13px] font-semibold text-bad-ink">{error.message}</p>
+                  )}
+                </>
+              }
+            />
           );
         })}
       </div>
 
-      {/* One hidden picker per part, kept out of the grid so they can never
+      {/* One hidden picker per part, kept out of the list so they can never
           affect its layout — and outside the dialog, so a Replace picked from
           there still lands if the dialog closes behind it. */}
       {canEdit &&
@@ -179,50 +172,48 @@ export function VocalPartsGrid({
           <PartFileInput key={p} part={p} fileRefs={fileRefs} onPick={(f) => upload(p, f)} />
         ))}
 
-      {error && !editing && <p className="mt-2 text-xs font-semibold text-bad">{error}</p>}
-
       {/* Replace / remove, kept behind the Edit button so they never crowd the
-          tiles. Only parts that exist are listed — an empty one is added from
-          its own tile. */}
+          rows. Only parts that exist are listed — an empty one is added from
+          its own row. */}
       <Modal open={editing} onClose={() => setEditing(false)} title="Edit vocal parts">
         <div className="space-y-2">
           {filled.map((p) => {
             const busy = busyPart === p;
             return (
-              <div key={p} className="flex items-center gap-2 rounded-2xl bg-surface-2 px-3 py-2.5">
+              <div key={p} className="flex items-center gap-2 rounded-2xl bg-surface-2 py-2 pl-4 pr-2">
                 <span className="min-w-0 flex-1 truncate font-semibold text-ink">{PART_LABELS[p]}</span>
                 <button
                   type="button"
-                  className="btn-ghost !bg-surface !px-3 !py-1.5 text-xs disabled:opacity-50"
+                  className="btn-outline btn-sm"
                   disabled={busy}
                   onClick={() => fileRefs.current[p]?.click()}
                 >
-                  {busy ? 'Working…' : 'Replace'}
+                  {busy ? `Uploading ${progress}%` : 'Replace'}
                 </button>
                 <button
                   type="button"
-                  className="row-press rounded-xl p-1.5 text-bad disabled:opacity-50"
+                  className="btn-icon text-bad-ink"
                   disabled={busy}
                   onClick={() => setConfirming(p)}
                   aria-label={`Remove ${PART_LABELS[p]}`}
                 >
-                  <Trash width={16} height={16} />
+                  <Trash width={18} height={18} />
                 </button>
               </div>
             );
           })}
         </div>
 
-        {error && <p className="mt-3 text-xs font-semibold text-bad">{error}</p>}
-        <p className="mt-3 text-xs text-ink-faint">
-          Removing a part deletes it for everyone. Parts that aren’t listed here haven’t been uploaded
-          yet — add those from the song card.
+        {error && <p role="alert" className="mt-3 text-[13px] font-semibold text-bad-ink">{error.message}</p>}
+        <p className="mt-3 text-[13px] leading-[18px] text-ink-faint">
+          Removing a part deletes it for everyone. Parts that aren’t listed here haven’t been uploaded yet. Add those
+          from the song sheet.
         </p>
       </Modal>
 
       <ConfirmDialog
         open={confirming !== null}
-        title="Remove part?"
+        title={confirming ? `Remove ${PART_LABELS[confirming]} audio?` : 'Remove audio?'}
         message={
           confirming
             ? `This deletes the ${PART_LABELS[confirming]} audio for “${song.songTitle}” for everyone. You can upload a new one after.`
@@ -233,7 +224,7 @@ export function VocalPartsGrid({
         onConfirm={() => confirming && remove(confirming)}
         onClose={() => setConfirming(null)}
       />
-    </div>
+    </section>
   );
 }
 

@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
-// GNW design system — ported verbatim from Docs/GNW-Apps-Hub.md §9.
+// GNW design system · 3a "Sage Sheet, glass chrome" (Docs/gnw-redesign/tokens).
+// Colours read the CSS variables in globals.css, so dark mode is token-only.
 const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
@@ -25,18 +26,45 @@ const config: Config = {
         // flip in dark mode), and the Survival life colour.
         'play-ink': 'rgb(var(--play-ink) / <alpha-value>)',
         'play-heart': 'rgb(var(--play-heart) / <alpha-value>)',
+        // 3a: accent swaps in dark (light sage fill), so text ON accent is
+        // `text-accent-fg`, never `text-white`. `accent-on` is a legacy alias.
         accent: {
-          DEFAULT: '#5E7048',
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          fg: 'rgb(var(--accent-fg) / <alpha-value>)',
           soft: 'rgb(var(--accent-soft) / <alpha-value>)',
-          ink: '#4A5938',
-          on: '#AEBE8A',
+          ink: 'rgb(var(--accent-ink) / <alpha-value>)',
+          on: 'rgb(var(--accent-on) / <alpha-value>)',
         },
-        // Semantic status colors — generic; alias per app as needed.
-        good: '#5E7048', // success / positive
-        warn: '#C58A3D', // warning / caution
-        bad: '#B4544E', // error / negative
-        info: '#6E7FA0', // neutral / informational
-        unread: '#E8833A', // "something new here" dot — orange so it reads against the sage accent
+        // Semantic status colors: the bare name is the fill, `-ink` the text.
+        good: { DEFAULT: 'rgb(var(--good) / <alpha-value>)', ink: 'rgb(var(--good-ink) / <alpha-value>)' },
+        warn: { DEFAULT: 'rgb(var(--warn) / <alpha-value>)', ink: 'rgb(var(--warn-ink) / <alpha-value>)' },
+        bad: { DEFAULT: 'rgb(var(--bad) / <alpha-value>)', ink: 'rgb(var(--bad-ink) / <alpha-value>)' },
+        info: { DEFAULT: 'rgb(var(--info) / <alpha-value>)', ink: 'rgb(var(--info-ink) / <alpha-value>)' },
+        unread: 'rgb(var(--unread) / <alpha-value>)', // "something new here" dot — orange so it reads against the sage accent
+        'glow-top': 'rgb(var(--glow-top) / <alpha-value>)',
+        track: 'rgb(var(--track) / <alpha-value>)',
+        pinned: 'rgb(var(--pinned) / <alpha-value>)',
+        // Event types (EV-C2): text, chip/tile bg, dot.
+        type: {
+          service: 'rgb(var(--type-service) / <alpha-value>)',
+          'service-bg': 'rgb(var(--type-service-bg) / <alpha-value>)',
+          'service-dot': 'rgb(var(--type-service-dot) / <alpha-value>)',
+          rehearsal: 'rgb(var(--type-rehearsal) / <alpha-value>)',
+          'rehearsal-bg': 'rgb(var(--type-rehearsal-bg) / <alpha-value>)',
+          'rehearsal-dot': 'rgb(var(--type-rehearsal-dot) / <alpha-value>)',
+          prayer: 'rgb(var(--type-prayer) / <alpha-value>)',
+          'prayer-bg': 'rgb(var(--type-prayer-bg) / <alpha-value>)',
+          'prayer-dot': 'rgb(var(--type-prayer-dot) / <alpha-value>)',
+          holytalks: 'rgb(var(--type-holytalks) / <alpha-value>)',
+          'holytalks-bg': 'rgb(var(--type-holytalks-bg) / <alpha-value>)',
+          'holytalks-dot': 'rgb(var(--type-holytalks-dot) / <alpha-value>)',
+          other: 'rgb(var(--type-other) / <alpha-value>)',
+          'other-bg': 'rgb(var(--type-other-bg) / <alpha-value>)',
+          'other-dot': 'rgb(var(--type-other-dot) / <alpha-value>)',
+          encounter: 'rgb(var(--type-encounter) / <alpha-value>)',
+          'encounter-bg': 'rgb(var(--type-encounter-bg) / <alpha-value>)',
+          'encounter-dot': 'rgb(var(--type-encounter-dot) / <alpha-value>)',
+        },
         // Crossover's one celebratory layer: the sage taken down to evergreen,
         // plus gold. Used only on Crossover surfaces (hero, badge, finish line).
         crossover: {
@@ -56,19 +84,27 @@ const config: Config = {
           canvas: 'rgb(var(--chat-canvas) / <alpha-value>)',
         },
       },
+      // Literata (display) + Albert Sans (UI); the stacks live in globals.css.
       fontFamily: {
-        sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'sans-serif'],
-        display: ['var(--font-fraunces)', 'Georgia', 'Cambria', 'serif'],
+        sans: ['var(--font-ui)'],
+        display: ['var(--font-display)'],
       },
-      borderRadius: { xl: '0.875rem', '2xl': '1.25rem', '3xl': '1.75rem' },
+      // 3a radii: buttons/fields 16, cards 22, glass panes 26.
+      borderRadius: { xl: '14px', '2xl': '16px', '3xl': '22px', '4xl': '26px', sheet: '28px', dock: '34px' },
       boxShadow: {
-        card: '0 1px 2px rgb(20 14 30 / 0.04), 0 10px 30px -14px rgb(20 14 30 / 0.16)',
-        'card-lg': '0 2px 4px rgb(20 14 30 / 0.05), 0 20px 50px -20px rgb(20 14 30 / 0.28)',
-        sheet: '0 -10px 50px -10px rgb(20 14 30 / 0.3)',
-        pop: '0 10px 28px -10px rgb(74 89 56 / 0.45)',
+        card: 'var(--shadow-card)',
+        'card-lg': 'var(--shadow-card-lg)',
+        sheet: 'var(--shadow-sheet)',
+        pop: 'var(--shadow-pop)',
         glow: '0 0 0 0 rgb(94 112 72 / 0.5)',
       },
+      transitionTimingFunction: { soft: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      zIndex: { avatar: '30', dock: '40', overlay: '50', lightbox: '60', toast: '70', gate: '100' },
       keyframes: {
+        'fade-out': { from: { opacity: '1' }, to: { opacity: '0' } },
+        'scale-out': { from: { opacity: '1', transform: 'scale(1)' }, to: { opacity: '0', transform: 'scale(0.96)' } },
+        'sheet-down': { from: { transform: 'translateY(0)' }, to: { transform: 'translateY(100%)' } },
+        'toast-in': { from: { opacity: '0', transform: 'translateY(12px) scale(0.98)' }, to: { opacity: '1', transform: 'translateY(0) scale(1)' } },
         shake: { '0%, 100%': { transform: 'translateX(0)' }, '20%, 60%': { transform: 'translateX(-8px)' }, '40%, 80%': { transform: 'translateX(8px)' } },
         pop: { '0%': { transform: 'scale(1)' }, '45%': { transform: 'scale(1.18)' }, '100%': { transform: 'scale(1)' } },
         'sheet-up': { from: { transform: 'translateY(100%)' }, to: { transform: 'translateY(0)' } },
@@ -82,6 +118,10 @@ const config: Config = {
         'typing-dot': { '0%, 60%, 100%': { transform: 'translateY(0)', opacity: '0.35' }, '30%': { transform: 'translateY(-3px)', opacity: '1' } },
       },
       animation: {
+        'fade-out': 'fade-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards',
+        'scale-out': 'scale-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards',
+        'sheet-down': 'sheet-down 0.22s cubic-bezier(0.4, 0, 1, 1) forwards',
+        'toast-in': 'toast-in 0.26s cubic-bezier(0.22, 1, 0.36, 1)',
         shake: 'shake 0.4s ease-in-out',
         pop: 'pop 0.32s ease-out',
         'sheet-up': 'sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1)',

@@ -185,7 +185,7 @@ function Bubble({
                 aria-pressed={r.mine}
                 className={cn(
                   'relative inline-flex items-center gap-1 rounded-full border bg-surface px-2 py-0.5 text-xs font-semibold shadow-sm',
-                  r.mine ? 'border-accent text-accent dark:text-accent-on' : 'border-line text-ink-soft',
+                  r.mine ? 'border-accent text-accent-ink' : 'border-line text-ink-soft',
                 )}
               >
                 <span className="text-sm leading-none">{r.emoji}</span>
@@ -196,7 +196,7 @@ function Bubble({
         )}
 
         {m.failed ? (
-          <button type="button" onClick={() => onRetry(m)} className="mt-1 text-xs font-semibold text-bad">
+          <button type="button" onClick={() => onRetry(m)} className="mt-1 text-xs font-semibold text-bad-ink">
             Not sent · Tap to retry
           </button>
         ) : (
@@ -314,7 +314,7 @@ export const BubbleBody = forwardRef<HTMLDivElement, BubbleBodyProps>(function B
 function FileCard({ a, mine, pending }: { a: ChatAttachmentDTO; mine: boolean; pending: boolean }) {
   const body = (
     <>
-      <span className={cn('grid h-11 w-10 shrink-0 place-items-center rounded-lg', mine ? 'bg-white/20' : 'bg-bad/10 text-bad')}>
+      <span className={cn('grid h-11 w-10 shrink-0 place-items-center rounded-lg', mine ? 'bg-white/20' : 'bg-bad/10 text-bad-ink')}>
         <FileText width={22} height={22} />
       </span>
       <span className="min-w-0 flex-1">

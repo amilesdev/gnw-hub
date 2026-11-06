@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ChevronLeft } from '@/components/shared/Icons';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { eventTypeLabel } from '@/components/shared/EventTypeBadge';
 import { StageGraph } from '@/lib/production/graph';
@@ -65,21 +64,22 @@ export function ProductionScreen({
   ];
 
   return (
-    <div className="space-y-4 pb-6 pt-2">
+    <div className="space-y-4 pb-6">
       <ProductionDefs />
-      <header className="pr-12">
-        <Link href={`${base}/events`} className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft" aria-label="Back to Events">
-          <ChevronLeft width={18} height={18} />
-        </Link>
-        <p className="eyebrow">Production</p>
-        <h1 className="page-title mt-2">{event?.eventName ?? 'Production'}</h1>
+      <div>
+        <ScreenHeader
+          back={{ href: `${base}/events`, label: 'Events' }}
+          eyebrow="Production"
+          title={event?.eventName ?? 'Production'}
+          className="mb-0"
+        />
         {event && (
-          <p className="mt-2 text-sm text-ink-soft">
+          <p className="mt-2 text-[15px] leading-[22px] text-ink-soft">
             {formatEventDate(new Date(event.date))} · {formatTimeLabel(event.time)}
             {map ? ` · ${map.venue} setup` : ''}
           </p>
         )}
-      </header>
+      </div>
 
       {tabs.length > 1 && <PillTabs value={tab} onChange={setTab} options={tabs} />}
 

@@ -10,10 +10,15 @@ import { ChatProvider } from '@/components/chat/ChatProvider';
 import { KeyboardWatcher } from './KeyboardWatcher';
 import { DataSync } from './DataSync';
 import { HomeHint } from './HomeHint';
+import { ToastProvider } from './Toast';
+import { SongSheetProvider } from './SongSheetHost';
+import { Dock, DockToasts, ShellBackdrop } from './Dock';
 
 /**
- * Fixed, centered phone shell (max 430px) with a scrollable content area, a
- * pinned bottom tab bar, and the floating profile avatar. (Design system §11.)
+ * Fixed, centered phone shell (CMP-1, max 430px). The ambient glow sits behind
+ * a scrolling `<main>`; the dock (call bar, MiniPlayer, glass tab bar) floats
+ * over the bottom of it, and the floating profile avatar over the top right.
+ * Only `<main>` scrolls, so the tab bar stays pinned.
  */
 export function AppShell({
   children,
@@ -38,28 +43,39 @@ export function AppShell({
 }) {
   const shell = (
     <AudioProvider>
-      <div className="app-shell">
-        {header}
-        <ProfileButton
-          href={variant === 'leader' ? '/dashboard/settings' : '/home/profile'}
-          name={user.name}
-          image={user.image}
-        />
-        <main
-          className="no-scrollbar flex-1 overflow-y-auto px-5 pb-6"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
-        >
-          {children}
-        </main>
-        <MiniCallBar />
-        <MiniPlayer />
-        <TabBar variant={variant} showCrossover={showCrossover} />
-        <PollGate />
-        <PushSubscriptionSync />
-        <KeyboardWatcher />
-        <DataSync />
-        <HomeHint home={variant === 'leader' ? '/dashboard' : '/home'} />
-      </div>
+      <ToastProvider>
+        <SongSheetProvider>
+          <div className="app-shell">
+            <ShellBackdrop />
+            {header}
+            <ProfileButton
+              href={variant === 'leader' ? '/dashboard/settings' : '/home/profile'}
+              name={user.name}
+              image={user.image}
+            />
+            <main
+              className="no-scrollbar relative z-[1] flex-1 overflow-y-auto px-5"
+              style={{
+                paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
+                paddingBottom: 'calc(var(--dock-h, 96px) + 24px)',
+              }}
+            >
+              {children}
+            </main>
+            <Dock>
+              <MiniCallBar />
+              <MiniPlayer />
+              <TabBar variant={variant} showCrossover={showCrossover} />
+            </Dock>
+            <DockToasts />
+            <PollGate />
+            <PushSubscriptionSync />
+            <KeyboardWatcher />
+            <DataSync />
+            <HomeHint home={variant === 'leader' ? '/dashboard' : '/home'} />
+          </div>
+        </SongSheetProvider>
+      </ToastProvider>
     </AudioProvider>
   );
   return chatTopic ? <ChatProvider topic={chatTopic}>{shell}</ChatProvider> : shell;

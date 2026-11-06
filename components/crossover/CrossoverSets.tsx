@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import type { CrossoverSetDTO } from '@/lib/crossover-sets';
 import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
 import { totalMinutes } from '@/lib/crossover-season';
@@ -9,7 +10,7 @@ import { Overlay } from '@/components/shared/Overlay';
 import { FieldLabel } from '@/components/shared/Field';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { ChevronDown, ChevronLeft, Clock, Music, Pencil, Plus, Trash, X } from '@/components/shared/Icons';
+import { ChevronDown, Clock, Music, Pencil, Plus, Trash, X } from '@/components/shared/Icons';
 import { AssignmentsSection, VOCAL_PARTS, type AssignmentMap } from '@/components/leader/AssignmentsSection';
 import { LibraryPicker } from '@/components/leader/LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
@@ -64,7 +65,9 @@ export function CrossoverSets({
     if (!deleting) return;
     setBusy(true);
     try {
-      const res = await apiFetch<{ sets: CrossoverSetDTO[] }>(`/api/crossover/sets/${deleting.id}`, { method: 'DELETE' });
+      const res = await apiFetch<{ sets: CrossoverSetDTO[] }>(`/api/crossover/sets/${deleting.id}`, {
+        method: 'DELETE',
+      });
       setSets(res.sets);
       setDeleting(null);
     } catch (e) {
@@ -76,34 +79,31 @@ export function CrossoverSets({
 
   return (
     <div className="space-y-5 pt-2">
-      <Link
-        href={`${base}/crossover`}
-        className="row-press -ml-1 inline-flex items-center gap-0.5 rounded-lg py-1 text-[15px] font-semibold text-accent-ink dark:text-accent-on"
-      >
-        <ChevronLeft width={18} height={18} /> Crossover
-      </Link>
-
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">Crossover {year}</div>
-          <h1 className="page-title mt-2">Sets</h1>
-        </div>
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/crossover/songs" className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3">
-              <Music width={18} height={18} /> <span className="max-[389px]:sr-only">Songs</span>
-            </Link>
-            <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
-              <Plus width={18} height={18} /> Set
-            </button>
-          </div>
-        )}
-      </header>
+      <ScreenHeader
+        back={{ href: `${base}/crossover`, label: 'Crossover' }}
+        eyebrow={`Crossover ${year}`}
+        title="Sets"
+        className="mb-0"
+        actions={
+          <>
+            {canManage && (
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard/crossover/songs" className="btn-outline btn-sm h-11 max-[389px]:!px-3">
+                  <Music width={18} height={18} /> <span className="max-[389px]:sr-only">Songs</span>
+                </Link>
+                <button type="button" className="btn-primary btn-sm h-11" onClick={() => setEditing('new')}>
+                  <Plus width={18} height={18} /> Set
+                </button>
+              </div>
+            )}
+          </>
+        }
+      />
       <p className="-mt-2 text-sm text-ink-soft">
         {sets.length} set{sets.length === 1 ? '' : 's'} · {songCount} song{songCount === 1 ? '' : 's'}
         {total > 0 && ` · ${total} min planned`}
       </p>
-      {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+      {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
 
       {sets.length === 0 ? (
         <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">
@@ -170,9 +170,10 @@ function SetCard({
   onSong: (song: SongDTO) => void;
   manage?: { onEdit: () => void; onDelete: () => void; onUp?: () => void; onDown?: () => void };
 }) {
-  const byPart = VOCAL_PARTS.map((part) => ({ part, names: set.singers.filter((s) => s.part === part).map((s) => s.name) })).filter(
-    (g) => g.names.length,
-  );
+  const byPart = VOCAL_PARTS.map((part) => ({
+    part,
+    names: set.singers.filter((s) => s.part === part).map((s) => s.name),
+  })).filter((g) => g.names.length);
 
   return (
     <section className="card animate-rise p-4">
@@ -217,7 +218,7 @@ function SetCard({
         <div className="mt-3 space-y-1">
           {byPart.map(({ part, names }) => (
             <div key={part} className="flex items-center gap-2 text-xs">
-              <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-accent/10 text-[10px] font-bold text-accent-ink dark:text-accent-on">
+              <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-accent/10 text-[10px] font-bold text-accent-ink">
                 {part[0]}
               </span>
               <span className="text-ink-soft">{names.join(', ')}</span>
@@ -228,12 +229,12 @@ function SetCard({
 
       {manage && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
-          <button type="button" className="btn-ghost !py-2 text-sm" onClick={manage.onEdit}>
+          <button type="button" className="btn-ghost btn-sm" onClick={manage.onEdit}>
             <Pencil width={15} height={15} /> Edit
           </button>
           <button
             type="button"
-            className="btn-ghost !px-3 !py-2 text-sm disabled:opacity-30"
+            className="btn-ghost btn-sm disabled:opacity-30"
             onClick={manage.onUp}
             disabled={!manage.onUp}
             aria-label={`Move ${set.name} up`}
@@ -242,14 +243,14 @@ function SetCard({
           </button>
           <button
             type="button"
-            className="btn-ghost !px-3 !py-2 text-sm disabled:opacity-30"
+            className="btn-ghost btn-sm disabled:opacity-30"
             onClick={manage.onDown}
             disabled={!manage.onDown}
             aria-label={`Move ${set.name} down`}
           >
             <ChevronDown width={16} height={16} />
           </button>
-          <button type="button" className="btn-ghost ml-auto !py-2 text-sm text-bad" onClick={manage.onDelete}>
+          <button type="button" className="btn-ghost btn-sm ml-auto text-bad-ink" onClick={manage.onDelete}>
             <Trash width={15} height={15} /> Delete
           </button>
         </div>
@@ -333,7 +334,7 @@ function SetEditor({
       title={initial ? `Edit ${initial.name}` : 'New set'}
       onClose={onClose}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={busy} onClick={save}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={save}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       }
@@ -366,7 +367,7 @@ function SetEditor({
         <section className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <FieldLabel>Songs</FieldLabel>
-            <button type="button" className="btn-ghost !py-2 text-sm" onClick={() => setPicking(true)}>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setPicking(true)}>
               <Plus width={15} height={15} /> Add songs
             </button>
           </div>
@@ -404,7 +405,9 @@ function SetEditor({
                   <button
                     type="button"
                     onClick={() => setSongs((prev) => prev.filter((x) => x.id !== s.id))}
-                    className={cn('row-press grid h-8 w-8 place-items-center rounded-lg text-ink-faint hover:text-bad')}
+                    className={cn(
+                      'row-press grid h-8 w-8 place-items-center rounded-lg text-ink-faint hover:text-bad-ink',
+                    )}
                     aria-label={`Remove ${s.songTitle}`}
                   >
                     <X width={16} height={16} />
@@ -423,7 +426,7 @@ function SetEditor({
           eventDate={crossoverDate}
         />
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
       </div>
 
       {picking && (
@@ -432,7 +435,10 @@ function SetEditor({
           title="Add Crossover songs"
           excludeIds={new Set(songs.map((s) => s.id))}
           onAdd={(picked: LibrarySongDTO[]) => {
-            setSongs((prev) => [...prev, ...picked.map((p) => ({ id: p.id, songTitle: p.songTitle, artist: p.artist }))]);
+            setSongs((prev) => [
+              ...prev,
+              ...picked.map((p) => ({ id: p.id, songTitle: p.songTitle, artist: p.artist })),
+            ]);
             setPicking(false);
           }}
           onClose={() => setPicking(false)}

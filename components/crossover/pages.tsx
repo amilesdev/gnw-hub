@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import { notFound, redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { getCrossoverData } from '@/lib/crossover';
@@ -6,7 +6,7 @@ import { crossoverOpenFor, scheduleComesFirst } from '@/lib/crossover-season';
 import { toYmd, startOfToday } from '@/lib/dates';
 import { prisma } from '@/lib/prisma';
 import { parseProgram, parseTimed } from '@/lib/crossover-schedule';
-import { ChevronLeft, Video } from '@/components/shared/Icons';
+import { Video } from '@/components/shared/Icons';
 import { CrossoverSchedule } from './CrossoverSchedule';
 import { getSeasonSets } from '@/lib/crossover-sets';
 import { totalMinutes } from '@/lib/crossover-season';
@@ -36,7 +36,11 @@ async function load(base: Base) {
   return { user, data, todayYmd: toYmd(startOfToday()) };
 }
 
-const LOOK_LABEL = { pending: 'waiting on review', changes_requested: 'changes requested', approved: 'approved' } as const;
+const LOOK_LABEL = {
+  pending: 'waiting on review',
+  changes_requested: 'changes requested',
+  approved: 'approved',
+} as const;
 
 export async function CrossoverHomePage({ base }: { base: Base }) {
   const { user, data, todayYmd } = await load(base);
@@ -163,23 +167,17 @@ export async function CrossoverSectionPage({ base, section }: { base: Base; sect
 
   return (
     <div className="space-y-5 pt-2">
-      <Link
-        href={`${base}/crossover`}
-        className="row-press -ml-1 inline-flex items-center gap-0.5 rounded-lg py-1 text-[15px] font-semibold text-accent-ink dark:text-accent-on"
-      >
-        <ChevronLeft width={18} height={18} /> Crossover
-      </Link>
-      <header className="pr-12">
-        <div className="eyebrow">Crossover {data.year}</div>
-        <h1 className="page-title mt-2">{info.title}</h1>
-      </header>
+      <ScreenHeader
+        back={{ href: `${base}/crossover`, label: 'Crossover' }}
+        eyebrow={`Crossover ${data.year}`}
+        title={info.title}
+        className="mb-0"
+      />
       <div className="card grain-block flex flex-col items-center px-6 py-10 text-center">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 text-accent dark:text-accent-on">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 text-accent-ink">
           <Icon width={28} height={28} />
         </div>
-        <span className="chip mt-5 bg-accent/10 text-accent-ink dark:text-accent-on">
-          {later ? 'Coming later' : 'Coming soon'}
-        </span>
+        <span className="chip mt-5 bg-accent/10 text-accent-ink">{later ? 'Coming later' : 'Coming soon'}</span>
         <p className="mt-3 text-sm text-ink-soft">{info.body}</p>
       </div>
     </div>

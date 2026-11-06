@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LibrarySongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
 import { Overlay } from '@/components/shared/Overlay';
+import { SearchField } from '@/components/shared/SearchField';
+import { SetlistSkeleton } from '@/components/shared/Skeleton';
+import { listCard } from '@/lib/ui-classes';
 import { Check, Music, FileText } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -65,23 +68,18 @@ export function LibraryPicker({
       title={title}
       onClose={onClose}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={selected.size === 0} onClick={confirm}>
+        <button type="button" className="btn-primary btn-sm h-11" disabled={selected.size === 0} onClick={confirm}>
           {actionLabel}{selected.size ? ` ${selected.size}` : ''}
         </button>
       }
     >
       <div className="space-y-4">
-        <input
-          className="field"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search songs or artists…"
-          enterKeyHint="search"
-          autoFocus
-        />
+        <SearchField value={q} onChange={setQ} placeholder="Search songs or artists…" />
 
         {songs === null ? (
-          <p className="py-6 text-center text-sm text-ink-faint">Loading songs…</p>
+          <div role="status" aria-label="Loading">
+            <SetlistSkeleton rows={6} />
+          </div>
         ) : available.length === 0 ? (
           <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">
             {songs.length === 0
@@ -93,7 +91,7 @@ export function LibraryPicker({
                 : 'No songs match that search.'}
           </p>
         ) : (
-          <div className="card overflow-hidden">
+          <div className={listCard}>
             {available.map((s) => {
               const on = selected.has(s.id);
               const partCount = AUDIO_PARTS.filter((p) => s[p]).length;
@@ -103,19 +101,19 @@ export function LibraryPicker({
                   type="button"
                   onClick={() => toggle(s.id)}
                   aria-pressed={on}
-                  className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
+                  className="row-press flex min-h-[60px] w-full items-center gap-3 px-4 py-2.5 text-left"
                 >
                   <span
                     className={cn(
                       'grid h-6 w-6 shrink-0 place-items-center rounded-md',
-                      on ? 'bg-accent text-white' : 'border border-line',
+                      on ? 'bg-accent text-accent-fg' : 'border border-line',
                     )}
                   >
                     {on && <Check width={14} height={14} />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{s.songTitle}</span>
-                    <span className="flex items-center gap-2 text-xs text-ink-faint">
+                    <span className="row-title block truncate">{s.songTitle}</span>
+                    <span className="flex items-center gap-2 text-[13px] leading-[18px] text-ink-soft">
                       {s.artist && <span className="truncate">{s.artist}</span>}
                       <span className="inline-flex items-center gap-1">
                         <Music width={12} height={12} />

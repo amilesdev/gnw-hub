@@ -13,14 +13,14 @@ export function NotificationSettings() {
   const { status, busy, error, subscribe, unsubscribe } = usePushNotifications();
 
   return (
-    <div className="p-5">
-      <div className="flex items-center justify-between gap-3">
+    <div className="p-4">
+      <div className="flex min-h-9 items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft">
             <Bell width={18} height={18} />
           </span>
           <div>
-            <p className="font-semibold">Notifications</p>
+            <p className="row-title">Notifications</p>
             <p className="text-sm text-ink-faint">{subtitle(status)}</p>
           </div>
         </div>
@@ -55,7 +55,7 @@ export function NotificationSettings() {
         </p>
       )}
 
-      {error && <p className="mt-3 text-sm font-semibold text-bad">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-[13px] font-semibold text-bad-ink">{error}</p>}
     </div>
   );
 }

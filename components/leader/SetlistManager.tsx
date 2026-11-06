@@ -2,37 +2,53 @@
 
 import { useEffect, useState } from 'react';
 import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
-import { AUDIO_PARTS } from '@/lib/setlist-serialize';
+import type { SongSheetContext } from '@/components/shared/AudioProvider';
 import { SetlistForm } from './SetlistForm';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { SongLeadFaces } from '@/components/shared/SongLeads';
+import { SetlistHeading, SetlistSongs } from '@/components/shared/SetlistScreen';
+import { setlistTitle } from '@/lib/setlist-title';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Skeleton, SetlistSkeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import Link from 'next/link';
-import { Plus, Pencil, Trash, Music, ChevronRight, Book } from '@/components/shared/Icons';
+import { ActionSheet } from '@/components/shared/ActionSheet';
+import { MoreHorizontal, Pencil } from '@/components/shared/Icons';
 import { apiFetch } from '@/lib/api-client';
 import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate } from '@/lib/dates';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; setlist: SetlistDTO } | null;
 
-export function SetlistManager() {
+/**
+ * Songs › Setlists for leaders (SG-2). The Songs tab supplies the header and
+ * its "Add" button (`creating`). Edit/Delete live behind each setlist's More
+ * menu. A reload after a save keeps the list on screen with a thin progress
+ * bar instead of swapping back to a skeleton.
+ */
+export function SetlistManager({
+  creating = false,
+  onCreatingChange,
+}: {
+  creating?: boolean;
+  onCreatingChange?: (v: boolean) => void;
+}) {
   const [setlists, setSetlists] = useState<SetlistDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
   const [form, setForm] = useState<FormState>(null);
+  const [more, setMore] = useState<SetlistDTO | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<SetlistDTO | null>(null);
-  const [song, setSong] = useState<SongDTO | null>(null);
+  const [open, setOpen] = useState<{ song: SongDTO; context: SongSheetContext } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  /** `quiet` keeps what's on screen while it reloads (no skeleton flash). */
-  async function load(quiet = false) {
-    if (!quiet) setLoading(true);
+  /** After the first load, reloads keep what's on screen (no skeleton flash). */
+  async function load() {
+    setReloading(true);
     try {
       const { setlists } = await apiFetch<{ setlists: SetlistDTO[] }>('/api/setlists');
       setSetlists(setlists);
     } finally {
       setLoading(false);
+      setReloading(false);
     }
   }
 
@@ -40,10 +56,19 @@ export function SetlistManager() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (creating) setForm({ mode: 'create' });
+  }, [creating]);
+
   // A save elsewhere (vocal parts from a song card, song leads…) or a newer copy.
   useDataChanged(() => {
-    load(true).catch(() => {});
+    load().catch(() => {});
   });
+
+  function closeForm() {
+    setForm(null);
+    onCreatingChange?.(false);
+  }
 
   async function remove() {
     if (!confirmDelete) return;
@@ -58,99 +83,67 @@ export function SetlistManager() {
   }
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">Leader tools</div>
-          <h1 className="page-title mt-2">Setlists</h1>
+    <>
+      {reloading && !loading && (
+        <div className="-mt-4 mb-4 h-0.5 overflow-hidden rounded-full bg-track" role="status" aria-label="Refreshing">
+          <div className="h-full w-1/3 animate-pulse rounded-full bg-accent" />
         </div>
-        <div className="flex items-center gap-2">
-          {/* Icon-only on narrow phones so the header fits beside the floating avatar. */}
-          <Link href="/dashboard/library" className="btn-ghost !px-4 !py-3 border border-line max-[389px]:!px-3">
-            <Book width={18} height={18} /> <span className="max-[389px]:sr-only">Library</span>
-          </Link>
-          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
-            <Plus width={18} height={18} /> Add
-          </button>
-        </div>
-      </header>
+      )}
 
       {loading ? (
         <SkeletonList>
-          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-5 w-44" />
+          <Skeleton className="h-3.5 w-24" />
           <SetlistSkeleton rows={3} />
         </SkeletonList>
       ) : setlists.length === 0 ? (
         <EmptyState message="No setlists yet. Create one and start adding songs for the month." />
       ) : (
         <div className="space-y-6">
-          {setlists.map((s) => {
-                return (
-                  <section key={s.id} className="animate-rise space-y-3">
-                    <div>
-                      <h3 className="font-display text-xl font-semibold">
-                        {s.name
-                          ? s.name
-                          : s.events.length
-                            ? Array.from(new Set(s.events.map((e) => e.eventName))).join(' · ')
-                            : 'Unlinked setlist'}
-                      </h3>
-                      {s.events.length > 0 && (
-                        <p className="text-sm text-ink-faint">
-                          {s.events.map((e) => formatEventDate(new Date(e.date))).join(' • ')}
-                        </p>
-                      )}
-                    </div>
-
-                    {s.songs.length > 0 && (
-                      <div className="card overflow-hidden">
-                        {s.songs.map((song, i) => {
-                          const partCount = AUDIO_PARTS.filter((p) => song[p]).length;
-                          return (
-                            <button
-                              key={song.id}
-                              type="button"
-                              onClick={() => setSong(song)}
-                              className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
-                            >
-                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink dark:text-accent-on">
-                                {i + 1}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate font-semibold">{song.songTitle}</span>
-                                <span className="flex items-center gap-1 text-xs text-ink-faint">
-                                  <Music width={12} height={12} />
-                                  {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
-                                </span>
-                              </span>
-                              <SongLeadFaces leads={song.leads} />
-                              <ChevronRight width={20} height={20} className="text-ink-faint" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button className="btn-ghost !py-2 text-sm" onClick={() => setForm({ mode: 'edit', setlist: s })} type="button">
-                        <Pencil width={15} height={15} /> Edit
-                      </button>
-                      <button className="btn-ghost !py-2 text-sm text-bad" onClick={() => setConfirmDelete(s)} type="button">
-                        <Trash width={15} height={15} /> Delete
-                      </button>
-                    </div>
-                  </section>
-                );
-              })}
+          {setlists.map((s) => (
+            <section key={s.id} className="animate-rise space-y-3">
+              <SetlistHeading
+                setlist={s}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setMore(s)}
+                    className="btn-icon -mr-2 -mt-1.5"
+                    aria-label={`More for ${setlistTitle(s, 'Unlinked setlist')}`}
+                  >
+                    <MoreHorizontal width={20} height={20} />
+                  </button>
+                }
+              />
+              {s.songs.length > 0 && (
+                <SetlistSongs setlist={s} onSong={(song, context) => setOpen({ song, context })} />
+              )}
+            </section>
+          ))}
         </div>
       )}
 
-      {form?.mode === 'create' && <SetlistForm mode="create" onClose={() => setForm(null)} onSaved={() => { setForm(null); load(); }} />}
+      <ActionSheet
+        open={!!more}
+        onClose={() => setMore(null)}
+        title={more ? setlistTitle(more, 'Unlinked setlist') : ''}
+        subtitle={more?.events.map((e) => formatEventDate(new Date(e.date))).join(' · ') || undefined}
+        actions={
+          more
+            ? [
+                { label: 'Edit setlist', icon: Pencil, onSelect: () => setForm({ mode: 'edit', setlist: more }) },
+                { label: 'Delete setlist', tone: 'danger', onSelect: () => setConfirmDelete(more) },
+              ]
+            : []
+        }
+      />
+
+      {form?.mode === 'create' && <SetlistForm mode="create" onClose={closeForm} onSaved={() => { closeForm(); load(); }} />}
       {form?.mode === 'edit' && (
-        <SetlistForm mode="edit" initial={form.setlist} onClose={() => setForm(null)} onSaved={() => { setForm(null); load(); }} />
+        <SetlistForm mode="edit" initial={form.setlist} onClose={closeForm} onSaved={() => { closeForm(); load(); }} />
       )}
 
-      {song && <SongDetail song={song} onClose={() => setSong(null)} />}
+      {open && <SongDetail song={open.song} context={open.context} onClose={() => setOpen(null)} />}
 
       <ConfirmDialog
         open={!!confirmDelete}
@@ -160,6 +153,6 @@ export function SetlistManager() {
         onConfirm={remove}
         onClose={() => setConfirmDelete(null)}
       />
-    </div>
+    </>
   );
 }

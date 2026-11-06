@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import type { PollResultsDTO } from '@/lib/serialize';
 import { apiFetch } from '@/lib/api-client';
 import { haptics } from '@/lib/haptics';
-import { PollResults } from '@/components/shared/PollResults';
+import { PollResults, ChoiceButton } from '@/components/shared/PollResults';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
-import { ChevronDown, ChevronRight, Check, Pencil } from '@/components/shared/Icons';
+import { ChevronRight, Pencil } from '@/components/shared/Icons';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -89,7 +89,7 @@ export function MemberPolls() {
 
   return (
     <section className="space-y-3 pb-2">
-      <h2 className="eyebrow">Polls</h2>
+      <h2 className="t-title">Polls</h2>
 
       {!loaded ? (
         <SkeletonList>
@@ -97,7 +97,7 @@ export function MemberPolls() {
           <Skeleton className="h-[3.75rem] w-full rounded-3xl" />
         </SkeletonList>
       ) : polls.length === 0 ? (
-        <div className="card p-5 text-center text-sm text-ink-faint">No polls right now — check back when your team posts one.</div>
+        <div className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No polls right now. Check back when your team posts one.</div>
       ) : (
         polls.map((p) => {
           const open = openId === p.id;
@@ -110,22 +110,18 @@ export function MemberPolls() {
                   if (open) cancelEdit();
                   setOpenId(open ? null : p.id);
                 }}
-                className="row-press flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                className="row-press flex w-full items-center gap-3 py-3.5 pl-4 pr-3 text-left"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{p.question}</span>
-                  <span className="block text-xs text-ink-faint">
+                  <span className="row-title block truncate">{p.question}</span>
+                  <span className="block text-[13px] leading-[18px] text-ink-faint">
                     {p.ended ? 'Ended' : 'Active'} · {formatEnds(p.endsAt)} · {p.totalVoters} voted
                   </span>
                 </span>
-                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent/15 text-accent-ink dark:text-accent-on'}`}>
+                <span className={`chip ${p.ended ? 'bg-surface-2 text-ink-faint' : 'bg-accent-soft text-accent-ink'}`}>
                   {p.ended ? 'Ended' : 'Live'}
                 </span>
-                {open ? (
-                  <ChevronDown width={18} height={18} className="text-ink-faint" />
-                ) : (
-                  <ChevronRight width={18} height={18} className="text-ink-faint" />
-                )}
+                <ChevronRight width={18} height={18} className={`shrink-0 text-ink-faint transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
               </button>
 
               {open && (
@@ -137,36 +133,20 @@ export function MemberPolls() {
                         {p.choices.map((c) => {
                           const on = selected.includes(c.id);
                           return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => toggle(p, c.id)}
-                              className={`row-press flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left font-semibold ${
-                                on ? 'border-accent bg-accent/10 text-ink' : 'border-line bg-surface text-ink'
-                              }`}
-                            >
-                              <span className="min-w-0 truncate">{c.text}</span>
-                              <span
-                                className={`grid h-6 w-6 shrink-0 place-items-center border ${
-                                  on ? 'border-accent bg-accent text-white' : 'border-line'
-                                } ${p.multiple ? 'rounded-md' : 'rounded-full'}`}
-                              >
-                                {on && <Check width={14} height={14} />}
-                              </span>
-                            </button>
+                            <ChoiceButton key={c.id} text={c.text} on={on} multiple={p.multiple} onClick={() => toggle(p, c.id)} />
                           );
                         })}
                       </div>
-                      {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+                      {error && <p className="text-[13px] font-semibold text-bad-ink" role="alert">{error}</p>}
                       <div className="flex gap-2">
-                        <button type="button" onClick={cancelEdit} className="btn-ghost flex-1 !py-2 text-sm">
+                        <button type="button" onClick={cancelEdit} className="btn-ghost flex-1">
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={() => save(p)}
                           disabled={busy}
-                          className="btn-primary flex-1 !py-2 text-sm"
+                          className="btn-primary flex-1"
                         >
                           {busy ? 'Saving…' : 'Save vote'}
                         </button>
@@ -176,7 +156,7 @@ export function MemberPolls() {
                     <>
                       <PollResults results={p} />
                       {!p.ended && (
-                        <button type="button" onClick={() => startEdit(p)} className="btn-ghost w-full !py-2 text-sm">
+                        <button type="button" onClick={() => startEdit(p)} className="btn-ghost w-full">
                           <Pencil width={16} height={16} /> Change my vote
                         </button>
                       )}

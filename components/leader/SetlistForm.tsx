@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -15,7 +15,9 @@ import { CSS } from '@dnd-kit/utilities';
 import type { SetlistDTO, SongDTO, LibrarySongDTO, LeadDTO } from '@/lib/setlist-serialize';
 import type { EventDTO } from '@/lib/serialize';
 import { Overlay } from '@/components/shared/Overlay';
-import { FieldLabel } from '@/components/shared/Field';
+import { FieldLabel, TextField } from '@/components/shared/Field';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { useToast } from '@/components/shared/Toast';
 import { Plus, Trash, Grip, Check, Book } from '@/components/shared/Icons';
 import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
@@ -80,6 +82,20 @@ export function SetlistForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const toast = useToast();
+
+  // What the form looked like when it opened, so closing with edits asks first.
+  // Uploads inside a row save on their own, so only what Save sends counts.
+  const snapshot = () =>
+    JSON.stringify({
+      name: name.trim(),
+      eventIds: [...eventIds].sort(),
+      rows: rows.map((r) => [r.id ?? r.key, r.songTitle, r.artist, r.youtubeLink, r.leads.map((l) => l.id)]),
+    });
+  const initialSnapshot = useRef<string | null>(null);
+  if (initialSnapshot.current === null) initialSnapshot.current = snapshot();
+  const dirty = () => !busy && snapshot() !== initialSnapshot.current;
 
   // Library songs already in this setlist — hidden from the picker so the same
   // song can't be added twice.
@@ -151,8 +167,18 @@ export function SetlistForm({
     setRows((r) => r.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
+  // Removing a row is quick to undo (CMP-22) rather than confirmed; nothing is
+  // saved until Save anyway.
   function removeRow(key: string) {
+    const index = rows.findIndex((row) => row.key === key);
+    const removed = rows[index];
+    if (!removed) return;
     setRows((r) => r.filter((row) => row.key !== key));
+    toast.show({
+      message: `Removed “${removed.songTitle.trim() || 'Untitled'}”.`,
+      undo: () =>
+        setRows((r) => (r.some((row) => row.key === key) ? r : [...r.slice(0, index), removed, ...r.slice(index)])),
+    });
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -205,36 +231,39 @@ export function SetlistForm({
     <Overlay
       title={mode === 'create' ? 'New setlist' : 'Edit setlist'}
       onClose={onClose}
+      backLabel="Setlists"
+      canClose={() => {
+        if (!dirty()) return true;
+        setConfirmDiscard(true);
+        return false;
+      }}
       action={
-        <button type="submit" form="setlist-form" className="btn-primary !px-4 !py-2.5" disabled={busy}>
+        <button type="submit" form="setlist-form" className="btn-primary btn-sm h-11 min-w-[76px]" disabled={busy}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       }
     >
-      <form id="setlist-form" onSubmit={save} className="space-y-5">
-        <div>
-          <FieldLabel>Setlist name</FieldLabel>
-          <input
-            className="field mt-1.5"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="New setlist"
-            maxLength={200}
-            enterKeyHint="done"
-          />
-        </div>
+      <form id="setlist-form" onSubmit={save} className="space-y-6">
+        <TextField
+          label="Setlist name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New setlist"
+          maxLength={200}
+          enterKeyHint="done"
+        />
 
         <div>
           <div className="flex items-baseline justify-between">
             <FieldLabel>Events</FieldLabel>
             {eventIds.length > 0 && (
-              <span className="text-xs font-semibold text-accent-ink dark:text-accent-on">
+              <span className="text-xs font-semibold text-accent-ink">
                 {eventIds.length} linked
               </span>
             )}
           </div>
-          <p className="mb-2.5 mt-0.5 text-xs text-ink-faint">
-            Tap to link one or more events — swipe to see more.
+          <p className="mb-2.5 mt-1 text-[13px] leading-[18px] text-ink-faint">
+            Tap to link one or more events. Swipe to see more.
           </p>
           {eventOptions.length === 0 ? (
             <p className="text-sm text-ink-faint">No upcoming events yet. Add an event first.</p>
@@ -249,20 +278,20 @@ export function SetlistForm({
                     onClick={() => toggleEvent(ev.id)}
                     aria-pressed={on}
                     className={cn(
-                      'row-press relative flex w-36 shrink-0 snap-start flex-col justify-between rounded-2xl border px-3.5 py-3 text-left transition',
-                      on ? 'border-accent bg-accent/10 shadow-pop' : 'border-line bg-surface',
+                      'relative flex w-36 shrink-0 snap-start flex-col justify-between rounded-[18px] px-3.5 py-3 text-left transition duration-150 active:scale-[0.97]',
+                      on ? 'border-[1.5px] border-accent bg-accent/10' : 'border border-line bg-surface',
                     )}
                   >
                     <span
                       className={cn(
                         'grid h-5 w-5 place-items-center rounded-md',
-                        on ? 'bg-accent text-white' : 'border border-line',
+                        on ? 'bg-accent text-accent-fg' : 'border border-line',
                       )}
                     >
                       {on && <Check width={13} height={13} />}
                     </span>
                     <span className="mt-2 block truncate text-sm font-semibold">{ev.eventName}</span>
-                    <span className="text-xs text-ink-faint">{formatEventDate(new Date(ev.date))}</span>
+                    <span className="text-[13px] text-ink-faint">{formatEventDate(new Date(ev.date))}</span>
                   </button>
                 );
               })}
@@ -273,12 +302,12 @@ export function SetlistForm({
         <div>
           <div className="mb-2 flex items-center justify-between gap-2">
             <FieldLabel>Songs (drag to reorder)</FieldLabel>
-            <div className="flex shrink-0 gap-1.5">
-              <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={() => setShowLibrary(true)}>
-                <Book width={15} height={15} /> Library
+            <div className="flex shrink-0 gap-2">
+              <button type="button" className="btn-ghost btn-sm" onClick={() => setShowLibrary(true)}>
+                <Book width={16} height={16} /> Library
               </button>
-              <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={addSong}>
-                <Plus width={15} height={15} /> New
+              <button type="button" className="btn-ghost btn-sm" onClick={addSong}>
+                <Plus width={16} height={16} /> New
               </button>
             </div>
           </div>
@@ -307,7 +336,7 @@ export function SetlistForm({
           )}
         </div>
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Saving…' : mode === 'create' ? 'Create setlist' : 'Save changes'}
         </button>
@@ -316,6 +345,19 @@ export function SetlistForm({
       {showLibrary && (
         <LibraryPicker excludeIds={usedSongIds} onAdd={addFromLibrary} onClose={() => setShowLibrary(false)} />
       )}
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="Discard changes?"
+        message="Your edits to this setlist won’t be saved."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={() => {
+          setConfirmDiscard(false);
+          onClose();
+        }}
+        onClose={() => setConfirmDiscard(false)}
+      />
     </Overlay>
   );
 }
@@ -338,7 +380,7 @@ function SortableSong({
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.key });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   // Shaped for the audio/lyric/band editors, which key off the library song id.
   const songForEdit: SongDTO | null = canEditAudio && row.id
@@ -363,37 +405,65 @@ function SortableSong({
     : null;
 
   return (
-    <div ref={setNodeRef} style={style} className="card space-y-3 p-3">
-      <div className="flex items-center gap-2">
-        <button type="button" className="cursor-grab touch-none text-ink-faint active:cursor-grabbing" {...attributes} {...listeners} aria-label="Drag to reorder">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'card space-y-3 p-3 transition-[box-shadow,scale] duration-150',
+        // The lifted card while dragging (SG-7).
+        isDragging && 'relative z-10 scale-[1.02] shadow-card-lg',
+      )}
+    >
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="-ml-2 grid h-11 w-9 shrink-0 cursor-grab touch-none place-items-center text-ink-faint active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+        >
           <Grip width={20} height={20} />
         </button>
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent/10 text-sm font-bold text-accent-ink dark:text-accent-on">{index + 1}</span>
+        <span className="numeral-sm w-6 shrink-0 text-center text-accent-ink">{index + 1}</span>
         <input
-          className="field !py-2.5"
+          className="field ml-1 h-11 py-0"
           value={row.songTitle}
           onChange={(e) => onUpdate({ songTitle: e.target.value })}
           placeholder="Song title"
+          aria-label="Song title"
           enterKeyHint="next"
         />
-        <button type="button" className="row-press rounded-lg p-1 text-bad" onClick={onRemove} aria-label="Remove song">
+        <button type="button" className="btn-icon -mr-1.5 text-bad-ink" onClick={onRemove} aria-label="Remove song">
           <Trash width={18} height={18} />
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-2 pl-9">
-        <input className="field !py-2.5 text-sm" value={row.artist} onChange={(e) => onUpdate({ artist: e.target.value })} placeholder="Artist" enterKeyHint="next" />
+      <div className="grid grid-cols-1 gap-2 pl-[60px]">
         <input
-          className="field !py-2.5 text-sm"
+          className="field h-11 py-0"
+          value={row.artist}
+          onChange={(e) => onUpdate({ artist: e.target.value })}
+          placeholder="Artist"
+          aria-label="Artist"
+          enterKeyHint="next"
+        />
+        <input
+          className="field h-11 py-0"
           value={row.youtubeLink}
           onChange={(e) => onUpdate({ youtubeLink: e.target.value })}
           placeholder="YouTube link"
+          aria-label="YouTube link"
           inputMode="url"
           enterKeyHint="done"
         />
         <SongLeadPicker value={row.leads} candidates={candidates} onChange={(leads) => onUpdate({ leads })} />
       </div>
+      {!songForEdit && (
+        <p className="pl-[60px] text-[13px] leading-[18px] text-ink-faint">
+          Parts, key and lyrics can be added after you save.
+        </p>
+      )}
       {songForEdit && (
-        <div className="space-y-3 pl-9">
+        <div className="space-y-3">
           {/* Key/BPM + arrangement sit right after the YouTube link. */}
           <SongBandFields
             song={songForEdit}

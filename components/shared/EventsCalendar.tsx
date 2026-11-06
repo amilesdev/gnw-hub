@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { EventDTO } from '@/lib/serialize';
-import { EventCard } from './EventCard';
+import { EventRow, EventRowList } from './EventCard';
 import { EVENT_DOT_STYLES } from './EventTypeBadge';
-import { Pencil, Trash, ChevronLeft, ChevronRight } from './Icons';
+import { ChevronLeft, ChevronRight } from './Icons';
 import { EventCardSkeleton, Skeleton, SkeletonList } from './Skeleton';
+import { InlineEmpty } from './EmptyState';
 import { apiFetch } from '@/lib/api-client';
 import { formatMonthLabel, formatEventDate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -28,18 +29,17 @@ function localMonthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Events › Month (EV-2): the month grid card, then the selected day's rows. */
 export function EventsCalendar({
   canManage,
   refreshSignal,
   onOpen,
-  onEdit,
-  onDelete,
+  onMore,
 }: {
   canManage: boolean;
   refreshSignal: number;
   onOpen: (e: EventDTO) => void;
-  onEdit: (e: EventDTO) => void;
-  onDelete: (e: EventDTO) => void;
+  onMore: (e: EventDTO) => void;
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(() => localMonthKey(today)); // "YYYY-MM"
@@ -76,7 +76,9 @@ export function EventsCalendar({
 
   const firstWeekday = new Date(year, month - 1, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(year, month, 0).getDate();
-  const isCurrentMonth = localMonthKey(today) === cursor;
+  const thisMonth = localMonthKey(today);
+  const isCurrentMonth = thisMonth === cursor;
+  const isPastMonth = cursor < thisMonth;
   const todayDate = today.getDate();
 
   function shiftMonth(delta: number) {
@@ -91,23 +93,24 @@ export function EventsCalendar({
   ];
 
   const selectedEvents = selectedDay ? byDay.get(selectedDay) ?? [] : [];
+  const selectedLabel = selectedDay ? formatEventDate(new Date(Date.UTC(year, month - 1, selectedDay))) : '';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <button type="button" onClick={() => shiftMonth(-1)} className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft" aria-label="Previous month">
-          <ChevronLeft width={22} height={22} />
-        </button>
-        <h2 className="font-display text-lg font-semibold">{formatMonthLabel(cursor)}</h2>
-        <button type="button" onClick={() => shiftMonth(1)} className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft" aria-label="Next month">
-          <ChevronRight width={22} height={22} />
-        </button>
-      </div>
+    <div className="space-y-6">
+      <div className="card px-3 pb-3.5 pt-2">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={() => shiftMonth(-1)} className="btn-icon" aria-label="Previous month">
+            <ChevronLeft width={22} height={22} />
+          </button>
+          <h2 className="font-display text-lg font-semibold">{formatMonthLabel(cursor)}</h2>
+          <button type="button" onClick={() => shiftMonth(1)} className="btn-icon" aria-label="Next month">
+            <ChevronRight width={22} height={22} />
+          </button>
+        </div>
 
-      <div className="card p-3">
-        <div className="grid grid-cols-7 gap-1 pb-1">
+        <div className="grid grid-cols-7 gap-1">
           {WEEKDAYS.map((w, i) => (
-            <div key={i} className="py-1 text-center text-xs font-bold text-ink-faint">{w}</div>
+            <div key={i} className="text-center text-xs font-bold leading-6 text-ink-faint">{w}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1">
@@ -115,6 +118,7 @@ export function EventsCalendar({
             if (day === null) return <div key={`b${i}`} />;
             const isToday = isCurrentMonth && day === todayDate;
             const isSelected = day === selectedDay;
+            const isPast = isPastMonth || (isCurrentMonth && day < todayDate);
             // One dot per distinct event type that day, colored by type.
             const dayTypes = Array.from(new Set((byDay.get(day) ?? []).map((e) => e.type)));
             return (
@@ -122,22 +126,25 @@ export function EventsCalendar({
                 key={day}
                 type="button"
                 onClick={() => setSelectedDay(day)}
-                className={
-                  'relative grid aspect-square place-items-center rounded-xl text-sm font-semibold transition active:scale-95 ' +
-                  (isSelected
-                    ? 'bg-accent text-white'
+                aria-pressed={isSelected}
+                className={cn(
+                  'relative flex h-11 flex-col items-center justify-center rounded-[14px] text-[15px] font-semibold transition duration-150 active:scale-95',
+                  isSelected
+                    ? 'bg-accent text-accent-fg'
                     : isToday
-                    ? 'bg-accent/10 text-accent-ink dark:text-accent-on'
-                    : 'text-ink hover:bg-surface-2')
-                }
+                      ? 'bg-accent-soft text-accent-ink'
+                      : isPast
+                        ? 'text-ink-faint'
+                        : 'text-ink',
+                )}
               >
                 {day}
                 {dayTypes.length > 0 && (
-                  <span className="absolute bottom-1 flex gap-0.5">
+                  <span className="absolute bottom-1 flex gap-0.5" aria-hidden>
                     {dayTypes.slice(0, 4).map((t) => (
                       <span
                         key={t}
-                        className={cn('h-1.5 w-1.5 rounded-full', isSelected ? 'bg-white' : EVENT_DOT_STYLES[t])}
+                        className={cn('h-[5px] w-[5px] rounded-full', isSelected ? 'bg-accent-fg' : EVENT_DOT_STYLES[t])}
                       />
                     ))}
                   </span>
@@ -152,33 +159,25 @@ export function EventsCalendar({
         <SkeletonList>
           <Skeleton className="h-3 w-24" />
           <EventCardSkeleton />
-          <EventCardSkeleton />
         </SkeletonList>
       ) : selectedDay === null ? (
-        <p className="text-center text-sm text-ink-faint">Pick a day to see its events.</p>
+        <InlineEmpty>Pick a day to see its events.</InlineEmpty>
       ) : selectedEvents.length === 0 ? (
-        <p className="text-center text-sm text-ink-faint">
-          Nothing on {formatEventDate(new Date(Date.UTC(year, month - 1, selectedDay)))}.
-        </p>
+        <InlineEmpty>Nothing on {selectedLabel}.</InlineEmpty>
       ) : (
-        <div className="space-y-3">
-          <h3 className="eyebrow">{formatEventDate(new Date(Date.UTC(year, month - 1, selectedDay)))}</h3>
-          {selectedEvents.map((event) => (
-            <div key={event.id} className="space-y-2">
-              <EventCard event={event} onClick={() => onOpen(event)} />
-              {canManage && (
-                <div className="flex gap-2 px-1">
-                  <button className="btn-ghost !py-2 text-sm" onClick={() => onEdit(event)} type="button">
-                    <Pencil width={15} height={15} /> Edit
-                  </button>
-                  <button className="btn-ghost !py-2 text-sm text-bad" onClick={() => onDelete(event)} type="button">
-                    <Trash width={15} height={15} /> Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <section className="space-y-3">
+          <h3 className="eyebrow">{selectedLabel}</h3>
+          <EventRowList>
+            {selectedEvents.map((event) => (
+              <EventRow
+                key={event.id}
+                event={event}
+                onClick={() => onOpen(event)}
+                onMore={canManage ? () => onMore(event) : undefined}
+              />
+            ))}
+          </EventRowList>
+        </section>
       )}
     </div>
   );

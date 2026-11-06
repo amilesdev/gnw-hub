@@ -66,51 +66,49 @@ export function MonthCalendar({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="card px-3 pb-3.5 pt-2">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => shiftMonth(-1)} className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft" aria-label="Previous month">
+        <button type="button" onClick={() => shiftMonth(-1)} className="btn-icon" aria-label="Previous month">
           <ChevronLeft width={22} height={22} />
         </button>
         <h2 className="font-display text-lg font-semibold">{formatMonthLabel(cursor)}</h2>
-        <button type="button" onClick={() => shiftMonth(1)} className="row-press grid h-10 w-10 place-items-center rounded-xl text-ink-soft" aria-label="Next month">
+        <button type="button" onClick={() => shiftMonth(1)} className="btn-icon" aria-label="Next month">
           <ChevronRight width={22} height={22} />
         </button>
       </div>
 
-      <div className="card p-3">
-        <div className="grid grid-cols-7 gap-1 pb-1">
-          {WEEKDAYS.map((w, i) => (
-            <div key={i} className="py-1 text-center text-xs font-bold text-ink-faint">{w}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((day, i) => {
-            if (day === null) return <div key={`b${i}`} />;
-            const ymd = ymdOf(year, month, day);
-            const isToday = ymd === todayYmd;
-            const isPast = ymd < todayYmd;
-            const r = renderDay(ymd, { isToday, isPast });
-            return (
-              <button
-                key={day}
-                type="button"
-                disabled={r.disabled}
-                onClick={() => !r.disabled && onDayClick?.(ymd)}
-                className={cn(
-                  'relative grid aspect-square place-items-center rounded-xl text-sm font-semibold transition',
-                  r.disabled ? 'cursor-default text-ink-faint/40' : 'text-ink active:scale-95',
-                  r.className,
-                )}
-              >
-                {day}
-                {r.dot}
-              </button>
-            );
-          })}
-        </div>
-
-        {footer && <div className="mt-3 border-t border-line pt-4">{footer}</div>}
+      <div className="grid grid-cols-7 gap-1">
+        {WEEKDAYS.map((w, i) => (
+          <div key={i} className="text-center text-xs font-bold leading-6 text-ink-faint">{w}</div>
+        ))}
       </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={`b${i}`} />;
+          const ymd = ymdOf(year, month, day);
+          const isToday = ymd === todayYmd;
+          const isPast = ymd < todayYmd;
+          const r = renderDay(ymd, { isToday, isPast });
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={r.disabled}
+              onClick={() => !r.disabled && onDayClick?.(ymd)}
+              className={cn(
+                'relative flex h-11 flex-col items-center justify-center rounded-[14px] text-[15px] font-semibold transition duration-150',
+                r.disabled ? 'cursor-default text-ink-faint/40' : 'text-ink active:scale-95',
+                r.className,
+              )}
+            >
+              {day}
+              {r.dot}
+            </button>
+          );
+        })}
+      </div>
+
+      {footer && <div className="mt-3 border-t border-line px-1 pt-4">{footer}</div>}
     </div>
   );
 }

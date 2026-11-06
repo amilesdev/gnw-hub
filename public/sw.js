@@ -12,7 +12,8 @@
  * stale copy; and ANY write or auth call (login/logout, POST/PATCH/DELETE to /api)
  * wipes the read cache, so nothing survives a sign-out/sign-in on a shared device.
  */
-const VERSION = 'gnw-v4';
+// v5: the 3a redesign (new offline page, fonts and styles).
+const VERSION = 'gnw-v5';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];

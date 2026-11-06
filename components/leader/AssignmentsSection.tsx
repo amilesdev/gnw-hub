@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { MemberRow } from './MembersManager';
 import type { EventAssignmentDTO } from '@/lib/serialize';
 import { Mic, ChevronDown, Check } from '@/components/shared/Icons';
+import { Skeleton } from '@/components/shared/Skeleton';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
@@ -117,11 +118,11 @@ export function AssignmentsSection({
         className="row-press flex w-full items-center justify-between px-4 py-3.5 text-left"
       >
         <span className="inline-flex items-center gap-2 font-semibold">
-          <Mic width={18} height={18} className="text-accent dark:text-accent-on" /> {title}
+          <Mic width={18} height={18} className="text-accent-ink" /> {title}
         </span>
         <span className="flex items-center gap-2">
           {count > 0 && (
-            <span className="text-xs font-semibold text-accent-ink dark:text-accent-on">
+            <span className="text-xs font-semibold text-accent-ink">
               {count} assigned
             </span>
           )}
@@ -136,10 +137,16 @@ export function AssignmentsSection({
             service.
           </p>
 
-          {error && <p className="text-sm font-semibold text-bad">{error}</p>}
-          {!members && !error && <p className="text-sm text-ink-faint">Loading members…</p>}
+          {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
+          {!members && !error && (
+            <div className="flex gap-2.5" role="status" aria-label="Loading members">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-24 w-32 shrink-0 rounded-[18px]" />
+              ))}
+            </div>
+          )}
           {members && candidates.length === 0 && (
-            <p className="text-sm text-ink-faint">No active vocalists yet — invite some members first.</p>
+            <p className="text-sm text-ink-faint">No active vocalists yet. Invite some members first.</p>
           )}
 
           {candidates.length > 0 &&
@@ -186,7 +193,7 @@ export function AssignmentsSection({
                           <span
                             className={cn(
                               'grid h-5 w-5 place-items-center rounded-md',
-                              on ? (away ? 'bg-warn text-white' : 'bg-accent text-white') : 'border border-line',
+                              on ? (away ? 'bg-warn text-white' : 'bg-accent text-accent-fg') : 'border border-line',
                             )}
                           >
                             {on && <Check width={13} height={13} />}
@@ -195,7 +202,7 @@ export function AssignmentsSection({
                           <span
                             className={cn(
                               'truncate text-xs',
-                              away ? 'font-semibold text-warn' : 'text-ink-faint',
+                              away ? 'font-semibold text-warn-ink' : 'text-ink-faint',
                             )}
                           >
                             {away

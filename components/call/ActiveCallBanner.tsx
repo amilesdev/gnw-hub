@@ -51,9 +51,9 @@ export function ActiveCallBanner() {
   const count = active.participants;
 
   return (
-    <div className="animate-rise overflow-hidden rounded-3xl border border-accent/25 bg-accent-soft shadow-card">
+    <div className="animate-rise overflow-hidden rounded-3xl border border-accent/25 bg-accent-soft">
       <div className="flex items-center gap-3 p-3">
-        <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-white shadow-pop">
+        <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-accent text-accent-fg shadow-pop">
           <span
             className="absolute inset-0 rounded-full ring-2 ring-accent animate-pulse-ring"
             aria-hidden
@@ -64,10 +64,10 @@ export function ActiveCallBanner() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 shrink-0 rounded-full bg-good animate-pulse" aria-hidden />
-            <span className="eyebrow text-accent dark:text-accent-on">Live call</span>
+            <span className="eyebrow text-accent-ink">Live call</span>
           </div>
           <p className="truncate text-[15px] font-bold text-ink">{active.name}</p>
-          <p className="text-xs font-semibold text-ink-soft">
+          <p className="text-[13px] font-semibold leading-[18px] text-ink-soft">
             {count} {count === 1 ? 'person' : 'people'} on the call
           </p>
         </div>
@@ -75,7 +75,7 @@ export function ActiveCallBanner() {
         <button
           type="button"
           onClick={() => router.push(`/call/${active.id}`)}
-          className="btn-primary shrink-0 px-5 py-2.5"
+          className="btn-primary btn-sm h-11 shrink-0 px-4"
         >
           Join
         </button>
@@ -84,9 +84,9 @@ export function ActiveCallBanner() {
           type="button"
           onClick={() => setDismissedId(active.id)}
           aria-label="Dismiss"
-          className="row-press -mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-faint"
+          className="btn-icon -my-1 -mr-1.5 text-ink-faint"
         >
-          <X width={16} height={16} />
+          <X width={20} height={20} />
         </button>
       </div>
     </div>

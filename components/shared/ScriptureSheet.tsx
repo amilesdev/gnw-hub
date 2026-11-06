@@ -103,12 +103,12 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex justify-center"
+      className="fixed inset-0 z-lightbox flex justify-center"
       role="dialog"
       aria-modal="true"
       aria-label={`Scripture: ${reference}`}
     >
-      <div className="absolute inset-0 animate-fade-in bg-ink/50" onClick={close} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-scrim" onClick={close} aria-hidden />
 
       <div
         className="relative z-10 mt-auto w-full max-w-[430px] animate-sheet-up px-3 pb-3"
@@ -121,76 +121,61 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
-        <div
-          className="grain-block relative flex max-h-[72vh] flex-col overflow-hidden rounded-3xl shadow-sheet ring-1 ring-black/10"
-          style={{
-            background:
-              'radial-gradient(120% 80% at 50% 0%, #f8f1de 0%, #f1e7ca 55%, #e8dcbb 100%)',
-            color: '#3a2f1d',
-          }}
-        >
+        {/* Follows the theme (EV-C4): surface + Literata, the Holy Talks hue as accent. */}
+        <div className="grain-block relative flex max-h-[72vh] flex-col overflow-hidden rounded-sheet bg-surface text-ink shadow-sheet">
           {/* drag handle */}
-          <div className="relative z-10 flex justify-center pt-2.5">
-            <span className="h-1 w-10 rounded-full" style={{ background: 'rgba(58,47,29,0.25)' }} />
+          <div className="relative z-10 flex justify-center pt-2">
+            <span className="h-[5px] w-10 rounded-[3px] bg-line" />
           </div>
 
           <button
             type="button"
             onClick={close}
             aria-label="Close"
-            className="absolute right-3 top-3 z-20 grid h-8 w-8 place-items-center rounded-full transition active:scale-95"
-            style={{ background: 'rgba(58,47,29,0.08)', color: '#5b4a2e' }}
+            className="btn-icon absolute right-3 top-3 z-20 bg-surface-2"
           >
-            <X width={16} height={16} />
+            <X width={20} height={20} />
           </button>
 
           {/* reference header */}
-          <header className="relative z-10 px-6 pt-3 text-center">
-            <h2 className="font-display text-2xl font-semibold" style={{ color: '#2c2415' }}>
+          <header className="relative z-10 px-14 pt-3 text-center">
+            <h2 className="font-display text-2xl font-semibold text-ink">
               {state.status === 'ok' ? state.passage.reference : reference}
             </h2>
             <div className="mx-auto mt-2 flex items-center justify-center gap-2">
-              <span className="h-px w-8" style={{ background: 'rgba(58,47,29,0.3)' }} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: '#7a6743' }}>
-                New Living Translation
-              </span>
-              <span className="h-px w-8" style={{ background: 'rgba(58,47,29,0.3)' }} />
+              <span className="h-px w-8 bg-line" />
+              <span className="micro text-type-holytalks">New Living Translation</span>
+              <span className="h-px w-8 bg-line" />
             </div>
           </header>
 
           {/* body */}
           <div ref={scrollRef} className="no-scrollbar relative z-10 flex-1 overflow-y-auto px-6 pb-5 pt-4">
             {state.status === 'loading' && (
-              <p className="py-8 text-center font-display text-lg italic" style={{ color: '#8a7448' }}>
+              <p className="py-8 text-center font-display text-lg italic text-ink-faint">
                 Turning the page…
               </p>
             )}
 
             {state.status === 'notfound' && (
-              <p className="py-6 text-center font-display text-base italic" style={{ color: '#6f5d3c' }}>
+              <p className="py-6 text-center font-display text-base italic text-ink-soft">
                 We couldn’t find “{reference}.” Double-check the reference (e.g. “John 3:16”).
               </p>
             )}
 
             {state.status === 'error' && (
-              <p className="py-6 text-center font-display text-base italic" style={{ color: '#8a4b3f' }}>
+              <p className="py-6 text-center font-display text-base italic text-bad-ink">
                 {state.message || 'Couldn’t load this scripture right now.'}
               </p>
             )}
 
             {state.status === 'ok' && (
               <>
-                <div
-                  className="selectable font-display text-[1.075rem] leading-[1.8]"
-                  style={{ color: '#3a2f1d', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
-                >
+                <div className="selectable font-display text-[1.075rem] leading-[1.8] text-ink">
                   {state.passage.verses.map((v, i) => (
                     <span key={i}>
                       {v.number != null && (
-                        <sup
-                          className="mr-0.5 align-super text-[0.62em] font-semibold"
-                          style={{ color: '#9a7d3f' }}
-                        >
+                        <sup className="mr-0.5 align-super text-[0.62em] font-semibold text-type-holytalks">
                           {v.number}
                         </sup>
                       )}
@@ -199,10 +184,7 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
                   ))}
                 </div>
 
-                <p
-                  className="mt-5 border-t pt-3 text-[10px] leading-snug"
-                  style={{ borderColor: 'rgba(58,47,29,0.18)', color: '#8a7448' }}
-                >
+                <p className="mt-5 border-t border-line pt-3 text-[11px] leading-snug text-ink-faint">
                   {state.passage.copyright}
                 </p>
               </>

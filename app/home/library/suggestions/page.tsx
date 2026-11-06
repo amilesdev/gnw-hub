@@ -9,5 +9,5 @@ export default async function MemberSuggestionsPage() {
   const session = await getSessionUser();
   if (!session?.id) redirect('/login');
   const suggestions = await getSuggestions(session);
-  return <SuggestionsScreen canManage={false} meId={session.id} initialSuggestions={suggestions} backHref="/home/library" />;
+  return <SuggestionsScreen canManage={false} meId={session.id} initialSuggestions={suggestions} backHref="/home/setlist?view=library" />;
 }

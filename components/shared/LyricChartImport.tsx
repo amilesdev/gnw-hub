@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { LyricChart, SongDTO } from '@/lib/setlist-serialize';
 import { LyricChartPreview } from './LyricChartPreview';
-import { FileText } from './Icons';
+import { ConfirmDialog } from './ConfirmDialog';
 import { apiFetch } from '@/lib/api-client';
 
 /**
@@ -30,6 +30,7 @@ export function LyricChartImport({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmReimport, setConfirmReimport] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [serviceEmail, setServiceEmail] = useState<string | null>(null);
 
   const chart = song.lyricChart;
@@ -79,76 +80,81 @@ export function LyricChartImport({
   }
 
   return (
-    <div className="space-y-2.5 rounded-2xl bg-surface-2/50 p-3">
-      {!embedded && (
-        <div className="flex items-center gap-2">
-          <FileText width={15} height={15} className="text-ink-soft" />
-          <p className="label !mb-0">Lyric chart</p>
-        </div>
-      )}
+    <div className={embedded ? 'space-y-2.5 rounded-3xl border border-line bg-surface p-4' : 'card space-y-3 p-4'}>
+      {!embedded && <p className="eyebrow">Lyric chart</p>}
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <input
-          className="field !py-2.5 text-sm"
+          className="field text-base"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://docs.google.com/document/d/…"
+          aria-label="Google Doc link"
           inputMode="url"
           disabled={busy}
         />
         <div className="flex items-center gap-2">
           {chart ? (
-            confirmReimport ? (
-              <span className="flex items-center gap-2 text-xs text-ink-soft">
-                Replace the current chart?
-                <button type="button" className="font-semibold text-accent-ink dark:text-accent-on" disabled={busy} onClick={pull}>
-                  Yes
-                </button>
-                <button type="button" className="font-semibold text-ink-faint" onClick={() => setConfirmReimport(false)}>
-                  Cancel
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="btn-ghost !px-3 !py-1.5 text-xs"
-                disabled={busy || !url.trim()}
-                onClick={() => setConfirmReimport(true)}
-              >
-                {busy ? 'Importing…' : 'Re-import'}
-              </button>
-            )
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              disabled={busy || !url.trim()}
+              onClick={() => setConfirmReimport(true)}
+            >
+              {busy ? 'Importing…' : 'Re-import'}
+            </button>
           ) : (
-            <button type="button" className="btn-ghost !px-3 !py-1.5 text-xs" disabled={busy || !url.trim()} onClick={pull}>
+            <button type="button" className="btn-ghost btn-sm" disabled={busy || !url.trim()} onClick={pull}>
               {busy ? 'Importing…' : 'Pull Chart'}
             </button>
           )}
-          {chart && !confirmReimport && (
-            <button
-              type="button"
-              className="row-press rounded-lg px-1.5 py-1 text-xs font-semibold text-bad"
-              disabled={busy}
-              onClick={clearChart}
-            >
+          {chart && (
+            <button type="button" className="btn-danger-text btn-sm" disabled={busy} onClick={() => setConfirmRemove(true)}>
               Remove
             </button>
           )}
         </div>
       </div>
 
-      {error && <p className="text-xs font-semibold text-bad">{error}</p>}
+      {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
 
       {serviceEmail && (
-        <p className="text-[11px] leading-snug text-ink-faint">
-          Share the doc with: <span className="break-all font-semibold text-ink-soft">{serviceEmail}</span>
+        <p className="text-xs leading-4 text-ink-faint">
+          Share the doc with: <span className="selectable break-all font-semibold text-ink-soft">{serviceEmail}</span>
         </p>
       )}
 
       {chart && !embedded && (
-        <div className="rounded-xl bg-surface p-3">
+        <div className="rounded-2xl bg-surface-2 p-3">
           <LyricChartPreview chart={chart} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmReimport}
+        title="Replace the current chart?"
+        message="The chart is re-imported from the Google Doc, replacing what's here now."
+        confirmLabel="Re-import"
+        destructive={false}
+        busy={busy}
+        onConfirm={async () => {
+          await pull();
+          setConfirmReimport(false);
+        }}
+        onClose={() => setConfirmReimport(false)}
+      />
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Remove lyric chart?"
+        message="The imported chart is removed from this song. You can import it again later."
+        confirmLabel="Remove"
+        busy={busy}
+        onConfirm={async () => {
+          await clearChart();
+          setConfirmRemove(false);
+        }}
+        onClose={() => setConfirmRemove(false)}
+      />
     </div>
   );
 }

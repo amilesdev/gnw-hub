@@ -52,7 +52,7 @@ const FONTS: FontChoice[] = [
   { id: 'archivo', name: 'Archivo', note: 'Athletic grotesque — scoreboard, jersey.', varName: '--font-cand-archivo' },
   { id: 'space', name: 'Space Grotesk', note: 'Techy arcade, quirky details. Cooler, more machine.', varName: '--font-cand-space' },
   { id: 'baloo', name: 'Baloo 2', note: 'Rounded and warm — softer, closest to the original brief.', varName: '--font-cand-baloo' },
-  { id: 'fraunces', name: 'Fraunces (Hub serif)', note: 'The current Hub face, for comparison.', varName: '--font-fraunces' },
+  { id: 'literata', name: 'Literata (Hub serif)', note: 'The current Hub face, for comparison.', varName: '--font-literata' },
 ];
 
 export default async function PlayPreviewPage({

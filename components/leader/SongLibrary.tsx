@@ -1,22 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from '@/components/shared/Overlay';
-import { FieldLabel } from '@/components/shared/Field';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { TextField } from '@/components/shared/Field';
+import { EmptyState, InlineEmpty } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
+import { SetlistSkeleton } from '@/components/shared/Skeleton';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
+import { SearchField } from '@/components/shared/SearchField';
+import { LibraryRow, useLibraryFilter } from '@/components/shared/SongLibraryBrowser';
 import { SongAudioSlots } from './SongAudioSlots';
 import { SongBandFields } from './SongBandFields';
 import { LyricChartImport } from '@/components/shared/LyricChartImport';
 import { SongDetail } from '@/components/shared/SongDetail';
-import { Plus, Music, MusicPlus, Pencil, ChevronLeft, Trash, Book, Sparkle, Upload } from '@/components/shared/Icons';
+import { Plus, Pencil, Trash, Book, Sparkle, Upload } from '@/components/shared/Icons';
 import { LibraryPicker } from './LibraryPicker';
 import { apiFetch } from '@/lib/api-client';
 import { useDataChanged } from '@/lib/data-changed';
 import { crossoverSeasonActive } from '@/lib/crossover-season';
-import Link from 'next/link';
+import { listCard } from '@/lib/ui-classes';
 
 type Scope = LibrarySongDTO['scope'];
 
@@ -34,23 +37,52 @@ function libToSong(s: LibrarySongDTO): SongDTO {
  * A song list and its editor: the Song Library, or (scope "crossover") the
  * separate Crossover song list. Same editor either way — parts, band content
  * and lyric chart — plus a way to copy a song across to the other list.
+ *
+ * `inTab`: Songs › Library for leaders (SG-5). The Songs tab supplies the
+ * header (Suggest + New → `creating`) and keeps the search text. Standalone
+ * (the Crossover list) it draws its own header.
  */
-export function SongLibrary({ scope = 'library' }: { scope?: Scope }) {
+export function SongLibrary({
+  scope = 'library',
+  inTab = false,
+  q: tabQ,
+  onQChange,
+  creating = false,
+  onCreatingChange,
+}: {
+  scope?: Scope;
+  inTab?: boolean;
+  q?: string;
+  onQChange?: (q: string) => void;
+  creating?: boolean;
+  onCreatingChange?: (v: boolean) => void;
+}) {
   const crossover = scope === 'crossover';
   const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
-  const [q, setQ] = useState('');
-  const [editing, setEditing] = useState<LibrarySongDTO | 'new' | null>(null);
+  const [ownQ, setOwnQ] = useState('');
+  const q = tabQ ?? ownQ;
+  const setQ = onQChange ?? setOwnQ;
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [editing, setEditingState] = useState<LibrarySongDTO | 'new' | null>(null);
+  const setEditing = (v: LibrarySongDTO | 'new' | null) => {
+    setEditingState(v);
+    if (v === null) onCreatingChange?.(false);
+  };
+  useEffect(() => {
+    if (creating) setEditingState('new');
+  }, [creating]);
   const [viewing, setViewing] = useState<SongDTO | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
   /** `quiet` (a background refresh) keeps the current list if the reload fails. */
   async function load(quiet = false) {
+    setLoadFailed(false);
     try {
       const { songs } = await apiFetch<{ songs: LibrarySongDTO[] }>(`/api/songs?scope=${scope}`);
       setSongs(songs);
     } catch {
-      if (!quiet) setSongs([]);
+      if (!quiet) setLoadFailed(true);
     }
   }
 
@@ -78,64 +110,56 @@ export function SongLibrary({ scope = 'library' }: { scope?: Scope }) {
     load();
   }, []);
 
-  const filtered = useMemo(() => {
-    const list = songs ?? [];
-    const needle = q.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter(
-      (s) => s.songTitle.toLowerCase().includes(needle) || (s.artist ?? '').toLowerCase().includes(needle),
-    );
-  }, [songs, q]);
+  const filtered = useLibraryFilter(songs, q);
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <Link
-            href={crossover ? '/dashboard/crossover/sets' : '/dashboard/setlist'}
-            className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-            aria-label={crossover ? 'Back to Crossover sets' : 'Back to setlists'}
-          >
-            <ChevronLeft width={18} height={18} />
-          </Link>
-          {crossover && <div className="eyebrow mb-2">Crossover</div>}
-          <h1 className="page-title">{crossover ? 'Songs' : 'Library'}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Icon-only on narrow phones so the header fits beside the floating avatar. */}
-          {crossover ? (
-            <button
-              type="button"
-              className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3"
-              onClick={() => setImporting(true)}
-            >
-              <Upload width={18} height={18} /> <span className="max-[389px]:sr-only">Import</span>
-            </button>
-          ) : (
-            <Link href="/dashboard/library/suggestions" className="btn-ghost border border-line !px-4 !py-3 max-[389px]:!px-3">
-              <MusicPlus width={18} height={18} /> <span className="max-[389px]:sr-only">Suggest</span>
-            </Link>
-          )}
-          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setEditing('new')}>
-            <Plus width={18} height={18} /> New
-          </button>
-        </div>
-      </header>
+    <div className="space-y-4">
+      {!inTab && (
+        <ScreenHeader
+          back={{ href: '/dashboard/crossover/sets', label: 'Sets' }}
+          eyebrow="Crossover"
+          title="Songs"
+          className="mb-2"
+          actions={
+            <>
+              {/* Icon-only below 390pt so the header fits. */}
+              <button
+                type="button"
+                className="btn-outline btn-sm h-11 max-[389px]:w-11 max-[389px]:px-0"
+                onClick={() => setImporting(true)}
+                aria-label="Import from library"
+              >
+                <Upload width={16} height={16} /> <span className="max-[389px]:hidden">Import</span>
+              </button>
+              <button type="button" className="btn-primary btn-sm h-11" onClick={() => setEditing('new')}>
+                <Plus width={16} height={16} /> New
+              </button>
+            </>
+          }
+        />
+      )}
 
       {crossover && (
-        <p className="-mt-2 text-sm text-ink-soft">
+        <p className="text-sm text-ink-soft">
           Crossover arrangements, kept apart from the Song Library. Import a library song to start from it, or copy a
           Crossover song back from its editor.
         </p>
       )}
-      {importError && <p className="text-sm font-semibold text-bad">{importError}</p>}
+      {importError && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{importError}</p>}
 
-      {songs === null ? (
-        <SkeletonList>
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </SkeletonList>
+      <SearchField value={q} onChange={setQ} placeholder="Search songs or artists…" />
+
+      {loadFailed ? (
+        <InlineEmpty>
+          Could not load the library.
+          <button type="button" className="btn-ghost btn-sm mx-auto mt-3 flex" onClick={() => void load()}>
+            Try again
+          </button>
+        </InlineEmpty>
+      ) : songs === null ? (
+        <div role="status" aria-label="Loading">
+          <SetlistSkeleton rows={6} />
+        </div>
       ) : songs.length === 0 ? (
         <EmptyState
           icon={crossover ? Sparkle : Book}
@@ -145,52 +169,32 @@ export function SongLibrary({ scope = 'library' }: { scope?: Scope }) {
               : "Your library is empty. Add your first song, upload its parts, and it'll be ready for every setlist."
           }
         />
+      ) : filtered.length === 0 ? (
+        <InlineEmpty>No songs match that search.</InlineEmpty>
       ) : (
-        <>
-          <input
-            className="field"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search songs or artists…"
-            enterKeyHint="search"
-          />
-
-          {filtered.length === 0 ? (
-            <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No songs match that search.</p>
-          ) : (
-            <div className="card overflow-hidden">
-              {filtered.map((s) => (
-                <div key={s.id} className="flex items-center border-b border-line last:border-0">
-                  {/* Tap the row to view the song read-only; pencil opens the editor. */}
-                  <button
-                    type="button"
-                    onClick={() => setViewing(libToSong(s))}
-                    className="row-press flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
-                      <Music width={16} height={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{s.songTitle}</span>
-                      {s.artist && <span className="block truncate text-xs text-ink-faint">{s.artist}</span>}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(s)}
-                    className="row-press mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-xl text-ink-soft"
-                    aria-label={`Edit ${s.songTitle}`}
-                  >
-                    <Pencil width={16} height={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+        <div className={listCard}>
+          {filtered.map((s) => (
+            // Tap the row to view the song read-only; the pencil opens the editor.
+            <LibraryRow
+              key={s.id}
+              song={s}
+              onClick={() => setViewing(libToSong(s))}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setEditing(s)}
+                  className="btn-icon mr-1.5"
+                  aria-label={`Edit ${s.songTitle}`}
+                >
+                  <Pencil width={20} height={20} />
+                </button>
+              }
+            />
+          ))}
+        </div>
       )}
 
-      {viewing && <SongDetail song={viewing} onClose={() => setViewing(null)} />}
+      {viewing && <SongDetail song={viewing} context={{ fromLibrary: true, backLabel: crossover ? 'Songs' : 'Library' }} onClose={() => setViewing(null)} />}
 
       {importing && (
         <LibraryPicker
@@ -318,45 +322,44 @@ function LibraryEditor({
     <Overlay
       title={initial ? initial.songTitle : 'New song'}
       onClose={onClose}
+      backLabel={crossover ? 'Songs' : 'Library'}
       action={
-        <button type="button" className="btn-primary !px-4 !py-2.5" disabled={busy} onClick={saveDetails}>
+        <button type="button" className="btn-primary btn-sm h-11 min-w-[76px]" disabled={busy} onClick={saveDetails}>
           {busy ? 'Saving…' : song ? 'Save' : 'Create'}
         </button>
       }
     >
-      <div className="space-y-5">
-        <div className="space-y-3">
-          <div>
-            <FieldLabel>Title</FieldLabel>
-            <input className="field mt-1.5" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song title" enterKeyHint="next" />
-          </div>
-          <div>
-            <FieldLabel>Artist</FieldLabel>
-            <input className="field mt-1.5" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist / arranger" enterKeyHint="next" />
-          </div>
-          <div>
-            <FieldLabel>YouTube link</FieldLabel>
-            <input className="field mt-1.5 text-sm" value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://youtube.com/…" inputMode="url" enterKeyHint="done" />
-          </div>
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song title" enterKeyHint="next" />
+          <TextField label="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist / arranger" enterKeyHint="next" />
+          <TextField
+            label="YouTube link"
+            value={youtube}
+            onChange={(e) => setYoutube(e.target.value)}
+            placeholder="https://youtube.com/…"
+            inputMode="url"
+            enterKeyHint="done"
+          />
         </div>
 
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
 
         {/* Key/BPM + arrangement sit right after the YouTube link (once saved). */}
         {song && <SongBandFields song={song} onChanged={(s) => setSong({ ...song, ...s })} />}
 
         {song ? (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <SongAudioSlots song={song} month={crossover ? 'crossover' : 'library'} onChanged={(s) => setSong({ ...song, ...s })} />
             <LyricChartImport song={song} onChanged={(s) => setSong({ ...song, ...s })} />
 
             {canCopy && (
               <div className="border-t border-line pt-4">
-                <button type="button" className="btn-ghost !py-2 text-sm" onClick={copyAcross} disabled={busy || copied}>
-                  {crossover ? <Book width={15} height={15} /> : <Sparkle width={15} height={15} />}
+                <button type="button" className="btn-ghost btn-sm" onClick={copyAcross} disabled={busy || copied}>
+                  {crossover ? <Book width={16} height={16} /> : <Sparkle width={16} height={16} />}
                   {copied ? 'Copied' : crossover ? 'Copy to Song Library' : 'Copy to Crossover songs'}
                 </button>
-                <p className="mt-1.5 text-xs text-ink-faint">
+                <p className="mt-1.5 text-[13px] leading-[18px] text-ink-faint">
                   {copied
                     ? `A copy is now in the ${crossover ? 'Song Library' : 'Crossover song list'}.`
                     : `Adds a separate copy to the ${crossover ? 'Song Library' : 'Crossover song list'} with the same parts and chart. Changing one won’t change the other.`}
@@ -365,10 +368,10 @@ function LibraryEditor({
             )}
 
             <div className="border-t border-line pt-4">
-              <button type="button" className="btn-ghost !py-2 text-sm text-bad" onClick={() => setConfirmRetire(true)}>
-                <Trash width={15} height={15} /> Retire song
+              <button type="button" className="btn-danger-text btn-sm" onClick={() => setConfirmRetire(true)}>
+                <Trash width={16} height={16} /> Retire song
               </button>
-              <p className="mt-1.5 text-xs text-ink-faint">
+              <p className="mt-1.5 text-[13px] leading-[18px] text-ink-faint">
                 {usageCount > 0
                   ? `Used in ${usedIn}. Retiring deletes its audio and removes it from ${usageCount > 1 ? 'those' : 'it'}.`
                   : 'Deletes this song and its uploaded audio for good.'}

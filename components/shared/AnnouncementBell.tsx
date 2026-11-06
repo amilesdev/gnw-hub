@@ -9,11 +9,25 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { Bell, Plus, Pencil, Trash, ChevronRight } from './Icons';
 import { apiFetch } from '@/lib/api-client';
 import { formatExpiry, expiringSoon, formatPosted } from '@/lib/announcement-ui';
+import { cn } from '@/lib/utils';
+
+// "Unread on this device" (HM-C4): the dot shows only for an announcement
+// posted after this device last opened the bell. Per-device by design for now;
+// cross-device unread would need a backend.
+const SEEN_KEY = 'gnw-announcements-seen';
+
+function readSeen(): number {
+  try {
+    return Number(localStorage.getItem(SEEN_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 /**
- * Bell with a dot badge (shown when active announcements exist). Tapping opens
- * a modal listing active titles; tapping a title opens the full detail.
- * Leaders additionally get add/edit/delete with expiry shown.
+ * Glass bell with an unread dot. Tapping opens a sheet listing active
+ * announcements; tapping one opens the full detail. Leaders additionally get
+ * add/edit/delete with expiry shown.
  */
 export function AnnouncementBell({
   initial = [],
@@ -30,6 +44,10 @@ export function AnnouncementBell({
   const [editing, setEditing] = useState<AnnouncementDTO | 'new' | null>(null);
   const [confirming, setConfirming] = useState<AnnouncementDTO | null>(null);
   const [busy, setBusy] = useState(false);
+  // null until mounted, so the server render never guesses at localStorage.
+  const [seenAt, setSeenAt] = useState<number | null>(null);
+
+  useEffect(() => setSeenAt(readSeen()), []);
 
   async function refresh() {
     const { announcements } = await apiFetch<{ announcements: AnnouncementDTO[] }>('/api/announcements');
@@ -53,20 +71,29 @@ export function AnnouncementBell({
     }
   }
 
-  const hasActive = items.length > 0;
+  function open() {
+    setListOpen(true);
+    const now = Date.now();
+    setSeenAt(now);
+    try {
+      localStorage.setItem(SEEN_KEY, String(now));
+    } catch {
+      /* storage unavailable: the dot just comes back next visit */
+    }
+  }
+
+  const unread = seenAt !== null && items.some((a) => new Date(a.createdAt).getTime() > seenAt);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setListOpen(true)}
-        className="row-press relative grid h-11 w-11 place-items-center rounded-2xl bg-surface border border-line text-ink-soft shadow-card"
-        aria-label="Announcements"
+        onClick={open}
+        className="glass relative grid h-11 w-11 place-items-center rounded-full text-ink-soft transition-transform duration-150 ease-soft active:scale-[0.97]"
+        aria-label={unread ? 'Announcements, new' : 'Announcements'}
       >
-        <Bell width={21} height={21} />
-        {hasActive && (
-          <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-bad ring-2 ring-surface" />
-        )}
+        <Bell width={20} height={20} />
+        {unread && <span className="absolute right-2.5 top-[9px] h-[9px] w-[9px] rounded-full bg-unread ring-2 ring-surface" />}
       </button>
 
       <Modal open={listOpen} onClose={() => setListOpen(false)} title="Announcements">
@@ -79,43 +106,44 @@ export function AnnouncementBell({
           <p className="py-4 text-center text-ink-faint">No active announcements right now.</p>
         ) : (
           <ul className="space-y-2.5">
-            {items.map((a, i) =>
+            {items.map((a) =>
               canManage ? (
-                <li key={a.id} className="rounded-2xl border border-line bg-surface p-3">
-                  <button type="button" className="row-press flex w-full items-center gap-2 text-left" onClick={() => setDetail(a)}>
+                <li key={a.id} className="rounded-2xl bg-surface-2 p-3.5">
+                  <button type="button" className="row-press -m-1 flex w-[calc(100%+0.5rem)] items-center gap-2 rounded-xl p-1 text-left" onClick={() => setDetail(a)}>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{a.title}</span>
-                      <span className={expiringSoon(a.expiresAt) ? 'text-xs font-semibold text-warn' : 'text-xs text-ink-faint'}>
+                      <span className="row-title block truncate">{a.title}</span>
+                      <span
+                        className={cn(
+                          'text-[13px] leading-[18px]',
+                          expiringSoon(a.expiresAt) ? 'font-semibold text-warn-ink' : 'text-ink-faint',
+                        )}
+                      >
                         Expires {formatExpiry(a.expiresAt)}
                       </span>
                     </span>
                     <ChevronRight width={18} height={18} className="text-ink-faint" />
                   </button>
-                  <div className="mt-2 flex gap-2">
-                    <button className="btn-ghost !py-1.5 text-xs" onClick={() => setEditing(a)} type="button">
-                      <Pencil width={14} height={14} /> Edit
+                  <div className="mt-2.5 flex gap-2">
+                    <button className="btn-outline btn-sm" onClick={() => setEditing(a)} type="button">
+                      <Pencil width={16} height={16} /> Edit
                     </button>
-                    <button className="btn-ghost !py-1.5 text-xs text-bad" onClick={() => setConfirming(a)} type="button">
-                      <Trash width={14} height={14} /> Delete
+                    <button className="btn-danger-text btn-sm" onClick={() => setConfirming(a)} type="button">
+                      <Trash width={16} height={16} /> Delete
                     </button>
                   </div>
                 </li>
               ) : (
-                <li key={a.id} className={`rounded-2xl border border-line p-3.5 ${i % 2 === 0 ? 'bg-surface-2' : 'bg-surface'}`}>
+                <li key={a.id} className="rounded-2xl bg-surface-2 p-3.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="min-w-0 flex-1 font-semibold text-ink">{a.title}</p>
-                    {a.authorName && (
-                      <p className="shrink-0 font-display text-sm italic text-ink-soft">{a.authorName}</p>
-                    )}
+                    <p className="row-title min-w-0 flex-1 text-ink">{a.title}</p>
+                    {a.authorName && <p className="shrink-0 text-[13px] font-semibold text-ink-soft">{a.authorName}</p>}
                   </div>
                   {a.body.trim() && (
                     <p className="selectable mt-2 whitespace-pre-wrap text-sm text-ink-soft">{a.body}</p>
                   )}
-                  <p className="mt-3 text-right text-[11px] font-light tracking-wide text-ink-faint">
-                    {formatPosted(a.createdAt)}
-                  </p>
+                  <p className="mt-3 text-right text-[13px] text-ink-faint">{formatPosted(a.createdAt)}</p>
                 </li>
-              )
+              ),
             )}
           </ul>
         )}

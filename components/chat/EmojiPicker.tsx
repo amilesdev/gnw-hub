@@ -171,7 +171,7 @@ export function EmojiPicker({
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      <div className="absolute inset-0 animate-fade-in bg-ink/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-scrim" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"

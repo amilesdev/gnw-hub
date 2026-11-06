@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { UnavailabilityDTO } from '@/lib/serialize';
-import Link from 'next/link';
-import { CalendarOff, ChevronLeft } from '@/components/shared/Icons';
+import { CalendarOff } from '@/components/shared/Icons';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
+import { listCard } from '@/lib/ui-classes';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { SkeletonList, EventCardSkeleton } from '@/components/shared/Skeleton';
+import { Skeleton, SkeletonList, EventCardSkeleton } from '@/components/shared/Skeleton';
 import { MonthCalendar } from '@/components/shared/MonthCalendar';
 import { apiFetch } from '@/lib/api-client';
 import { formatDateRange, formatMonthLabel, monthKey, parseCalendarDate, eachDayYmd } from '@/lib/dates';
@@ -104,29 +105,29 @@ export function TeamAvailability() {
   }, [visibleEntries]);
 
   return (
-    <div className="space-y-5 pt-2">
-      <header>
-        <Link
-          href="/dashboard/events"
-          aria-label="Back to Events"
-          className="row-press -ml-2 mb-1 grid h-10 w-10 place-items-center rounded-xl text-ink-soft"
-        >
-          <ChevronLeft width={22} height={22} />
-        </Link>
-        <h1 className="page-title mt-2">Team Availability</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Days with a dot have someone marked unavailable. Tap to focus, or scroll the list to see
-          members grouped by month, soonest first.
+    <div className="space-y-6">
+      <div>
+        <ScreenHeader
+          back={{ href: '/dashboard/events', label: 'Events' }}
+          title="Team Availability"
+          className="mb-0"
+        />
+        <p className="mt-2 text-[15px] leading-[22px] text-ink-soft">
+          Days with a dot have someone marked unavailable. Tap to focus, or scroll the list to see members grouped by
+          month, soonest first.
         </p>
-      </header>
+      </div>
 
-      {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[13px] font-semibold text-bad-ink">
+          {error}
+        </p>
+      )}
 
       {!rows && !error && (
         <SkeletonList>
-          <EventCardSkeleton />
-          <EventCardSkeleton />
-          <EventCardSkeleton />
+          <Skeleton className="h-[330px] w-full rounded-3xl" />
+          <EventCardSkeleton rows={3} />
         </SkeletonList>
       )}
 
@@ -138,13 +139,12 @@ export function TeamAvailability() {
               const isSel = ymd === selectedDay;
               return {
                 className: cn(
-                  isSel && 'bg-accent text-white',
-                  !isSel && isToday && 'bg-accent/10 text-accent-ink dark:text-accent-on',
-                  !isSel && !isToday && 'hover:bg-surface-2',
+                  isSel && 'bg-accent text-accent-fg',
+                  !isSel && isToday && 'bg-accent-soft text-accent-ink',
                 ),
                 dot: has ? (
                   <span
-                    className={cn('absolute bottom-1 h-1.5 w-1.5 rounded-full', isSel ? 'bg-white' : 'bg-ink-faint')}
+                    className={cn('absolute bottom-1 h-[5px] w-[5px] rounded-full', isSel ? 'bg-accent-fg' : 'bg-warn')}
                   />
                 ) : null,
               };
@@ -155,7 +155,7 @@ export function TeamAvailability() {
           />
 
           {selectedDay && (
-            <button type="button" className="btn-ghost w-full !py-2 text-sm" onClick={() => setSelectedDay(null)}>
+            <button type="button" className="btn-ghost btn-sm w-full" onClick={() => setSelectedDay(null)}>
               Show all dates
             </button>
           )}
@@ -168,25 +168,27 @@ export function TeamAvailability() {
                 <section key={key} className="space-y-3">
                   <div className="flex items-baseline justify-between">
                     <h2 className="eyebrow">{formatMonthLabel(key)}</h2>
-                    <span className="text-xs text-ink-faint">{ents.length} away</span>
+                    <span className="text-[13px] text-ink-faint">{ents.length} away</span>
                   </div>
-                  {ents.map((e) => (
-                    <div key={e.id} className="card flex items-center gap-3 p-4">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warn/10 text-warn">
-                        <CalendarOff width={19} height={19} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">{e.userName}</p>
-                        <p className="truncate text-sm text-ink-soft">
-                          {formatDateRange(e.startYmd, e.endYmd)}
-                          {e.reason && ` · ${e.reason}`}
-                        </p>
+                  <div className={listCard}>
+                    {ents.map((e) => (
+                      <div key={e.id} className="flex min-h-[68px] items-center gap-3 px-4 py-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-warn/[0.14] text-warn-ink">
+                          <CalendarOff width={18} height={18} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="row-title truncate">{e.userName}</p>
+                          <p className="truncate text-sm text-ink-soft">
+                            {formatDateRange(e.startYmd, e.endYmd)}
+                            {e.reason && ` · ${e.reason}`}
+                          </p>
+                        </div>
+                        {e.part && (
+                          <span className="chip shrink-0 bg-surface-2 capitalize text-ink-soft">{e.part}</span>
+                        )}
                       </div>
-                      {e.part && (
-                        <span className="chip shrink-0 bg-surface-2 capitalize text-ink-soft">{e.part}</span>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </section>
               ))}
             </div>

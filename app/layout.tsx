@@ -1,28 +1,32 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Fraunces, Outfit } from 'next/font/google';
+import { Albert_Sans, Literata, Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
 import { ThemeScript } from '@/components/shared/ThemeProvider';
 import { splashStartupImages } from '@/lib/splash';
 
-const inter = Inter({
+// 3a type: Literata for titles, numerals, verse and lyrics; Albert Sans for
+// everything else. Both are variable fonts, so no `weight` array; Literata
+// keeps its optical-size axis so a 36px title and 17px lyrics each get the
+// right cut. globals.css builds --font-display / --font-ui from these.
+const albertSans = Albert_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-inter',
+  variable: '--font-albert',
   display: 'swap',
 });
 
-const fraunces = Fraunces({
+const literata = Literata({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-fraunces',
+  style: ['normal', 'italic'],
+  axes: ['opsz'],
+  variable: '--font-literata',
   display: 'swap',
 });
 
 // GNW Play's display face — used ONLY past the Enter gate (see the
 // `html.play-active .font-display` remap in globals.css). The Hub keeps
-// Fraunces, so crossing the gate is a genuine change of world.
+// Literata, so crossing the gate is a genuine change of world.
 //
 // Register is confident and geometric, NOT toy — a rounded/bouncy face read as
 // goofy here. Outfit is a geometric sans that stays clean at display sizes and
@@ -65,8 +69,8 @@ export const viewport: Viewport = {
   // overlay content, so focused inputs and submit buttons stay on-screen.
   interactiveWidget: 'resizes-content',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAF7F2' },
-    { media: '(prefers-color-scheme: dark)', color: '#161410' },
+    { media: '(prefers-color-scheme: light)', color: '#EEF0E3' },
+    { media: '(prefers-color-scheme: dark)', color: '#1B1D16' },
   ],
 };
 
@@ -74,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // ThemeScript adds the theme class to <html> before React loads, so the
     // server's className never matches in dark mode; that difference is expected.
-    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${playDisplay.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${albertSans.variable} ${literata.variable} ${playDisplay.variable}`} suppressHydrationWarning>
       <body>
         <ThemeScript />
         <Providers>{children}</Providers>

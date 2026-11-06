@@ -31,18 +31,22 @@ export function previewText(m: ChatLastMessageDTO | null): string | null {
   return `${who}${(m.text ?? mediaLabel(m.media)).replace(/\s+/g, ' ')}`;
 }
 
-const tileClass = 'grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white';
-const sage = { background: 'linear-gradient(150deg, #5E7048, #3c4a2c)' };
+// Chats are rounded squares (people are circles, CMP-13): the initial in
+// Literata, accent-ink on accent-soft.
+const tileClass = 'grid h-12 w-12 shrink-0 place-items-center rounded-2xl';
 
 /** A chat's tile: its initial on sage. `stacked` adds the card edge GroupMe uses to say "has topics". */
 export function ChatTile({ name, stacked = false, size = 'md' }: { name: string; stacked?: boolean; size?: 'md' | 'lg' }) {
   const lg = size === 'lg';
   return (
     <span className={cn('relative shrink-0', lg ? 'h-20 w-20' : 'h-12 w-12')} aria-hidden>
-      {stacked && <span className={cn('absolute inset-y-1 -right-1.5 rounded-2xl bg-ink-faint/35', lg ? 'w-20' : 'w-12')} />}
+      {stacked && <span className={cn('absolute inset-y-1 -right-1.5 rounded-2xl bg-track', lg ? 'w-20' : 'w-12')} />}
       <span
-        className={cn(tileClass, 'relative font-display font-semibold', lg ? 'h-20 w-20 rounded-3xl text-3xl' : 'text-lg')}
-        style={sage}
+        className={cn(
+          tileClass,
+          'relative bg-accent-soft font-display font-semibold text-accent-ink ring-2 ring-surface',
+          lg ? 'h-20 w-20 rounded-3xl text-3xl' : 'text-xl',
+        )}
       >
         {name.slice(0, 1).toUpperCase()}
       </span>
@@ -53,7 +57,7 @@ export function ChatTile({ name, stacked = false, size = 'md' }: { name: string;
 /** Gray tile for "Main chat" / a topic on a chat's page. */
 export function IconTile({ children }: { children: ReactNode }) {
   return (
-    <span className={cn(tileClass, 'bg-ink-faint/80 font-display text-2xl font-semibold')} aria-hidden>
+    <span className={cn(tileClass, 'bg-surface-2 font-display text-2xl font-semibold text-ink-soft')} aria-hidden>
       {children}
     </span>
   );
@@ -88,11 +92,11 @@ export function ChatRow({
   const preview = previewText(last);
   const has = unread > 0;
   return (
-    <Link href={href} className="row-press flex items-center gap-3 px-4 py-3">
+    <Link href={href} className="row-press flex min-h-[72px] items-center gap-3 px-4 py-3">
       {tile}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={cn('truncate text-base', has ? 'font-bold' : 'font-semibold')}>{name}</span>
+          <span className={cn('truncate text-base leading-[22px]', has ? 'font-bold' : 'font-semibold')}>{name}</span>
           {showMutedIcon && muted && <BellOff width={14} height={14} className="shrink-0 text-ink-faint" aria-label="Muted" />}
         </span>
         <span className={cn('mt-0.5 block truncate text-sm', has ? 'text-ink' : 'text-ink-soft')}>
@@ -101,7 +105,7 @@ export function ChatRow({
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1 self-start pt-0.5">
         {last && (
-          <span className="text-xs text-ink-faint" suppressHydrationWarning>
+          <span className="text-xs tabular-nums text-ink-faint" suppressHydrationWarning>
             {formatListStamp(last.createdAt)}
           </span>
         )}

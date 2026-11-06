@@ -53,13 +53,13 @@ function LoginForm() {
           placeholder="••••••••"
           enterKeyHint="go"
         />
-        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
       <p className="mt-4 text-center text-sm">
-        <Link href="/forgot-password" className="font-semibold text-accent-ink dark:text-accent-on">
+        <Link href="/forgot-password" className="font-semibold text-accent-ink">
           Forgot password?
         </Link>
       </p>

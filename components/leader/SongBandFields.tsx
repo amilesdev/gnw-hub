@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SongDTO } from '@/lib/setlist-serialize';
-import { Upload, Check, Trash } from '@/components/shared/Icons';
+import { Check } from '@/components/shared/Icons';
+import { AudioSlotRow, EditorGroup } from './AudioSlotRow';
 import { apiFetch } from '@/lib/api-client';
 import { uploadFile } from '@/lib/upload-client';
 
@@ -27,9 +28,14 @@ export function SongBandFields({
 }) {
   const [songKey, setSongKey] = useState(song.songKey ?? '');
   const [bpm, setBpm] = useState(song.bpm ?? '');
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  // "Saved" next to Key/BPM for 2s after a blur that actually saved (SG-C9).
+  const [savedAt, setSavedAt] = useState(0);
+  useEffect(() => {
+    if (!savedAt) return;
+    const t = window.setTimeout(() => setSavedAt(0), 2000);
+    return () => window.clearTimeout(t);
+  }, [savedAt]);
 
   async function patch(body: Record<string, string | null>) {
     const { song: updated } = await apiFetch<{ song: SongDTO }>(`/api/songs/${song.id}`, {
@@ -45,110 +51,71 @@ export function SongBandFields({
     setError(null);
     try {
       await patch({ [field]: trimmed || null });
+      setSavedAt(Date.now());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save.');
     }
   }
 
-  async function uploadArrangement(file: File) {
-    setBusy(true);
+  async function uploadArrangement(file: File, onProgress: (pct: number) => void) {
     setError(null);
     try {
       const ext = file.name.split('.').pop() || 'mp3';
       const path = `audio/library/${slug(song.songTitle)}-${song.id.slice(-6)}/arrangement.${ext}`;
-      const url = await uploadFile(path, file);
-      await patch({ arrangementAudio: url });
+      await patch({ arrangementAudio: await uploadFile(path, file, onProgress) });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed.');
-    } finally {
-      setBusy(false);
     }
   }
 
   async function clearArrangement() {
-    setBusy(true);
+    setError(null);
     try {
       await patch({ arrangementAudio: null });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove.');
-    } finally {
-      setBusy(false);
     }
   }
 
   return (
-    <div className="space-y-2 rounded-2xl bg-surface-2/50 p-3">
-      <p className="label">Key, BPM &amp; arrangement</p>
-
+    <EditorGroup title="Key, BPM & arrangement">
       <div className="grid grid-cols-2 gap-2">
         <input
-          className="field !py-2.5"
+          className="field"
           value={songKey}
           onChange={(e) => setSongKey(e.target.value)}
           onBlur={(e) => saveText('songKey', e.target.value)}
           placeholder="Key (e.g. G)"
+          aria-label="Key"
           enterKeyHint="done"
         />
         <input
-          className="field !py-2.5"
+          className="field"
           value={bpm}
           onChange={(e) => setBpm(e.target.value)}
           onBlur={(e) => saveText('bpm', e.target.value)}
           placeholder="BPM (e.g. 72)"
+          aria-label="BPM"
           inputMode="numeric"
           enterKeyHint="done"
         />
       </div>
+      {savedAt > 0 && (
+        <p role="status" className="-mt-1 inline-flex items-center gap-1 text-xs font-semibold text-good-ink">
+          <Check width={13} height={13} /> Saved
+        </p>
+      )}
 
       {/* Arrangement — one audio file, same upload/replace/clear as a vocal part. */}
-      <div className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2">
-        <span className="w-24 shrink-0 text-sm font-semibold">Arrangement</span>
-        {song.arrangementAudio ? (
-          <>
-            <span className="inline-flex min-w-0 flex-1 items-center gap-1 text-xs text-good">
-              <Check width={14} height={14} className="shrink-0" />
-              <span className="truncate">{decodeURIComponent(song.arrangementAudio.split('/').pop() ?? 'uploaded')}</span>
-            </span>
-            <button type="button" className="btn-ghost !px-2.5 !py-1.5 text-xs" disabled={busy} onClick={() => fileRef.current?.click()}>
-              Replace
-            </button>
-            <button
-              type="button"
-              className="row-press rounded-lg p-1 text-bad"
-              disabled={busy}
-              onClick={clearArrangement}
-              aria-label="Delete arrangement"
-            >
-              <Trash width={16} height={16} />
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="btn-ghost ml-auto !px-3 !py-1.5 text-xs"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload width={14} height={14} /> {busy ? 'Uploading…' : 'Upload'}
-          </button>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          // Explicit extensions alongside `audio/*` — iOS Safari greys out
-          // files it can't MIME-classify as audio, so extension matching is
-          // what actually lets you pick .m4a/.wav/.flac/etc. on a phone.
-          accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.webm,.flac,.mp4"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) uploadArrangement(f);
-            e.target.value = '';
-          }}
-        />
-      </div>
+      <AudioSlotRow
+        label="Arrangement"
+        url={song.arrangementAudio}
+        songTitle={song.songTitle}
+        onUpload={uploadArrangement}
+        onClear={clearArrangement}
+      />
 
-      {error && <p className="text-xs font-semibold text-bad">{error}</p>}
-    </div>
+      {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
+    </EditorGroup>
   );
 }

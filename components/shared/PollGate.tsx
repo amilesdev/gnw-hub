@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PollDTO, PollResultsDTO } from '@/lib/serialize';
 import { apiFetch } from '@/lib/api-client';
 import { haptics } from '@/lib/haptics';
-import { PollResults } from './PollResults';
-import { Check } from './Icons';
+import { PollResults, ChoiceButton } from './PollResults';
 
 const POLL_INTERVAL_MS = 20_000;
 // While a voter is looking at their results, refresh the tallies on this
@@ -131,16 +130,16 @@ export function PollGate() {
   return (
     // Non-dismissible: no backdrop-click / Escape handlers, opaque scrim.
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-5">
-      <div className="absolute inset-0 bg-ink/60 backdrop-blur-sm" aria-hidden />
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm" aria-hidden />
       <div
-        className="card relative z-10 flex max-h-[88%] w-full max-w-[400px] flex-col overflow-hidden"
+        className="relative z-10 flex max-h-[88%] w-full max-w-[390px] animate-scale-in flex-col overflow-hidden rounded-4xl border border-line bg-surface shadow-card-lg"
         role="dialog"
         aria-modal="true"
         aria-label="Team poll"
       >
-        <div className="border-b border-line px-5 py-4">
+        <div className="border-b border-line px-5 pb-3.5 pt-5">
           <div className="eyebrow">{results ? 'Poll results' : 'Team poll'}</div>
-          <h2 className="mt-1 font-display text-xl font-semibold leading-snug">{current.question}</h2>
+          <h2 className="t-title mt-1.5">{current.question}</h2>
         </div>
 
         <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-4">
@@ -154,31 +153,15 @@ export function PollGate() {
               {current.choices.map((c) => {
                 const on = selected.includes(c.id);
                 return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggle(c.id)}
-                    className={`row-press flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left font-semibold ${
-                      on ? 'border-accent bg-accent/10 text-ink' : 'border-line bg-surface text-ink'
-                    }`}
-                  >
-                    <span className="min-w-0 truncate">{c.text}</span>
-                    <span
-                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${
-                        on ? 'border-accent bg-accent text-white' : 'border-line'
-                      } ${current.multiple ? 'rounded-md' : 'rounded-full'}`}
-                    >
-                      {on && <Check width={14} height={14} />}
-                    </span>
-                  </button>
+                  <ChoiceButton key={c.id} text={c.text} on={on} multiple={current.multiple} onClick={() => toggle(c.id)} />
                 );
               })}
             </div>
           )}
-          {error && <p className="mt-3 text-sm font-semibold text-bad">{error}</p>}
+          {error && <p className="mt-3 text-[13px] font-semibold text-bad-ink" role="alert">{error}</p>}
         </div>
 
-        <div className="border-t border-line px-5 py-4">
+        <div className="px-5 pb-5 pt-1">
           {results ? (
             <button type="button" className="btn-primary w-full" onClick={dismiss}>
               Done

@@ -87,7 +87,7 @@ export function ConnCard({ graph, cable, flow, onClick }: { graph: StageGraph; c
       <span className="block text-[13px] leading-snug text-ink-soft">
         {graph.sentence(cable).map((p, i) => (p.bold ? <b key={i} className="font-semibold text-ink">{p.text}</b> : <span key={i}>{p.text}</span>))}
         {cable.note ? ` ${cable.note}.` : ''}
-        {cable.added && <span className="ml-1 text-xs font-bold text-warn">Added</span>}
+        {cable.added && <span className="ml-1 text-xs font-bold text-warn-ink">Added</span>}
       </span>
     </Tag>
   );
@@ -258,7 +258,9 @@ export function PillTabs<T extends string>({
   size?: 'md' | 'lg';
 }) {
   return (
-    <div className="flex gap-1 rounded-2xl bg-surface-2 p-1" role="tablist">
+    // Same geometry as the solid SegmentedControl (CMP-10); kept separate for
+    // the zone tint and counts.
+    <div className="flex gap-1 rounded-[22px] bg-surface-2 p-1" role="tablist">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -269,9 +271,9 @@ export function PillTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-xl font-semibold transition active:scale-[0.97]',
-              size === 'lg' ? 'py-2.5 text-[15px] font-bold' : 'py-2 text-sm',
-              active ? 'bg-surface text-ink shadow-card' : 'text-ink-soft',
+              'flex flex-1 items-center justify-center gap-1.5 rounded-[18px] transition active:scale-[0.97]',
+              size === 'lg' ? 'h-11 text-[15px]' : 'h-9 text-sm',
+              active ? 'bg-surface font-bold text-ink shadow-card' : 'font-semibold text-ink-soft',
             )}
             style={active && tint ? { boxShadow: `inset 0 0 0 1.5px ${tint}`, background: `color-mix(in srgb, ${tint} 14%, rgb(var(--surface)))` } : undefined}
           >

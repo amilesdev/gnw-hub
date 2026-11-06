@@ -9,21 +9,39 @@ import type { SetlistDTO, SongDTO } from '@/lib/setlist-serialize';
 import { Overlay } from './Overlay';
 import { ScriptureSheet } from './ScriptureSheet';
 import { SongDetail } from './SongDetail';
-import { SongLeadFaces } from './SongLeads';
+import { SongRow } from './HomeSections';
 import { EventBadge } from './EventTypeBadge';
-import { hasAttire, assignmentsByPart } from './EventCard';
-import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X } from './Icons';
+import { EventActions } from './EventActions';
+import { hasAttire, eventAssignments, VOCAL_PARTS } from './EventCard';
+import { Skeleton } from './Skeleton';
+import { useToast } from './Toast';
+import type { SongSheetContext } from './AudioProvider';
+import { Calendar, Clock, MapPin, Shirt, Book, Music, Mic, Pray, Trash, ChevronRight, X, MoreHorizontal } from './Icons';
 import { apiFetch } from '@/lib/api-client';
+import { listCard } from '@/lib/ui-classes';
 import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { resolveScheduleLabel } from '@/lib/rehearsal-schedule';
 
+/** Info row (CMP-11): 36px icon chip + 16/22 text, min 56 tall. */
 function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 py-2.5">
+    <div className="flex min-h-14 items-center gap-3 py-2.5">
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft">{icon}</span>
-      <span className="text-ink">{children}</span>
+      <span className="text-base leading-[22px] text-ink">{children}</span>
     </div>
+  );
+}
+
+/** Section card heading (EV-3): a 16px accent icon + an ink eyebrow. */
+function SectionTitle({ icon: Icon, children }: { icon: React.ComponentType<{ width?: number; height?: number }>; children: React.ReactNode }) {
+  return (
+    <p className="eyebrow inline-flex items-center gap-1.5 text-ink">
+      <span className="text-accent-ink">
+        <Icon width={16} height={16} />
+      </span>
+      {children}
+    </p>
   );
 }
 
@@ -32,14 +50,14 @@ function ColorSwatch({ label, name, hex }: { label: string; name?: string | null
   return (
     <div className="flex flex-col items-center gap-1.5">
       <span
-        className="grid h-14 w-14 place-items-center rounded-2xl border border-line text-ink-faint shadow-card"
+        className="grid h-14 w-14 place-items-center rounded-[18px] border border-line text-ink-faint shadow-card"
         style={hex ? { background: hex } : undefined}
         aria-hidden
       >
         {!hex && <Shirt width={18} height={18} />}
       </span>
       <span className="label">{label}</span>
-      {name && <span className="text-xs font-semibold text-ink-soft">{name}</span>}
+      {name && <span className="text-[13px] font-semibold text-ink-soft">{name}</span>}
       {hex && <span className="text-[11px] font-semibold uppercase text-ink-faint">{hex}</span>}
     </div>
   );
@@ -58,6 +76,7 @@ function PrayerRequests({ eventId }: { eventId: string }) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     let active = true;
@@ -94,34 +113,44 @@ function PrayerRequests({ eventId }: { eventId: string }) {
     }
   }
 
-  async function remove(id: string) {
-    const prev = requests;
-    setRequests((r) => r.filter((x) => x.id !== id)); // optimistic
-    try {
-      await apiFetch(`/api/events/${eventId}/prayer-requests/${id}`, { method: 'DELETE' });
-    } catch {
-      setRequests(prev); // restore on failure
-    }
+  // Gone at once; the delete is sent when the undo toast closes (CMP-22).
+  function remove(id: string) {
+    const index = requests.findIndex((x) => x.id === id);
+    const removed = requests[index];
+    if (!removed) return;
+    const restore = () =>
+      setRequests((r) => (r.some((x) => x.id === id) ? r : [...r.slice(0, index), removed, ...r.slice(index)]));
+    setRequests((r) => r.filter((x) => x.id !== id));
+    toast.show({
+      message: 'Request deleted.',
+      undo: restore,
+      commit: () => apiFetch(`/api/events/${eventId}/prayer-requests/${id}`, { method: 'DELETE' }).catch(restore),
+    });
   }
 
   return (
     <section className="card grain-block space-y-4 p-4">
-      <p className="eyebrow inline-flex items-center gap-1.5">
-        <Pray width={14} height={14} /> Prayer Requests
-      </p>
+      <SectionTitle icon={Pray}>Prayer requests</SectionTitle>
 
-      <figure className="grain-block overflow-hidden rounded-2xl bg-accent px-4 py-4 text-center text-white shadow-pop ring-1 ring-inset ring-white/10">
-        <blockquote className="font-display text-[15px] italic leading-snug text-white">
+      <figure className="grain-block overflow-hidden rounded-2xl bg-accent px-4 py-4 text-center text-accent-fg shadow-pop">
+        <blockquote className="font-display text-[15px] italic leading-snug text-accent-fg">
           “Therefore, I tell you, whatever you ask in prayer, believe that you have received it, and it
           will be yours.”
         </blockquote>
-        <figcaption className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-white/70">
+        <figcaption className="eyebrow relative mt-2 text-accent-fg/70">
           Mark 11:24
         </figcaption>
       </figure>
 
+      {loading && (
+        <div className="space-y-2" role="status" aria-label="Loading">
+          <Skeleton className="h-12 w-full rounded-2xl" />
+          <Skeleton className="h-12 w-full rounded-2xl" />
+        </div>
+      )}
+
       {!loading && requests.length > 0 && (
-        <ul className="rounded-2xl bg-surface-2 px-4 py-1.5 ring-1 ring-inset ring-line">
+        <ul className="rounded-2xl bg-surface-2 px-4 py-1.5">
           {requests.map((r) => {
             const canDelete = me && (me.id === r.authorId || me.role === 'leader');
             return (
@@ -130,7 +159,7 @@ function PrayerRequests({ eventId }: { eventId: string }) {
                 className="flex items-end gap-3 border-b border-line py-3 leading-relaxed last:border-b-0"
               >
                 <p className="selectable min-w-0 flex-1 whitespace-pre-wrap text-[15px] text-ink">{r.body}</p>
-                <span className="shrink-0 font-display text-sm italic text-ink-faint">
+                <span className="shrink-0 text-[13px] font-semibold text-ink-faint">
                   {r.authorName}
                 </span>
                 {canDelete && (
@@ -138,7 +167,7 @@ function PrayerRequests({ eventId }: { eventId: string }) {
                     type="button"
                     onClick={() => remove(r.id)}
                     aria-label="Remove prayer request"
-                    className="row-press shrink-0 rounded-lg p-1 text-ink-faint transition hover:text-bad"
+                    className="btn-icon -my-2 -mr-3 shrink-0 text-ink-faint"
                   >
                     <Trash width={16} height={16} />
                   </button>
@@ -151,20 +180,20 @@ function PrayerRequests({ eventId }: { eventId: string }) {
 
       {!loading && requests.length === 0 && (
         <p className="py-1 text-center text-sm text-ink-faint">
-          No requests yet — be the first to share one.
+          No requests yet. Be the first to share one.
         </p>
       )}
 
       <form onSubmit={add} className="space-y-2">
         <textarea
-          className="field min-h-[44px]"
+          className="field min-h-[52px] py-3.5"
           rows={2}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Share a prayer request for the team…"
           maxLength={2000}
         />
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-[13px] font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy || !draft.trim()}>
           {busy ? 'Sharing…' : 'Add prayer request'}
         </button>
@@ -173,9 +202,30 @@ function PrayerRequests({ eventId }: { eventId: string }) {
   );
 }
 
-export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () => void }) {
+/**
+ * Event detail (EV-3). Leaders (`onEdit`) get a More menu in the header for
+ * Edit / Delete, in place of the old buttons under each card. `backLabel` names
+ * the screen it opened from ("Events", "Home").
+ */
+export function EventDetail({
+  event,
+  onClose,
+  backLabel = 'Back',
+  onEdit,
+  onDeleted,
+}: {
+  event: EventDTO;
+  onClose: () => void;
+  backLabel?: string;
+  onEdit?: (e: EventDTO) => void;
+  onDeleted?: () => void;
+}) {
+  const { data: session } = useSession();
+  const myId = session?.user?.id;
   const [setlist, setSetlist] = useState<SetlistDTO | null>(null);
-  const [song, setSong] = useState<SongDTO | null>(null);
+  const [setlistLoading, setSetlistLoading] = useState(Boolean(event.setlistId));
+  const [song, setSong] = useState<{ song: SongDTO; context: SongSheetContext } | null>(null);
+  const [more, setMore] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [openScripture, setOpenScripture] = useState<string | null>(null);
   const isHolyTalks = event.type === 'holy_talks';
@@ -186,7 +236,11 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
   const hasProduction =
     !event.crossoverKind && (event.type === 'service' || event.type === 'encounter_night' || event.type === 'other');
   const productionBase = usePathname().startsWith('/dashboard') ? '/dashboard' : '/home';
-  const assignedParts = assignmentsByPart(event);
+  // Singing, by part (S/A/T), with the viewer marked "(you)".
+  const singing = VOCAL_PARTS.map((part) => ({
+    part,
+    people: eventAssignments(event).filter((a) => a.part === part),
+  })).filter((g) => g.people.length > 0);
   // Song-review rows resolve their title from the currently-attached setlist, so
   // a saved schedule stays in step with setlist changes.
   const setlistTitles = setlist ? setlist.songs.map((s) => s.songTitle) : [];
@@ -202,88 +256,94 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
       .then(({ setlists }) => {
         if (active) setSetlist(setlists.find((s) => s.songs.length > 0) ?? null);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => active && setSetlistLoading(false));
     return () => {
       active = false;
     };
   }, [event.id, setlistVersion]);
 
   return (
-    <Overlay title={event.eventName} onClose={onClose} action={<EventBadge event={event} />}>
-      <div className="space-y-5">
-        <section className="card divide-y divide-line px-4 py-1">
+    <Overlay
+      title={event.eventName}
+      onClose={onClose}
+      backLabel={backLabel}
+      action={
+        <div className="flex items-center gap-1">
+          <EventBadge event={event} />
+          {onEdit && (
+            <button type="button" onClick={() => setMore(true)} className="btn-icon -mr-2" aria-label={`More for ${event.eventName}`}>
+              <MoreHorizontal width={20} height={20} />
+            </button>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <section className="card divide-y divide-line px-4">
           <InfoRow icon={<Calendar width={18} height={18} />}>{formatEventDate(new Date(event.date))}</InfoRow>
-          <InfoRow icon={<Clock width={18} height={18} />}>{formatTimeLabel(event.time)}</InfoRow>
-          <InfoRow icon={<MapPin width={18} height={18} />}>{event.location}</InfoRow>
+          {event.time && <InfoRow icon={<Clock width={18} height={18} />}>{formatTimeLabel(event.time)}</InfoRow>}
+          {event.location && <InfoRow icon={<MapPin width={18} height={18} />}>{event.location}</InfoRow>}
         </section>
 
         {hasProduction && (
           <Link
             href={`${productionBase}/production?event=${event.id}&tab=${event.type === 'other' ? 'checklist' : 'map'}`}
-            className="card row-press flex items-center gap-3 p-4"
+            className="card row-press flex min-h-[68px] items-center gap-3 p-4"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
               <Mic width={18} height={18} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold">Production</span>
-              <span className="block text-xs text-ink-faint">{event.type === 'other' ? 'Setup checklist' : 'Stage map and setup checklist'}</span>
+              <span className="row-title block">Production</span>
+              <span className="block text-sm text-ink-faint">{event.type === 'other' ? 'Setup checklist' : 'Stage map and setup checklist'}</span>
             </span>
-            <ChevronRight width={20} height={20} className="text-ink-faint" />
+            <ChevronRight width={18} height={18} className="text-ink-faint" />
           </Link>
         )}
 
-        {setlist && setlist.songs.length > 0 && (
-          <section className="space-y-2.5">
-            <p className="eyebrow inline-flex items-center gap-1.5">
-              <Music width={14} height={14} /> Setlist · {setlist.songs.length} song{setlist.songs.length === 1 ? '' : 's'}
-            </p>
-            <ol className="space-y-2.5">
-              {setlist.songs.map((s, i) => {
-                const partCount = [s.audioSoprano, s.audioAlto, s.audioTenor, s.audioAllParts].filter(Boolean).length;
-                return (
-                  <li
-                    key={s.id}
-                    className="animate-rise"
-                    style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'backwards' }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setSong(s)}
-                      className="card row-press flex w-full items-center gap-3 p-4 text-left"
-                    >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 font-display font-semibold text-accent-ink dark:text-accent-on">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold">{s.songTitle}</span>
-                        <span className="flex items-center gap-1 text-xs text-ink-faint">
-                          <Music width={12} height={12} />
-                          {partCount > 0 ? `${partCount} part${partCount > 1 ? 's' : ''} available` : 'Audio coming soon'}
-                        </span>
-                      </span>
-                      <SongLeadFaces leads={s.leads} />
-                      <ChevronRight width={20} height={20} className="text-ink-faint" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
+        {setlistLoading ? (
+          <section className="space-y-3" role="status" aria-label="Loading setlist">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-48 w-full rounded-3xl" />
           </section>
+        ) : (
+          setlist &&
+          setlist.songs.length > 0 && (
+            <section className="space-y-3">
+              <SectionTitle icon={Music}>
+                Setlist · {setlist.songs.length} song{setlist.songs.length === 1 ? '' : 's'}
+              </SectionTitle>
+              <div className={listCard}>
+                {setlist.songs.map((s, i) => (
+                  <div key={s.id} className="animate-rise" style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'backwards' }}>
+                    <SongRow
+                      song={s}
+                      index={i}
+                      onClick={() =>
+                        setSong({
+                          song: s,
+                          context: { backLabel: 'Event', eyebrow: `${event.eventName} · Song ${i + 1} of ${setlist.songs.length}` },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
         )}
 
         {isRehearsal && event.rehearsalSchedule.length > 0 && (
           <section className="card p-4">
-            <p className="eyebrow mb-1 inline-flex items-center gap-1.5">
-              <Clock width={14} height={14} /> Schedule
-            </p>
-            <ul className="divide-y divide-line">
+            <SectionTitle icon={Clock}>Schedule</SectionTitle>
+            <ul className="mt-1 divide-y divide-line">
               {event.rehearsalSchedule.map((item, i) => (
                 <li key={i} className="flex items-baseline gap-4 py-3">
-                  <span className="w-20 shrink-0 font-display text-sm font-semibold tabular-nums text-accent-ink dark:text-accent-on">
+                  <span className="w-20 shrink-0 font-display text-[15px] font-semibold tabular-nums text-accent-ink">
                     {item.time ? formatTimeLabel(item.time) : '—'}
                   </span>
-                  <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap text-[15px] leading-[22px] text-ink">
                     {resolveScheduleLabel(item, setlistTitles)}
                   </span>
                 </li>
@@ -294,7 +354,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
 
         {event.notes && (
           <section className="card p-4">
-            <p className="label mb-1.5">Notes</p>
+            <p className="eyebrow mb-2 text-ink">Notes</p>
             <p className="selectable whitespace-pre-wrap text-ink-soft">{event.notes}</p>
           </section>
         )}
@@ -303,9 +363,9 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
 
         {isHolyTalks && (event.topic || event.scriptures.length > 0 || event.holyTalksNotes) && (
           <section className="card p-4">
-            <p className="eyebrow mb-3 inline-flex items-center gap-1.5">
-              <Book width={14} height={14} /> Holy Talks
-            </p>
+            <div className="mb-3">
+              <SectionTitle icon={Book}>Holy Talks</SectionTitle>
+            </div>
             {event.topic && (
               <div className="mb-3">
                 <p className="label mb-1">Topic</p>
@@ -321,7 +381,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                       <button
                         type="button"
                         onClick={() => setOpenScripture(s)}
-                        className="chip row-press bg-accent/10 text-accent-ink dark:text-accent-on"
+                        className="chip bg-accent-soft text-accent-ink transition-transform duration-150 active:scale-95"
                         aria-label={`Read ${s}`}
                       >
                         {s}
@@ -340,22 +400,22 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
           </section>
         )}
 
-        {assignedParts.length > 0 && (
+        {singing.length > 0 && (
           <section className="card space-y-3 p-4">
-            <p className="eyebrow inline-flex items-center gap-1.5">
-              <Mic width={14} height={14} /> Singing
-            </p>
-            <div className="space-y-2.5">
-              {assignedParts.map(({ part, names }) => (
-                <div key={part} className="flex items-start gap-3">
-                  <span className="label mt-1 w-16 shrink-0 !mb-0">{part}</span>
-                  <ul className="flex flex-wrap gap-1.5">
-                    {names.map((name) => (
-                      <li key={name} className="chip bg-accent/10 text-accent-ink dark:text-accent-on">
-                        {name}
-                      </li>
+            <SectionTitle icon={Mic}>Singing</SectionTitle>
+            <div className="space-y-2">
+              {singing.map(({ part, people }) => (
+                <div key={part} className="flex items-baseline gap-3">
+                  <span className="w-[72px] shrink-0 text-sm font-bold text-ink-soft">{part}</span>
+                  <p className="min-w-0 flex-1 text-[15px] leading-[22px] text-ink">
+                    {people.map((a, i) => (
+                      <span key={a.userId}>
+                        {i > 0 && ', '}
+                        {a.name}
+                        {a.userId === myId && <span className="font-semibold text-accent-ink"> (you)</span>}
+                      </span>
                     ))}
-                  </ul>
+                  </p>
                 </div>
               ))}
             </div>
@@ -364,9 +424,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
 
         {hasAttire(event) && (
           <section className="card grain-block space-y-4 p-4">
-            <p className="eyebrow inline-flex items-center gap-1.5">
-              <Shirt width={14} height={14} /> What to wear
-            </p>
+            <SectionTitle icon={Shirt}>What to wear</SectionTitle>
 
             {(event.attirePrimary || event.attireSecondary || event.attireComplement ||
               event.attirePrimaryHex || event.attireSecondaryHex || event.attireComplementHex) && (
@@ -395,7 +453,7 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
                       src={src}
                       alt="Attire reference"
                       onClick={() => setLightbox(src)}
-                      className="row-press aspect-square w-full cursor-zoom-in rounded-2xl border border-line object-cover"
+                      className="aspect-square w-full cursor-zoom-in rounded-[18px] border border-line object-cover transition-transform duration-150 active:scale-[0.97]"
                     />
                   ))}
                 </div>
@@ -407,21 +465,34 @@ export function EventDetail({ event, onClose }: { event: EventDTO; onClose: () =
 
       {lightbox && (
         <div
-          className="absolute inset-0 z-[60] flex animate-fade-in items-center justify-center bg-ink/80 p-6"
+          className="absolute inset-0 z-lightbox flex animate-fade-in items-center justify-center bg-black/85 p-6"
           onClick={() => setLightbox(null)}
         >
           <button
-            className="row-press absolute right-5 top-5 rounded-full p-1 text-white"
+            type="button"
+            className="glass absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full text-ink"
+            style={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
             onClick={() => setLightbox(null)}
             aria-label="Close"
           >
-            <X width={26} height={26} />
+            <X width={20} height={20} />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="Attire reference" className="max-h-full max-w-full rounded-2xl object-contain" />
+          <img src={lightbox} alt="Attire reference" className="max-h-full max-w-full rounded-[18px] object-contain" />
         </div>
       )}
-      {song && <SongDetail song={song} onClose={() => setSong(null)} />}
+      {song && <SongDetail song={song.song} context={song.context} onClose={() => setSong(null)} />}
+      {onEdit && (
+        <EventActions
+          event={more ? event : null}
+          onClose={() => setMore(false)}
+          onEdit={(e) => {
+            onClose();
+            onEdit(e);
+          }}
+          onDeleted={() => (onDeleted ? onDeleted() : onClose())}
+        />
+      )}
       {openScripture && <ScriptureSheet reference={openScripture} onClose={() => setOpenScripture(null)} />}
     </Overlay>
   );

@@ -9,14 +9,14 @@ import { canStartPrayerCall, isPrayerCallOpen } from '@/lib/prayer-call';
 
 // POST /api/calls/prayer — one of the designated people starts a call for a
 // Prayer event from its card. Unlike /api/calls (leaders only), this is gated by
-// an explicit name allowlist plus the event's own time window, so non-leaders on
+// an explicit allowlist (by email) plus the event's own time window, so non-leaders on
 // the list can start it — and only around the actual gathering. Always calls the
 // whole team (all_members). Notifies everyone with "<name> started Prayer call".
 export async function POST(req: Request) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
 
-  if (!canStartPrayerCall(guard.user.name)) {
+  if (!canStartPrayerCall(guard.user.email)) {
     return NextResponse.json({ error: 'Not allowed to start a prayer call.' }, { status: 403 });
   }
 

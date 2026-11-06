@@ -1,10 +1,7 @@
 import { redirect } from 'next/navigation';
-import { getSessionUser } from '@/lib/session';
-import { SongLibrary } from '@/components/leader/SongLibrary';
 
-export default async function LeaderLibraryPage() {
-  const user = await getSessionUser();
-  if (!user) redirect('/login');
-  if (user.role !== 'leader') redirect('/home');
-  return <SongLibrary />;
+// The Library is now a view inside Songs (Setlists | Library); keep the old
+// address working for links and pushes.
+export default function LeaderLibraryPage() {
+  redirect('/dashboard/setlist?view=library');
 }

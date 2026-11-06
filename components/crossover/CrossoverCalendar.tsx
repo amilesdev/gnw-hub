@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { ScreenHeader } from '@/components/shared/ScreenHeader';
 import { useRouter } from 'next/navigation';
 import type { EventDTO } from '@/lib/serialize';
 import { EventCard } from '@/components/shared/EventCard';
@@ -9,15 +9,14 @@ import { EventDetail } from '@/components/shared/EventDetail';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Modal } from '@/components/shared/Modal';
-import { ChevronLeft, Pencil, Plus, Trash } from '@/components/shared/Icons';
+import { Pencil, Plus, Trash } from '@/components/shared/Icons';
 import { EventForm } from '@/components/leader/EventForm';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; event: EventDTO } | null;
 
-const monthLabel = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+const monthLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
 
 /**
  * Every event in this Crossover season, month by month — past ones stay on the
@@ -70,24 +69,21 @@ export function CrossoverCalendar({
 
   return (
     <div className="space-y-5 pt-2">
-      <Link
-        href={`${base}/crossover`}
-        className="row-press -ml-1 inline-flex items-center gap-0.5 rounded-lg py-1 text-[15px] font-semibold text-accent-ink dark:text-accent-on"
-      >
-        <ChevronLeft width={18} height={18} /> Crossover
-      </Link>
-
-      <header className="flex items-end justify-between gap-2 pr-12">
-        <div>
-          <div className="eyebrow">Crossover {year}</div>
-          <h1 className="page-title mt-2">Calendar</h1>
-        </div>
-        {canManage && (
-          <button type="button" className="btn-primary !px-4 !py-3" onClick={() => setForm({ mode: 'create' })}>
-            <Plus width={18} height={18} /> Add
-          </button>
-        )}
-      </header>
+      <ScreenHeader
+        back={{ href: `${base}/crossover`, label: 'Crossover' }}
+        eyebrow={`Crossover ${year}`}
+        title="Calendar"
+        className="mb-0"
+        actions={
+          <>
+            {canManage && (
+              <button type="button" className="btn-primary btn-sm h-11" onClick={() => setForm({ mode: 'create' })}>
+                <Plus width={18} height={18} /> Add
+              </button>
+            )}
+          </>
+        }
+      />
       <p className="-mt-2 text-sm text-ink-soft">
         Every Crossover rehearsal and event. They also show on the Events tab with a Crossover badge.
       </p>
@@ -104,10 +100,18 @@ export function CrossoverCalendar({
                   <EventCard event={event} onClick={() => setDetail(event)} />
                   {canManage && (
                     <div className="flex gap-2 px-1">
-                      <button className="btn-ghost !py-2 text-sm" onClick={() => setForm({ mode: 'edit', event })} type="button">
+                      <button
+                        className="btn-ghost btn-sm"
+                        onClick={() => setForm({ mode: 'edit', event })}
+                        type="button"
+                      >
                         <Pencil width={15} height={15} /> Edit
                       </button>
-                      <button className="btn-ghost !py-2 text-sm text-bad" onClick={() => setConfirming(event)} type="button">
+                      <button
+                        className="btn-ghost btn-sm text-bad-ink"
+                        onClick={() => setConfirming(event)}
+                        type="button"
+                      >
                         <Trash width={15} height={15} /> Delete
                       </button>
                     </div>
@@ -130,7 +134,9 @@ export function CrossoverCalendar({
 
       {confirming && confirming.seriesId ? (
         <Modal open title="Delete recurring event?" onClose={() => setConfirming(null)}>
-          <p className="text-ink-soft">This is part of a repeating series. Delete just this date, or the whole series?</p>
+          <p className="text-ink-soft">
+            This is part of a repeating series. Delete just this date, or the whole series?
+          </p>
           <div className="mt-5 space-y-3">
             <button
               type="button"
@@ -144,7 +150,7 @@ export function CrossoverCalendar({
               type="button"
               onClick={() => remove('series')}
               disabled={busy}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-bad/15 px-5 py-3.5 font-semibold text-bad transition active:scale-[0.97] disabled:opacity-40 dark:text-[#D98A84]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-bad/15 px-5 py-3.5 font-semibold text-bad-ink transition active:scale-[0.97] disabled:opacity-40"
             >
               {busy ? 'Working…' : 'Entire series'}
             </button>

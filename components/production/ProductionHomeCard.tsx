@@ -9,7 +9,7 @@ export function ProductionHomeCard({ mine, base }: { mine: MyProductionTasks; ba
   const allDone = mine.done === mine.total;
   return (
     <Link href={`${base}/production?event=${mine.event.id}&tab=checklist`} className="card row-press flex items-center gap-3 p-4">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/10 text-accent-ink dark:text-accent-on">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/10 text-accent-ink">
         {allDone ? <Check width={20} height={20} /> : <span className="font-display text-lg font-semibold tabular-nums">{mine.total - mine.done}</span>}
       </span>
       <span className="min-w-0 flex-1">

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import type { SongSuggestionDTO } from '@/lib/serialize';
-import { MusicPlus, Pencil, Trash, Check, X, Book, ChevronLeft } from './Icons';
+import { MusicPlus, Pencil, Trash, Check, X, Book } from './Icons';
+import { ScreenHeader } from './ScreenHeader';
+import { useToast } from './Toast';
 import { TextField } from './Field';
 import { EmptyState } from './EmptyState';
 import { SegmentedControl } from './SegmentedControl';
@@ -79,6 +80,7 @@ export function SuggestionsScreen({
   const [adding, setAdding] = useState<SongSuggestionDTO | null>(null);
   const [removing, setRemoving] = useState<SongSuggestionDTO | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const toast = useToast();
 
   // Look the link up as soon as it parses — pasting is the whole interaction.
   useEffect(() => {
@@ -157,6 +159,23 @@ export function SuggestionsScreen({
     }
   }
 
+  // Pass hides the card at once; the request goes out when the undo toast
+  // closes without Undo (CMP-22), so a mis-tap costs nothing.
+  function pass(s: SongSuggestionDTO) {
+    replace({ ...s, status: 'dismissed' });
+    toast.show({
+      message: `Passed on “${s.songTitle}”.`,
+      undo: () => replace(s),
+      commit: () =>
+        apiFetch<{ suggestion: SongSuggestionDTO }>(`/api/suggestions/${s.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'dismissed' }),
+        })
+          .then(({ suggestion }) => replace(suggestion))
+          .catch(() => replace(s)),
+    });
+  }
+
   async function remove() {
     if (!removing) return;
     setActionBusy(true);
@@ -179,28 +198,27 @@ export function SuggestionsScreen({
 
   const tabs: { value: Tab; label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'mine', label: 'My Suggestions' },
+    { value: 'mine', label: 'My suggestions' },
   ];
 
   return (
-    <div className="space-y-5 pt-2">
-      <header>
-        <Link
-          href={backHref}
-          className="row-press mb-2 -ml-1 grid h-9 w-9 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-          aria-label={crossover ? 'Back to Crossover' : 'Back to Library'}
-        >
-          <ChevronLeft width={18} height={18} />
-        </Link>
-        {crossover && <div className="eyebrow mb-2">Crossover</div>}
-        <h1 className="page-title">Suggestions</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          {crossover ? 'Got a song in mind for Crossover? Suggest it here!' : 'Submit your song suggestions here!'}
+    <div className="space-y-6">
+      <div>
+        <ScreenHeader
+          back={{ href: backHref, label: crossover ? 'Crossover' : 'Library' }}
+          eyebrow={crossover ? 'Crossover' : undefined}
+          title="Suggestions"
+          className="mb-0"
+        />
+        <p className="mt-2 text-[15px] leading-[22px] text-ink-soft">
+          {crossover
+            ? 'Got a song in mind for Crossover? Paste a YouTube link to suggest it.'
+            : 'Paste a YouTube link to suggest a song for the library.'}
         </p>
-      </header>
+      </div>
 
       {/* Composer */}
-      <section className="card space-y-4 p-4">
+      <section className="card space-y-3.5 p-4">
         <div className="relative">
           <input
             className="field pr-11"
@@ -221,15 +239,15 @@ export function SuggestionsScreen({
               type="button"
               aria-label="Clear link"
               onClick={() => setLink('')}
-              className="row-press absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-ink-faint"
+              className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-faint"
             >
-              <X width={16} height={16} />
+              <X width={18} height={18} />
             </button>
           )}
         </div>
 
         {looking && <p className="text-sm text-ink-faint">Looking it up…</p>}
-        {previewError && <p role="alert" className="text-sm font-semibold text-bad">{previewError}</p>}
+        {previewError && <p role="alert" className="text-sm font-semibold text-bad-ink">{previewError}</p>}
 
         {preview && (
           <div className="space-y-4">
@@ -238,22 +256,22 @@ export function SuggestionsScreen({
               <img
                 src={preview.thumbnailUrl}
                 alt=""
-                className="aspect-video w-28 shrink-0 rounded-xl bg-surface-2 object-cover"
+                className="h-[63px] w-28 shrink-0 rounded-xl bg-surface-2 object-cover"
               />
               <div className="min-w-0 flex-1">
                 {preview.found ? (
                   <>
-                    <p className="truncate font-semibold">{title || 'Untitled'}</p>
+                    <p className="row-title truncate">{title || 'Untitled'}</p>
                     <p className="truncate text-sm text-ink-soft">{artist || 'Unknown artist'}</p>
                   </>
                 ) : (
-                  <p className="text-sm text-ink-soft">Couldn’t read the video details — add them below.</p>
+                  <p className="text-sm text-ink-soft">Couldn’t read the video details. Add them below.</p>
                 )}
                 {preview.found && !editing && (
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-accent dark:text-accent-on"
+                    className="mt-1 inline-flex items-center gap-1 text-[13px] font-semibold text-accent-ink"
                   >
                     <Pencil width={13} height={13} /> Not quite right? Edit
                   </button>
@@ -274,10 +292,10 @@ export function SuggestionsScreen({
             )}
 
             {preview.duplicate ? (
-              <p className="text-sm font-semibold text-warn">{preview.duplicate}</p>
+              <p className="rounded-[14px] bg-warn/10 p-3 text-sm font-semibold text-warn-ink">{preview.duplicate}</p>
             ) : (
               <>
-                {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+                {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
                 <button type="button" className="btn-primary w-full" disabled={busy} onClick={submit}>
                   <MusicPlus width={18} height={18} /> {busy ? 'Sending…' : 'Suggest this song'}
                 </button>
@@ -287,15 +305,15 @@ export function SuggestionsScreen({
         )}
 
         {justSent && (
-          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-good">
-            <Check width={16} height={16} /> Thanks — the leaders will take a listen.
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-good-ink">
+            <Check width={16} height={16} /> Thanks. The leaders will take a listen.
           </p>
         )}
       </section>
 
       {/* The team's suggestions */}
       <section className="space-y-3">
-        <SegmentedControl options={tabs} value={tab} onChange={setTab} />
+        <SegmentedControl options={tabs} value={tab} onChange={setTab} aria-label="Which suggestions" />
 
         {visible.length === 0 ? (
           <EmptyState
@@ -308,21 +326,21 @@ export function SuggestionsScreen({
           visible.map((s) => {
             const canRemove = canManage || (s.suggestedById === meId && s.status === 'open');
             return (
-              <article key={s.id} className="card p-3">
+              <article key={s.id} className="card animate-rise p-3">
                 <div className="flex items-center gap-3">
                   <a href={s.url} target="_blank" rel="noreferrer" className="row-press shrink-0" aria-label={`Watch ${s.songTitle} on YouTube`}>
                     {/* eslint-disable-next-line @next/next/no-img-element -- remote YouTube still */}
-                    <img src={s.thumbnailUrl} alt="" className="aspect-video w-24 rounded-xl bg-surface-2 object-cover" />
+                    <img src={s.thumbnailUrl} alt="" className="h-[54px] w-24 rounded-xl bg-surface-2 object-cover" />
                   </a>
                   <div className="min-w-0 flex-1">
-                    <a href={s.url} target="_blank" rel="noreferrer" className="block truncate font-semibold">
+                    <a href={s.url} target="_blank" rel="noreferrer" className="row-title block truncate">
                       {s.songTitle}
                     </a>
                     {s.artist && <p className="truncate text-sm text-ink-soft">{s.artist}</p>}
                     {/* The age reads the clock and the viewer's time zone, so the
                         server's render can land on a different day around
                         midnight — let the client's value win quietly. */}
-                    <p className="mt-0.5 truncate text-xs text-ink-faint" suppressHydrationWarning>
+                    <p className="mt-0.5 truncate text-[13px] leading-[18px] text-ink-faint" suppressHydrationWarning>
                       {s.suggestedByName.split(' ')[0]} · {formatAge(s.createdAt)}
                     </p>
                   </div>
@@ -331,41 +349,37 @@ export function SuggestionsScreen({
                       type="button"
                       aria-label="Remove suggestion"
                       onClick={() => setRemoving(s)}
-                      className="row-press grid h-9 w-9 shrink-0 place-items-center self-start rounded-xl text-ink-faint"
+                      className="btn-icon -mr-1 -mt-1 shrink-0 self-start text-ink-faint"
                     >
-                      <Trash width={17} height={17} />
+                      <Trash width={18} height={18} />
                     </button>
                   )}
                 </div>
 
                 {s.status === 'added' && (
-                  <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-good">
-                    <Book width={14} height={14} /> {crossover ? 'In the Crossover songs' : 'In the song library'}
-                  </p>
+                  <span className="chip mt-3 bg-accent-soft text-accent-ink">
+                    <Check width={13} height={13} strokeWidth={2} /> {crossover ? 'In the Crossover songs' : 'In the song library'}
+                  </span>
                 )}
                 {s.status === 'dismissed' && tab === 'mine' && (
-                  <span className="chip mt-3 bg-bad/10 text-bad">Dismissed</span>
+                  <span className="chip mt-3 bg-bad/[0.14] text-bad-ink">Dismissed</span>
                 )}
 
                 {canManage && s.status !== 'added' && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex gap-2.5">
                     {s.status === 'open' ? (
                       <>
-                        <button type="button" className="btn-primary flex-1 !py-2.5 text-sm" onClick={() => setAdding(s)}>
+                        <button type="button" className="btn-primary btn-sm flex-1" onClick={() => setAdding(s)}>
                           <Book width={16} height={16} /> Add to {listName}
                         </button>
-                        <button
-                          type="button"
-                          className="btn-ghost border border-line !py-2.5 text-sm"
-                          onClick={() => setStatus(s, 'dismissed')}
-                        >
+                        <button type="button" className="btn-outline btn-sm" onClick={() => pass(s)}>
                           Pass
                         </button>
                       </>
                     ) : (
                       <button
                         type="button"
-                        className="btn-ghost flex-1 border border-line !py-2.5 text-sm"
+                        className="btn-outline btn-sm"
                         onClick={() => setStatus(s, 'open')}
                       >
                         Reopen
@@ -445,7 +459,7 @@ function AddToLibraryModal({
         <p className="text-sm text-ink-faint">
           The YouTube link comes along. Add parts, charts, and band notes from the {listName} afterwards.
         </p>
-        {error && <p role="alert" className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p role="alert" className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="button" className="btn-primary w-full" disabled={busy} onClick={add}>
           <Book width={18} height={18} /> {busy ? 'Adding…' : `Add to ${listName}`}
         </button>

@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import type { LibrarySongDTO, SongDTO } from '@/lib/setlist-serialize';
 import { SongDetail } from './SongDetail';
-import { EmptyState } from './EmptyState';
-import { Skeleton, SkeletonList } from './Skeleton';
-import { Music, MusicPlus, ChevronRight, ChevronLeft, Book } from './Icons';
+import { EmptyState, InlineEmpty } from './EmptyState';
+import { SetlistSkeleton } from './Skeleton';
+import { ChevronRight, Book } from './Icons';
+import { SearchField } from './SearchField';
 import { apiFetch } from '@/lib/api-client';
 import { useDataChanged } from '@/lib/data-changed';
+import { listCard } from '@/lib/ui-classes';
 
 /**
  * Strip library-only metadata so a song can feed the SongDetail view. `leads`
@@ -20,31 +21,33 @@ function libToSong(s: LibrarySongDTO): SongDTO {
   return { ...rest, position: 0, leads: [] };
 }
 
-/**
- * Library browser for members: search, browse, and open a song to review its
- * lyric chart or listen to the parts. Read-only, except that the song card
- * itself lets a leader or the vocal director manage the vocal parts; editing the
- * song *entry* still lives in the leader-only `SongLibrary`.
- */
-export function SongLibraryBrowser({ backHref, suggestHref }: { backHref: string; suggestHref: string }) {
-  const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
-  const [q, setQ] = useState('');
-  const [open, setOpen] = useState<SongDTO | null>(null);
+/** Library row (CMP-11): title + artist. `trailing` replaces the chevron. */
+export function LibraryRow({
+  song,
+  onClick,
+  trailing,
+}: {
+  song: LibrarySongDTO;
+  onClick: () => void;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-[60px] items-center">
+      <button type="button" onClick={onClick} className="row-press flex min-w-0 flex-1 items-center gap-3 self-stretch py-2.5 pl-4 pr-2 text-left">
+        <span className="min-w-0 flex-1">
+          <span className="row-title block truncate">{song.songTitle}</span>
+          {song.artist && <span className="block truncate text-[13px] leading-[18px] text-ink-soft">{song.artist}</span>}
+        </span>
+        {!trailing && <ChevronRight width={18} height={18} className="mr-2 shrink-0 text-ink-faint" aria-hidden />}
+      </button>
+      {trailing}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs')
-      .then(({ songs }) => setSongs(songs))
-      .catch(() => setSongs([]));
-  }, []);
-
-  // A save from a song card (vocal parts, a lyric chart) — keep the list on a failed reload.
-  useDataChanged(() => {
-    apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs')
-      .then(({ songs }) => setSongs(songs))
-      .catch(() => {});
-  });
-
-  const filtered = useMemo(() => {
+/** Title or artist contains the search text. */
+export function useLibraryFilter(songs: LibrarySongDTO[] | null, q: string) {
+  return useMemo(() => {
     const list = songs ?? [];
     const needle = q.trim().toLowerCase();
     if (!needle) return list;
@@ -52,70 +55,69 @@ export function SongLibraryBrowser({ backHref, suggestHref }: { backHref: string
       (s) => s.songTitle.toLowerCase().includes(needle) || (s.artist ?? '').toLowerCase().includes(needle),
     );
   }, [songs, q]);
+}
+
+/**
+ * Songs › Library for members (SG-4): search, browse, and open a song to review
+ * its lyric chart or listen to the parts. Read-only, except that the song sheet
+ * itself lets the vocal director manage the vocal parts; editing the song
+ * *entry* still lives in the leader-only `SongLibrary`. The Songs tab supplies
+ * the header and keeps the search text.
+ */
+export function SongLibraryBrowser({ q, onQChange }: { q: string; onQChange: (q: string) => void }) {
+  const [songs, setSongs] = useState<LibrarySongDTO[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState<SongDTO | null>(null);
+
+  function load(quiet = false) {
+    setFailed(false);
+    return apiFetch<{ songs: LibrarySongDTO[] }>('/api/songs')
+      .then(({ songs }) => setSongs(songs))
+      .catch(() => {
+        // A failed background refresh keeps the list; a failed first load says so.
+        if (!quiet) setFailed(true);
+      });
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  // A save from a song sheet (vocal parts, a lyric chart).
+  useDataChanged(() => {
+    void load(true);
+  });
+
+  const filtered = useLibraryFilter(songs, q);
 
   return (
-    <div className="space-y-5 pt-2">
-      <header className="flex items-center justify-between gap-3 pr-12">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            href={backHref}
-            className="row-press grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-soft"
-            aria-label="Back"
-          >
-            <ChevronLeft width={18} height={18} />
-          </Link>
-          <h1 className="page-title">Library</h1>
-        </div>
-        <Link href={suggestHref} className="btn-ghost shrink-0 border border-line !px-4 !py-3">
-          <MusicPlus width={18} height={18} /> Suggest
-        </Link>
-      </header>
+    <div className="space-y-4">
+      <SearchField value={q} onChange={onQChange} placeholder="Search songs or artists…" />
 
-      {songs === null ? (
-        <SkeletonList>
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </SkeletonList>
+      {failed ? (
+        <InlineEmpty>
+          Could not load the library.
+          <button type="button" className="btn-ghost btn-sm mx-auto mt-3 flex" onClick={() => void load()}>
+            Try again
+          </button>
+        </InlineEmpty>
+      ) : songs === null ? (
+        <div role="status" aria-label="Loading">
+          <SetlistSkeleton rows={6} />
+        </div>
       ) : songs.length === 0 ? (
         <EmptyState icon={Book} message="No songs in the library yet. Your leaders will add them here." />
+      ) : filtered.length === 0 ? (
+        <InlineEmpty>No songs match that search.</InlineEmpty>
       ) : (
-        <>
-          <input
-            className="field"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search songs or artists…"
-            enterKeyHint="search"
-          />
-
-          {filtered.length === 0 ? (
-            <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">No songs match that search.</p>
-          ) : (
-            <div className="card overflow-hidden">
-              {filtered.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setOpen(libToSong(s))}
-                  className="row-press flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-0"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent-ink dark:text-accent-on">
-                    <Music width={16} height={16} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{s.songTitle}</span>
-                    {s.artist && <span className="block truncate text-xs text-ink-faint">{s.artist}</span>}
-                  </span>
-                  <ChevronRight width={20} height={20} className="text-ink-faint" />
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+        <div className={listCard}>
+          {filtered.map((s) => (
+            <LibraryRow key={s.id} song={s} onClick={() => setOpen(libToSong(s))} />
+          ))}
+        </div>
       )}
 
-      {open && <SongDetail song={open} onClose={() => setOpen(null)} />}
+      {open && <SongDetail song={open} context={{ fromLibrary: true }} onClose={() => setOpen(null)} />}
     </div>
   );
 }

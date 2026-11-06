@@ -3,16 +3,16 @@
 import { useState } from 'react';
 import type { AnnouncementDTO } from '@/lib/serialize';
 import { AnnouncementDetailModal } from './AnnouncementDetailModal';
-import { Avatar } from './Avatar';
+import { MemberAvatar } from './Avatar';
 import { Pin } from './Icons';
 import { formatRelative } from '@/lib/announcement-ui';
 import { apiFetch } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 /**
- * Tappable announcement cards for the home screen. Pinned posts sort first and
- * get a warm highlighted treatment. Each shows its author (avatar + name) and
- * how long ago it was posted. Leaders (`canManage`) get an inline pin toggle.
+ * Announcement cards for Home (HM-C4). Pinned posts sort first and get the warm
+ * pinned fill. Each shows its author (avatar + name) and how long ago it was
+ * posted. Leaders (`canManage`) get an inline pin toggle.
  */
 export function AnnouncementCards({
   announcements,
@@ -44,36 +44,25 @@ export function AnnouncementCards({
     <div className="space-y-2.5">
       {announcements.map((a) => {
         const author = a.authorName ?? 'GNW Hub';
-        const initial = author.slice(0, 1).toUpperCase();
-        // Only real (named) authors get their photo; the "GNW Hub" fallback keeps its mark.
+        // Only real (named) authors get their photo; the "GNW Hub" fallback keeps its initial.
         const authorImage = a.authorName ? a.authorImage : null;
         return (
           <div
             key={a.id}
             className={cn(
               'card relative flex w-full animate-rise items-start gap-3 p-4',
-              a.pinned && 'border-warn/40 bg-gradient-to-br from-warn/[0.07] to-transparent',
+              a.pinned && 'border-warn/35 bg-pinned',
             )}
           >
-            <Avatar
-              image={authorImage}
-              alt={author}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent-ink font-semibold text-white"
-            >
-              {initial}
-            </Avatar>
+            <MemberAvatar name={author} image={authorImage} size={40} />
 
-            <button
-              type="button"
-              onClick={() => setDetail(a)}
-              className="row-press min-w-0 flex-1 text-left"
-            >
-              <span className="flex items-center gap-1.5 text-xs text-ink-faint">
-                <span className="truncate font-semibold text-ink-soft">{author}</span>
+            <button type="button" onClick={() => setDetail(a)} className="min-w-0 flex-1 text-left">
+              <span className="flex items-center gap-1.5 pr-1 text-[13px] leading-[18px] text-ink-soft">
+                <span className="truncate font-semibold">{author}</span>
                 <span aria-hidden>·</span>
                 <span className="shrink-0">{formatRelative(a.createdAt)}</span>
               </span>
-              <span className="mt-0.5 block truncate font-display font-semibold">{a.title}</span>
+              <span className="t-title-row mt-0.5 block truncate">{a.title}</span>
               {a.body && <span className="mt-1 line-clamp-2 block text-sm text-ink-soft">{a.body}</span>}
             </button>
 
@@ -85,18 +74,14 @@ export function AnnouncementCards({
                 aria-pressed={a.pinned}
                 aria-label={a.pinned ? 'Unpin announcement' : 'Pin announcement'}
                 className={cn(
-                  'row-press grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors disabled:opacity-50',
-                  a.pinned ? 'border-warn/40 bg-warn/15 text-warn' : 'border-line bg-surface text-ink-faint',
+                  'btn-icon -my-1.5 -mr-1.5 disabled:opacity-50',
+                  a.pinned ? 'bg-warn/15 text-warn-ink' : 'text-ink-faint',
                 )}
               >
-                <Pin width={16} height={16} />
+                <Pin width={18} height={18} />
               </button>
             ) : (
-              a.pinned && (
-                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-warn">
-                  <Pin width={13} height={13} /> Pinned
-                </span>
-              )
+              a.pinned && <span className="micro shrink-0 text-warn-ink">Pinned</span>
             )}
           </div>
         );

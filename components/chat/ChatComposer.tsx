@@ -266,7 +266,7 @@ export function ChatComposer({
   const replyThumb = replyMedia ? (replyMedia.kind === 'image' ? replyMedia.url : replyMedia.posterUrl) : null;
 
   return (
-    <div className="relative shrink-0 border-t border-line bg-app/95 backdrop-blur" style={{ paddingBottom: bottomPad }}>
+    <div className="relative shrink-0 border-t border-line bg-surface/95 backdrop-blur" style={{ paddingBottom: bottomPad }}>
       {/* @mention suggestions float above the composer */}
       {suggestions.length > 0 && (
         <ul className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-2xl border border-line bg-surface shadow-card-lg">
@@ -294,7 +294,7 @@ export function ChatComposer({
 
       {(replyTo || editing) && (
         <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm">
-          <span className="text-accent dark:text-accent-on">{editing ? <Pencil width={16} height={16} /> : '↩'}</span>
+          <span className="text-accent-ink">{editing ? <Pencil width={16} height={16} /> : '↩'}</span>
           <span className="min-w-0 flex-1 truncate">
             {editing ? (
               <span className="font-semibold">Editing message</span>
@@ -364,7 +364,7 @@ export function ChatComposer({
       )}
 
       {notice && (
-        <p role="alert" className="flex items-center justify-between gap-2 px-4 pt-2 text-xs font-semibold text-bad">
+        <p role="alert" className="flex items-center justify-between gap-2 px-4 pt-2 text-xs font-semibold text-bad-ink">
           {notice}
           <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="text-ink-faint">
             <X width={13} height={13} />
@@ -442,7 +442,7 @@ export function ChatComposer({
           onClick={submit}
           className={cn(
             'grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full transition active:scale-95',
-            canSend ? 'bg-accent text-white shadow-pop' : 'bg-surface-2 text-ink-faint',
+            canSend ? 'bg-accent text-accent-fg shadow-pop' : 'bg-surface-2 text-ink-faint',
           )}
         >
           {editing ? <Check width={20} height={20} /> : <Send width={19} height={19} />}

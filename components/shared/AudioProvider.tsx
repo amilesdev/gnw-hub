@@ -1,21 +1,30 @@
 'use client';
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import type { SongDTO } from '@/lib/setlist-serialize';
 
-// A single, app-wide audio element that outlives the song modal. Playback is
-// started from SongDetail but keeps going as the member closes the sheet and
-// scrolls the setlist — the MiniPlayer bar (above the tab bar) is the persistent
+// A single, app-wide audio element that outlives the song sheet. Playback is
+// started from a part row but keeps going as the member closes the sheet and
+// scrolls the setlist — the MiniPlayer bar (in the dock) is the persistent
 // transport. The <audio> lives here, in the layout-level shell, so navigating
-// between Home / Events / Setlist / Profile never interrupts the track.
+// between Home / Events / Songs / Profile never interrupts the track.
 
 export type AudioTrack = {
+  /** Which row this is ("{songId}:{part}"), so a reopened sheet shows it active. */
+  id: string;
   /** Streaming URL for the selected part. */
   src: string;
   /** Song title, e.g. "Goodness of God". */
   title: string;
   /** Part label, e.g. "Alto". */
   part: string;
+  /** The song + where it was opened from, so the MiniPlayer can reopen its sheet. */
+  song?: SongDTO;
+  context?: SongSheetContext;
 };
+
+/** Where a song sheet was opened from: its back pill and eyebrow. */
+export type SongSheetContext = { backLabel?: string; eyebrow?: string; fromLibrary?: boolean };
 
 type AudioContextValue = {
   track: AudioTrack | null;
@@ -23,9 +32,12 @@ type AudioContextValue = {
   current: number;
   duration: number;
   failed: boolean;
+  loop: boolean;
   play: (track: AudioTrack) => void;
   toggle: () => void;
   seek: (seconds: number) => void;
+  restart: () => void;
+  toggleLoop: () => void;
   stop: () => void;
 };
 
@@ -44,6 +56,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [loop, setLoop] = useState(false);
 
   const play = useCallback((next: AudioTrack) => {
     setFailed(false);
@@ -71,6 +84,23 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     setCurrent(seconds);
   }, []);
 
+  const restart = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = 0;
+    setCurrent(0);
+    if (el.paused) el.play().catch(() => setFailed(true));
+  }, []);
+
+  // Loop stays on across parts until turned off, so drilling one part over and
+  // over and then switching to the next keeps the same habit.
+  const toggleLoop = useCallback(() => {
+    setLoop((on) => {
+      if (audioRef.current) audioRef.current.loop = !on;
+      return !on;
+    });
+  }, []);
+
   const stop = useCallback(() => {
     const el = audioRef.current;
     if (el) {
@@ -86,11 +116,14 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AudioCtx.Provider value={{ track, playing, current, duration, failed, play, toggle, seek, stop }}>
+    <AudioCtx.Provider
+      value={{ track, playing, current, duration, failed, loop, play, toggle, seek, restart, toggleLoop, stop }}
+    >
       {children}
       <audio
         ref={audioRef}
         preload="metadata"
+        loop={loop}
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
         onPlay={() => setPlaying(true)}

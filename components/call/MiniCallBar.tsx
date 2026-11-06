@@ -6,10 +6,11 @@ import { Mic, MicOff, Phone } from '@/components/shared/Icons';
 import { useCall, useElapsed, formatElapsed } from './CallProvider';
 
 /**
- * Persistent call transport. Sits above the tab bar whenever a call is live and
- * the full call screen isn't open — so a member keeps talking while they browse
- * the Hub, and taps the bar to return. Mirrors the audio MiniPlayer. Leaving the
- * call stays deliberate: hang-up lives only on the full screen, not here.
+ * Persistent call transport (CL-2): a glass bar at the top of the dock whenever
+ * a call is live and the full call screen isn't open — so a member keeps
+ * talking while they browse the Hub, and taps the bar to return. Mirrors the
+ * audio MiniPlayer. Leaving the call stays deliberate: hang-up lives only on
+ * the full screen, not here.
  */
 export function MiniCallBar() {
   const router = useRouter();
@@ -23,25 +24,23 @@ export function MiniCallBar() {
   if (pathname.startsWith('/call/')) return null;
 
   return (
-    <div className="no-print shrink-0 px-3 pb-1 pt-2">
-      <div className="flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent-soft px-3 py-2 shadow-card">
+    <div className="no-print pointer-events-auto mx-3.5">
+      <div className="glass flex items-center gap-3 rounded-[30px] py-[7px] pl-[7px] pr-1">
         <button
           type="button"
           onClick={() => router.push(`/call/${callId}`)}
-          className="row-press flex min-w-0 flex-1 items-center gap-3 rounded-xl py-0.5 text-left"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left transition-transform duration-150 active:scale-[0.98]"
           aria-label={`Return to ${callName ?? 'the call'}`}
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-white shadow-pop">
-            <Phone width={17} height={17} />
+          <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full bg-accent text-accent-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.55)]">
+            <Phone width={18} height={18} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-good animate-pulse" aria-hidden />
-              <span className="truncate text-sm font-semibold text-ink">
-                {callName ?? 'On a call'}
-              </span>
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-good" aria-hidden />
+              <span className="truncate text-[15px] font-semibold leading-5 text-ink">{callName ?? 'On a call'}</span>
             </span>
-            <span className="block text-xs font-semibold tabular-nums text-ink-soft">
+            <span className="block text-[13px] leading-[18px] tabular-nums text-ink-soft">
               {status === 'connected' ? `${formatElapsed(elapsed)} · Tap to return` : 'Joining…'}
             </span>
           </span>
@@ -52,12 +51,9 @@ export function MiniCallBar() {
           onClick={toggleMute}
           disabled={status !== 'connected'}
           aria-label={muted ? 'Unmute' : 'Mute'}
-          className={cn(
-            'grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:opacity-40',
-            muted ? 'bg-ink text-app' : 'border border-line bg-surface text-ink',
-          )}
+          className={cn('btn-icon', muted && 'bg-ink text-app')}
         >
-          {muted ? <MicOff width={18} height={18} /> : <Mic width={18} height={18} />}
+          {muted ? <MicOff width={20} height={20} /> : <Mic width={20} height={20} />}
         </button>
       </div>
     </div>

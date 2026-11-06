@@ -1,5 +1,7 @@
-import { SongLibraryBrowser } from '@/components/shared/SongLibraryBrowser';
+import { redirect } from 'next/navigation';
 
+// The Library is now a view inside Songs (Setlists | Library); keep the old
+// address working for links and pushes.
 export default function MemberLibraryPage() {
-  return <SongLibraryBrowser backHref="/home/setlist" suggestHref="/home/library/suggestions" />;
+  redirect('/home/setlist?view=library');
 }

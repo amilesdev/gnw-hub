@@ -138,12 +138,12 @@ export function CallRoom({ callId }: { callId: string }) {
           type="button"
           onClick={minimize}
           aria-label="Minimize — stay on the call"
-          className="row-press -ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft"
+          className="glass grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition-transform duration-150 active:scale-[0.97]"
         >
-          <ChevronDown width={26} height={26} />
+          <ChevronDown width={20} height={20} />
         </button>
         <div className="min-w-0 flex-1 pt-1 text-center">
-          <h1 className="page-title truncate">{callName ?? 'Call'}</h1>
+          <h1 className="truncate font-display text-2xl font-semibold leading-[30px]">{callName ?? 'Call'}</h1>
           <p className="eyebrow mt-1.5 flex items-center justify-center gap-1.5 tabular-nums">
             {connected ? (
               <>
@@ -162,12 +162,12 @@ export function CallRoom({ callId }: { callId: string }) {
           onClick={() => setChatOpen(true)}
           disabled={!connected}
           aria-label={unread > 0 ? `Chat, ${unread} new` : 'Chat'}
-          className="row-press relative -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft disabled:opacity-40"
+          className="glass relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition-transform duration-150 active:scale-[0.97] disabled:opacity-50"
         >
-          <MessageCircle width={24} height={24} />
+          <MessageCircle width={20} height={20} />
           {unread > 0 && (
             <span
-              className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-unread ring-2 ring-app"
+              className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-unread ring-2 ring-surface"
               aria-hidden
             />
           )}
@@ -352,8 +352,9 @@ function useVideoFirstOrder(
 function CallShell({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-center bg-app">
+      <div className="app-wash" aria-hidden />
       <div
-        className="flex w-full max-w-[430px] flex-col px-5"
+        className="relative flex w-full max-w-[430px] flex-col px-5"
         style={{
           paddingTop: 'max(1rem, env(safe-area-inset-top))',
           paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
@@ -395,7 +396,7 @@ function ParticipantTile({
         // Safari, where overflow-hidden alone leaves square corners.
         'grain-block relative transform-gpu overflow-hidden rounded-3xl bg-accent-soft transition-shadow',
         solo ? 'aspect-[4/5]' : 'aspect-square',
-        speaking ? 'ring-4 ring-accent' : 'ring-1 ring-line',
+        speaking ? 'ring-4 ring-inset ring-accent' : 'ring-1 ring-line',
       )}
     >
       {hasVideo ? (
@@ -421,7 +422,7 @@ function ParticipantTile({
             <Avatar
               image={image}
               alt={name}
-              className="grid h-20 w-20 place-items-center rounded-full bg-accent text-2xl font-bold text-white shadow-pop"
+              className="grid h-20 w-20 place-items-center rounded-full bg-accent text-2xl font-bold text-accent-fg shadow-pop"
             >
               {initials(name)}
             </Avatar>
@@ -429,7 +430,7 @@ function ParticipantTile({
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/50 to-transparent px-3 pb-2 pt-7">
+      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/55 to-transparent px-3 pb-2 pt-7">
         {!micOn && <MicOff width={14} height={14} className="shrink-0 text-white" aria-hidden />}
         <span className="truncate text-sm font-semibold text-white">{isLocal ? 'You' : name}</span>
       </div>
@@ -608,7 +609,7 @@ function ChatPanel({
               type="submit"
               disabled={!draft.trim()}
               aria-label="Send message"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-white shadow-card transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-accent-fg shadow-card transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
             >
               <Send width={20} height={20} />
             </button>
@@ -628,17 +629,17 @@ function ChatToast({ message, onOpen }: { message: ChatMessage; onOpen: () => vo
     <button
       type="button"
       onClick={onOpen}
-      className="pointer-events-auto flex w-full items-center gap-2.5 rounded-2xl bg-surface/95 px-3 py-2.5 text-left shadow-card ring-1 ring-line backdrop-blur-sm animate-rise transition active:scale-[0.98]"
+      className="glass pointer-events-auto flex w-full animate-toast-in items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left transition active:scale-[0.98]"
     >
       <Avatar
         image={senderImage}
         alt={senderName}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-fg"
       >
         {initials(senderName)}
       </Avatar>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-bold text-ink-soft">{senderName}</span>
+        <span className="block truncate text-[13px] font-bold text-ink-soft">{senderName}</span>
         <span className="block truncate text-[15px] text-ink">{text}</span>
       </span>
     </button>
@@ -652,7 +653,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   if (isLocal) {
     return (
       <div className="flex justify-end">
-        <p className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] text-white">
+        <p className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] text-accent-fg">
           {text}
         </p>
       </div>
@@ -663,7 +664,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       <Avatar
         image={senderImage}
         alt={senderName}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-fg"
       >
         {initials(senderName)}
       </Avatar>
@@ -701,7 +702,7 @@ function ControlButton({
           'grid h-16 w-16 place-items-center rounded-full transition active:scale-95 disabled:opacity-40 disabled:active:scale-100',
           tone === 'danger' && 'bg-bad text-white shadow-pop',
           tone === 'active' && 'bg-ink text-app',
-          tone === 'neutral' && 'border border-line bg-surface text-ink shadow-card',
+          tone === 'neutral' && 'glass text-ink',
         )}
       >
         {children}

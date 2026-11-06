@@ -109,7 +109,7 @@ export function ChecklistView({
       </p>
 
       <PillTabs value={filter} onChange={setFilter} options={filters} />
-      {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+      {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
 
       {shown.length === 0 ? (
         <p className="py-6 text-center text-sm text-ink-soft">
@@ -127,7 +127,7 @@ export function ChecklistView({
                 <b className="text-sm">{zoneName(g)}</b>
                 <span className="text-xs tabular-nums text-ink-faint">{all.filter((t) => t.doneAt).length}/{all.length}</span>
                 {g && hasMap && (
-                  <button type="button" onClick={() => onMapZone(g as ZoneId)} className="ml-auto text-xs font-semibold text-accent-ink underline underline-offset-2 dark:text-accent-on">
+                  <button type="button" onClick={() => onMapZone(g as ZoneId)} className="ml-auto text-xs font-semibold text-accent-ink underline underline-offset-2">
                     On the map
                   </button>
                 )}
@@ -222,7 +222,7 @@ function TaskRow({ task, people, canCheck, onToggle, onOpen }: { task: Productio
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 py-0.5 text-left">
         <span className={cn('block text-[14.5px] font-semibold', done && 'text-ink-soft line-through decoration-ink-faint')}>
           {task.title}
-          {task.oneOff && <span className="ml-1.5 text-[11px] font-bold text-warn no-underline">This event only</span>}
+          {task.oneOff && <span className="ml-1.5 text-[11px] font-bold text-warn-ink no-underline">This event only</span>}
         </span>
         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-ink-soft">
           {task.ownerName ? (
@@ -231,10 +231,10 @@ function TaskRow({ task, people, canCheck, onToggle, onOpen }: { task: Productio
               {task.ownerName}
             </>
           ) : (
-            <span className="font-semibold text-warn">No owner</span>
+            <span className="font-semibold text-warn-ink">No owner</span>
           )}
           {done && task.doneByName && task.doneAt && (
-            <span className="font-semibold text-accent-ink dark:text-accent-on">· Done by {task.doneByName} at {timeLabel(task.doneAt)}</span>
+            <span className="font-semibold text-accent-ink">· Done by {task.doneByName} at {timeLabel(task.doneAt)}</span>
           )}
         </span>
       </button>
@@ -343,7 +343,7 @@ function TaskSheet({
                 setRemoving(false);
               }
             }}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-bad"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-bad-ink"
           >
             <Trash width={16} height={16} /> {removing ? 'Removing…' : 'Remove from this event'}
           </button>
@@ -404,7 +404,7 @@ function AddTaskSheet({ eventId, people, onAdded, onClose }: { eventId: string; 
             {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </label>
-        {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+        {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>{busy ? 'Adding…' : 'Add task'}</button>
       </form>
     </Modal>
@@ -498,7 +498,7 @@ function TemplatesSheet({
             <span className="label">Where it goes</span>
             <ZoneSelect id="tpl-zone" value={zone} onChange={setZone} />
           </label>
-          {error && <p className="text-sm font-semibold text-bad">{error}</p>}
+          {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
           <button type="submit" className="btn-primary w-full" disabled={busy || !title.trim()}>{busy ? 'Adding…' : 'Add to template'}</button>
         </form>
       </div>
