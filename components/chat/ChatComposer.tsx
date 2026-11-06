@@ -106,6 +106,16 @@ export function ChatComposer({
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const finePointer = useRef(false);
+  /**
+   * Set just before we focus the box ourselves for a reply or an edit: that
+   * message may be far up the chat, so the focus shouldn't drop to the newest.
+   */
+  const quietFocus = useRef(false);
+  function focusQuietly() {
+    quietFocus.current = true;
+    ref.current?.focus();
+    quietFocus.current = false;
+  }
   const rootRef = useRef<HTMLDivElement>(null);
   const onHeightRef = useRef(onHeight);
   onHeightRef.current = onHeight;
@@ -130,7 +140,7 @@ export function ChatComposer({
   useEffect(() => {
     if (editing) {
       setText(editing.text ?? '');
-      window.setTimeout(() => ref.current?.focus(), 0);
+      window.setTimeout(focusQuietly, 0);
     } else {
       setText('');
     }
@@ -138,7 +148,7 @@ export function ChatComposer({
   }, [editingId]);
 
   useEffect(() => {
-    if (replyTo) ref.current?.focus();
+    if (replyTo) focusQuietly();
   }, [replyTo]);
 
   // Auto-grow: reset, then fit the content up to the cap.
@@ -236,7 +246,7 @@ export function ChatComposer({
   const canSend = editing
     ? text.trim().length > 0 || (editing.attachments.length > 0 && text.trim() !== (editing.text ?? ''))
     : (text.trim().length > 0 || ready.length > 0) && !uploading && !failed;
-  // Send takes GIF's spot once there's anything to send (disabled while uploads finish).
+  // Send shows once there's anything to send (disabled while uploads finish).
   const showSend = !!editing || text.trim().length > 0 || drafts.length > 0;
 
   function submit() {
@@ -432,6 +442,14 @@ export function ChatComposer({
                 e.target.value = '';
               }}
             />
+            <button
+              type="button"
+              aria-label="Send a GIF or sticker"
+              onClick={() => setGifsOpen(true)}
+              className="glass grid h-11 w-11 shrink-0 place-items-center rounded-full text-[13px] font-extrabold tracking-wide text-ink transition active:scale-90"
+            >
+              GIF
+            </button>
             {gifsOpen && <GifPicker onPick={sendGif} onClose={() => setGifsOpen(false)} />}
           </>
         )}
@@ -449,7 +467,9 @@ export function ChatComposer({
             maxLength={CHAT_TEXT_MAX}
             placeholder={editing ? 'Edit your message' : placeholder}
             aria-label="Message"
-            onFocus={onFocusInput}
+            onFocus={() => {
+              if (!quietFocus.current) onFocusInput();
+            }}
             onChange={(e) => {
               setText(e.target.value);
               setCaret(e.target.selectionStart ?? e.target.value.length);
@@ -469,8 +489,8 @@ export function ChatComposer({
             }}
             className="no-scrollbar max-h-[132px] min-h-8 min-w-0 flex-1 resize-none bg-transparent py-[5px] text-base leading-snug text-ink outline-none placeholder:text-ink-faint"
           />
-          {/* Where iMessage keeps the mic: GIF while the box is empty, Send once there's something to send. */}
-          {showSend ? (
+          {/* Send pops in once there's something to send. */}
+          {showSend && (
             <button
               key="send"
               type="button"
@@ -483,18 +503,6 @@ export function ChatComposer({
               className="ml-2 grid h-8 w-8 shrink-0 animate-send-in place-items-center rounded-full bg-accent text-accent-fg shadow-pop transition-[transform,opacity] active:scale-90 disabled:opacity-50"
             >
               {editing ? <Check width={18} height={18} /> : <ArrowUp width={18} height={18} strokeWidth={2.75} />}
-            </button>
-          ) : (
-            <button
-              key="gif"
-              type="button"
-              aria-label="Send a GIF or sticker"
-              onPointerDown={(e) => e.preventDefault()}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setGifsOpen(true)}
-              className="glass-inset ml-2 grid h-8 shrink-0 animate-fade-in place-items-center rounded-full px-2.5 text-[12px] font-extrabold tracking-wide text-ink-soft transition active:scale-90"
-            >
-              GIF
             </button>
           )}
         </div>
