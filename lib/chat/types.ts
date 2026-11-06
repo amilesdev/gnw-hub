@@ -49,10 +49,16 @@ export type ChatReactionDTO = {
   names: string[];
 };
 
-/** `file` = a PDF: shown as a file card, opened in the phone's own viewer. */
-export type ChatMediaKind = 'image' | 'video' | 'file';
+/**
+ * `file` = a PDF: shown as a file card, opened in the phone's own viewer.
+ * `gif` / `sticker` = from GIPHY (linked, not stored); a sticker has no bubble.
+ */
+export type ChatMediaKind = 'image' | 'video' | 'file' | 'gif' | 'sticker';
 
-/** A photo, video or PDF. URLs are short-lived signed URLs (private bucket) — never stored. */
+/**
+ * A photo, video or PDF: URLs are short-lived signed URLs (private bucket) —
+ * never stored. A GIF/sticker: `url` is the animated GIPHY file, `posterUrl` a still.
+ */
 export type ChatAttachmentDTO = {
   id: string;
   kind: ChatMediaKind;
@@ -77,6 +83,61 @@ export type ChatAttachmentInput = {
   durationSec?: number | null;
   sizeBytes: number;
 };
+
+/** A GIF/sticker picked from GIPHY, as the composer sends it (a message of its own). */
+export type ChatGifInput = {
+  kind: 'gif' | 'sticker';
+  id: string;
+  file: GiphyFile;
+  width: number;
+  height: number;
+  /** GIPHY's title, kept as the image's description. */
+  title?: string | null;
+};
+
+/** One GIPHY result in the picker (built server-side from GIPHY's response; no API key in it). */
+export type ChatGifResultDTO = {
+  id: string;
+  kind: 'gif' | 'sticker';
+  title: string;
+  /** What the grid shows: a small animated file. */
+  previewUrl: string;
+  previewWidth: number;
+  previewHeight: number;
+  /** What gets sent: the full file when it's light enough, else the small one. */
+  file: GiphyFile;
+  width: number;
+  height: number;
+};
+
+export type ChatGifPageDTO = { results: ChatGifResultDTO[]; hasMore: boolean };
+
+// GIPHY media is linked, never stored. The attachment path is
+// "giphy:<id>/<file>" and the URL is rebuilt from it on read, so only GIPHY's own
+// media host can ever be shown (nothing a client sends becomes a URL).
+export const GIPHY_FILES = ['giphy.webp', '200w.webp'] as const;
+export type GiphyFile = (typeof GIPHY_FILES)[number];
+const GIPHY_ID = /^[A-Za-z0-9]{5,40}$/;
+const GIPHY_PATH = /^giphy:([A-Za-z0-9]{5,40})\/(giphy\.webp|200w\.webp)$/;
+
+export function isGiphyId(id: string): boolean {
+  return GIPHY_ID.test(id);
+}
+
+export function giphyPath(id: string, file: GiphyFile): string {
+  return `giphy:${id}/${file}`;
+}
+
+export function isGiphyPath(path: string): boolean {
+  return GIPHY_PATH.test(path);
+}
+
+/** The animated file (`still` = a small still frame, for reply thumbnails and posters). */
+export function giphyUrl(path: string, still = false): string | null {
+  const m = GIPHY_PATH.exec(path);
+  if (!m) return null;
+  return `https://media.giphy.com/media/${m[1]}/${still ? '200w_s.gif' : m[2]}`;
+}
 
 export type ChatLastMessageDTO = {
   text: string | null;
@@ -224,10 +285,14 @@ export const CHAT_TYPING_PING_MS = 3_000;
 /** …and a "typing" with no refresh fades out after this long. */
 export const CHAT_TYPING_TTL_MS = 6_500;
 
-/** How an attachment-only message reads in previews: "Photo", "Video", "PDF". */
+/** How an attachment-only message reads in previews: "Photo", "Video", "PDF", "GIF", "Sticker". */
 export function mediaLabel(kind: ChatMediaKind | null | undefined): string {
-  return kind === 'video' ? 'Video' : kind === 'file' ? 'PDF' : 'Photo';
+  return kind === 'video' ? 'Video' : kind === 'file' ? 'PDF' : kind === 'gif' ? 'GIF' : kind === 'sticker' ? 'Sticker' : 'Photo';
 }
+
+/** GIF search: GIPHY's content rating (the user's call, 2026-11-05). */
+export const GIPHY_RATING = 'pg';
+export const GIPHY_PAGE_SIZE = 24;
 
 /** Whether a message can still be edited by its author. */
 export function withinEditWindow(createdAt: string | Date, now = Date.now()): boolean {

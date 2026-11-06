@@ -6,6 +6,8 @@ import {
   CHAT_TEXT_MAX,
   mediaLabel,
   type ChatAttachmentInput,
+  type ChatGifInput,
+  type ChatGifResultDTO,
   type ChatMediaKind,
   type ChatMemberDTO,
 } from '@/lib/chat/types';
@@ -13,16 +15,22 @@ import { cn } from '@/lib/utils';
 import { Check, FileText, Pencil, Plus, Send, X } from '@/components/shared/Icons';
 import { ChatAvatar } from './ChatAvatar';
 import { ReplyThumb, type ClientMessage } from './ChatMessages';
+import { GifPicker } from './GifPicker';
 import { mediaKindOf, mediaProblem, prepareMedia, putWithProgress, signUploads } from './media';
 
 const MAX_HEIGHT_PX = 132; // ~5 lines, then it scrolls
 
-/** What the composer hands the thread to send. `previews` are local blob URLs for the optimistic bubble. */
+/**
+ * What the composer hands the thread to send. `previews` are local blob URLs
+ * for the optimistic bubble (a GIF's is its GIPHY URL).
+ */
 export type OutgoingMessage = {
   text: string;
   mentionIds: string[];
   mentionsAll: boolean;
   attachments: ChatAttachmentInput[];
+  /** A GIF/sticker, sent as a message of its own. */
+  gif?: ChatGifInput;
   previews: {
     kind: ChatMediaKind;
     url: string;
@@ -88,6 +96,7 @@ export function ChatComposer({
   const [caret, setCaret] = useState(0);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [gifsOpen, setGifsOpen] = useState(false);
   const picked = useRef(new Map<string, string>()); // userId → name inserted as @Name
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -239,6 +248,19 @@ export function ChatComposer({
     ref.current?.focus();
   }
 
+  /** A GIF/sticker goes straight out as its own message; whatever's typed stays in the box. */
+  function sendGif(g: ChatGifResultDTO) {
+    const url = `https://media.giphy.com/media/${g.id}/${g.file}`;
+    onSend({
+      text: '',
+      mentionIds: [],
+      mentionsAll: false,
+      attachments: [],
+      gif: { kind: g.kind, id: g.id, file: g.file, width: g.width, height: g.height, title: g.title || null },
+      previews: [{ kind: g.kind, url, posterUrl: g.previewUrl, width: g.width, height: g.height, name: g.title || null }],
+    });
+  }
+
   const replyName = replyTo ? (replyTo.author?.name ?? replyTo.importedAuthorName ?? 'Former member') : '';
   const replyMedia = replyTo?.attachments[0];
   const replyThumb = replyMedia ? (replyMedia.kind === 'image' ? replyMedia.url : replyMedia.posterUrl) : null;
@@ -373,6 +395,15 @@ export function ChatComposer({
                 e.target.value = '';
               }}
             />
+            <button
+              type="button"
+              aria-label="Send a GIF or sticker"
+              onClick={() => setGifsOpen(true)}
+              className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-surface-2 text-[13px] font-extrabold tracking-wide text-ink-soft transition active:scale-95"
+            >
+              GIF
+            </button>
+            {gifsOpen && <GifPicker onPick={sendGif} onClose={() => setGifsOpen(false)} />}
           </>
         )}
         <textarea
@@ -437,6 +468,8 @@ export function snippet(m: Pick<ClientMessage, 'text' | 'attachments' | 'deleted
   if (t) return t.length > 80 ? `${t.slice(0, 79)}…` : t;
   const file = m.attachments.find((a) => a.kind === 'file');
   if (file) return file.name ?? 'PDF';
+  const giphy = m.attachments.find((a) => a.kind === 'gif' || a.kind === 'sticker');
+  if (giphy) return mediaLabel(giphy.kind);
   return mediaLabel(m.attachments.some((a) => a.kind === 'video') ? 'video' : 'image');
 }
 

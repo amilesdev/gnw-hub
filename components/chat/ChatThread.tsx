@@ -509,6 +509,7 @@ export function ChatThread({
       mentionIds: out.mentionIds.length ? out.mentionIds : undefined,
       mentionsAll: out.mentionsAll || undefined,
       attachments: out.attachments.length ? out.attachments : undefined,
+      gif: out.gif,
     });
     stickToBottom.current = true;
     atBottom.current = true;

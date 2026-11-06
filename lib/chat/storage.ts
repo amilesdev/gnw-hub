@@ -59,7 +59,8 @@ export async function signChatReads(paths: string[]): Promise<Map<string, string
 
 /** Best-effort delete (a deleted message's or chat's media goes with it). Batched — a whole chat can be thousands. */
 export async function deleteChatObjects(paths: string[]): Promise<void> {
-  const unique = [...new Set(paths.filter(Boolean))];
+  // Only our own files: a GIF/sticker's `giphy:` link has nothing in the bucket.
+  const unique = [...new Set(paths.filter((p) => p.startsWith('chat/')))];
   for (let i = 0; i < unique.length; i += 1000) {
     await supabaseAdmin.storage.from(CHAT_BUCKET).remove(unique.slice(i, i + 1000));
   }

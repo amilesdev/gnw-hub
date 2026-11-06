@@ -83,7 +83,9 @@ export function MessageMenu({
   const armed = useRef(false);
 
   const mine = m.author?.id === meId;
-  const canEdit = mine && !readOnly && withinEditWindow(m.createdAt) && !m.deleted;
+  // A GIF/sticker has no text to edit (it's sent on its own).
+  const giphy = m.attachments.some((a) => a.kind === 'gif' || a.kind === 'sticker');
+  const canEdit = mine && !readOnly && withinEditWindow(m.createdAt) && !m.deleted && !giphy;
   const canDelete = !readOnly && (mine || canModerate);
   const myEmojis = new Set(m.reactions.filter((r) => r.mine).map((r) => r.emoji));
 

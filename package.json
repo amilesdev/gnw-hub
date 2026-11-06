@@ -20,7 +20,8 @@
     "set-chat-moderator": "dotenv -e .env.local -- node scripts/set-chat-moderator.mjs",
     "set-chat-early-access": "dotenv -e .env.local -- node scripts/set-chat-early-access.mjs",
     "groupme:probe": "dotenv -e .env.local -- node scripts/groupme-probe.mjs",
-    "groupme:names": "dotenv -e .env.local -- node scripts/groupme-names.mjs"
+    "groupme:names": "dotenv -e .env.local -- node scripts/groupme-names.mjs",
+    "groupme:import": "dotenv -e .env.local -- node scripts/groupme-import.mjs"
   },
   "prisma": {
     "seed": "dotenv -e .env.local -- tsx prisma/seed.ts"

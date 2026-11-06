@@ -5,6 +5,8 @@ import {
   CHAT_NAME_MAX,
   CHAT_SEARCH_MAX,
   CHAT_TEXT_MAX,
+  GIPHY_FILES,
+  isGiphyId,
   isSingleEmoji,
 } from './types';
 
@@ -41,7 +43,18 @@ const attachmentInput = z.object({
   sizeBytes: z.number().int().positive().max(CHAT_MEDIA_MAX_BYTES, 'Each file can be up to 100 MB.'),
 });
 
+// A GIPHY pick: only an id + one of our known file names (the URL is rebuilt server-side).
+const gifInput = z.object({
+  kind: z.enum(['gif', 'sticker']),
+  id: z.string().refine(isGiphyId, 'That GIF isn’t available.'),
+  file: z.enum(GIPHY_FILES),
+  width: z.number().int().positive().max(4000),
+  height: z.number().int().positive().max(4000),
+  title: z.string().trim().max(200).nullish(),
+});
+
 // Text is optional when there are photos/videos (sendMessage checks one or the other).
+// A GIF/sticker is a message of its own: no text or files alongside it.
 export const chatMessageSendSchema = z.object({
   text: messageText.optional(),
   clientNonce: z.string().min(8).max(64).optional(),
@@ -49,6 +62,13 @@ export const chatMessageSendSchema = z.object({
   mentionIds: z.array(id).max(200).optional(),
   mentionsAll: z.boolean().optional(),
   attachments: z.array(attachmentInput).max(CHAT_MAX_ATTACHMENTS, `Up to ${CHAT_MAX_ATTACHMENTS} files per message.`).optional(),
+  gif: gifInput.optional(),
+});
+
+export const chatGifSearchSchema = z.object({
+  type: z.enum(['gifs', 'stickers']).default('gifs'),
+  q: z.string().trim().max(50).default(''),
+  offset: z.coerce.number().int().min(0).max(4999).default(0),
 });
 
 export const chatMessagePatchSchema = z

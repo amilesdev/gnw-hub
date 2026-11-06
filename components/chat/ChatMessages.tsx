@@ -39,9 +39,13 @@ export type MessageHandlers = {
   onOpenMedia: (m: ClientMessage, index: number) => void;
 };
 
-/** A message's photos/videos (the grid + viewer) and its PDFs (file cards). */
+/** A message's photos/videos/GIFs (the grid + viewer), its PDFs (file cards) and stickers (drawn bare). */
 export function splitAttachments(list: ChatAttachmentDTO[]) {
-  return { media: list.filter((a) => a.kind !== 'file'), files: list.filter((a) => a.kind === 'file') };
+  return {
+    media: list.filter((a) => a.kind === 'image' || a.kind === 'video' || a.kind === 'gif'),
+    files: list.filter((a) => a.kind === 'file'),
+    stickers: list.filter((a) => a.kind === 'sticker'),
+  };
 }
 
 /**
@@ -238,9 +242,11 @@ export const BubbleBody = forwardRef<HTMLDivElement, BubbleBodyProps>(function B
   { message: m, mine, last, meId, memberNames, onJumpTo, onOpenMedia, className, ...div },
   ref,
 ) {
-  const { media, files } = splitAttachments(m.attachments);
+  const { media, files, stickers } = splitAttachments(m.attachments);
   const hasMedia = media.length > 0;
   const hasText = !!m.text;
+  // A sticker floats on its own; with a reply quote it sits inside the bubble.
+  const bareSticker = stickers.length > 0 && !hasText && !m.replyTo;
   const mentionsMe = m.mentionsAll || m.mentionIds.includes(meId);
   return (
     <div
@@ -250,7 +256,7 @@ export const BubbleBody = forwardRef<HTMLDivElement, BubbleBodyProps>(function B
         'select-none overflow-hidden rounded-[1.25rem] text-[15px] leading-snug [-webkit-touch-callout:none]',
         mine ? 'bg-chat-mine text-chat-mine-ink' : 'bg-chat-theirs text-chat-theirs-ink',
         mine ? (last ? 'rounded-br-md' : '') : last ? 'rounded-bl-md' : '',
-        hasMedia && !hasText && !m.replyTo && !files.length && 'bg-transparent',
+        ((hasMedia && !hasText && !m.replyTo && !files.length) || bareSticker) && 'bg-transparent',
         mentionsMe && !mine && 'ring-2 ring-unread/70',
         m.pending && 'opacity-60',
         m.failed && 'opacity-60 ring-2 ring-bad/60',
@@ -276,6 +282,18 @@ export const BubbleBody = forwardRef<HTMLDivElement, BubbleBodyProps>(function B
         </button>
       )}
       {hasMedia && <MediaGrid items={media} padded={hasText || !!m.replyTo || files.length > 0} onOpen={onOpenMedia} />}
+      {stickers.map((a) => (
+        // eslint-disable-next-line @next/next/no-img-element -- GIPHY media
+        <img
+          key={a.id}
+          src={a.url}
+          alt={a.name ?? 'Sticker'}
+          loading="lazy"
+          draggable={false}
+          className={cn('block h-auto w-[8.5rem] max-w-full object-contain', !bareSticker && 'm-1.5')}
+          style={a.width && a.height ? { aspectRatio: `${a.width} / ${a.height}` } : undefined}
+        />
+      ))}
       {files.map((a) => (
         <FileCard key={a.id} a={a} mine={mine} pending={!!m.pending} />
       ))}
@@ -398,12 +416,13 @@ function MediaGrid({ items, padded, onOpen }: { items: ChatAttachmentDTO[]; padd
 }
 
 function MediaThumb({ a, className, style }: { a: ChatAttachmentDTO; className?: string; style?: React.CSSProperties }) {
-  const still = a.kind === 'image' ? a.url : a.posterUrl;
+  // A GIF plays in place (its url is the animated file).
+  const still = a.kind === 'image' || a.kind === 'gif' ? a.url : a.posterUrl;
   return (
     <span className={cn('relative block overflow-hidden bg-black/10', className)} style={style}>
       {still ? (
-        // eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL
-        <img src={still} alt="" loading="lazy" draggable={false} className="h-full w-full object-cover" />
+        // eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL (or GIPHY media)
+        <img src={still} alt={a.kind === 'gif' ? (a.name ?? 'GIF') : ''} loading="lazy" draggable={false} className="h-full w-full object-cover" />
       ) : (
         <video src={a.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
       )}

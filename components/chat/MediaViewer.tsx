@@ -61,7 +61,7 @@ export function MediaViewer({ items, start, onClose }: { items: ChatAttachmentDT
   useBackClose(onClose);
 
   // ── DOM writers ─────────────────────────────────────────────────────────────
-  const zoomable = (i = indexRef.current) => items[i]?.kind === 'image';
+  const zoomable = (i = indexRef.current) => items[i]?.kind === 'image' || items[i]?.kind === 'gif';
 
   const stageBox = () => {
     const r = stage.current!.getBoundingClientRect();
@@ -384,8 +384,8 @@ export function MediaViewer({ items, start, onClose }: { items: ChatAttachmentDT
               }}
               className="grid h-full w-full shrink-0 place-items-center overflow-hidden"
             >
-              {a.kind === 'image' ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL
+              {a.kind === 'image' || a.kind === 'gif' ? (
+                // eslint-disable-next-line @next/next/no-img-element -- signed private-bucket URL (or GIPHY media)
                 <img
                   ref={(el) => {
                     media.current[i] = el;

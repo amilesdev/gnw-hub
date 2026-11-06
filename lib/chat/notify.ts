@@ -69,6 +69,8 @@ function preview(message: ChatMessageDTO, firstName: string): string {
   const text = (message.text ?? '').replace(/\s+/g, ' ').trim();
   if (!text) {
     const n = message.attachments.length;
+    const giphy = message.attachments.find((a) => a.kind === 'gif' || a.kind === 'sticker');
+    if (giphy) return `${firstName} sent a ${giphy.kind === 'gif' ? 'GIF' : 'sticker'}`;
     const video = message.attachments.some((a) => a.kind === 'video');
     const files = message.attachments.filter((a) => a.kind === 'file');
     if (files.length === n) return `${firstName} sent ${n > 1 ? `${n} PDFs` : (files[0].name ?? 'a PDF')}`;

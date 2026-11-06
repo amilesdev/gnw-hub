@@ -72,7 +72,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${playDisplay.variable}`}>
+    // ThemeScript adds the theme class to <html> before React loads, so the
+    // server's className never matches in dark mode; that difference is expected.
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${playDisplay.variable}`} suppressHydrationWarning>
       <body>
         <ThemeScript />
         <Providers>{children}</Providers>

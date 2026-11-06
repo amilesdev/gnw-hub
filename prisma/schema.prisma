@@ -1018,6 +1018,8 @@ enum ChatAttachmentKind {
   image
   video
   file // a PDF (shown as a file card, opened in the phone's viewer)
+  gif // from GIPHY: `path` is giphy:<id>/<file>, not a storage path (nothing stored)
+  sticker // from GIPHY, same as gif; drawn without a bubble
 }
 
 model Chat {
@@ -1130,7 +1132,8 @@ model ChatMention {
 
 // A photo, video or PDF on a message. Files live in the PRIVATE `gnw-chat`
 // bucket (SUPABASE_CHAT_BUCKET); store the storage path, never a URL — reads
-// get short-lived signed URLs.
+// get short-lived signed URLs. GIFs/stickers are the exception: a GIPHY link
+// (`giphy:<id>/<file>`, see lib/chat/types.ts), nothing in our storage.
 model ChatAttachment {
   id          String             @id @default(cuid())
   messageId   String

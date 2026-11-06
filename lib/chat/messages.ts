@@ -8,8 +8,12 @@ import {
   CHAT_MAX_ATTACHMENTS,
   CHAT_MEDIA_MAX_BYTES,
   CHAT_PAGE_SIZE,
+  giphyPath,
+  giphyUrl,
+  isGiphyPath,
   withinEditWindow,
   type ChatAttachmentInput,
+  type ChatGifInput,
   type ChatMessageDTO,
   type ChatMessagesPageDTO,
   type ChatReactionDTO,
@@ -44,11 +48,11 @@ const messageInclude = {
 
 type MessageRow = Prisma.ChatMessageGetPayload<{ include: typeof messageInclude }>;
 
-/** A replied-to message's still: its first photo, or that video's poster. */
+/** A replied-to message's still: its first photo, that video's poster, or a GIF/sticker (its still frame). */
 function replyThumbPath(m: MessageRow): string | null {
   const a = m.deletedAt || !m.replyTo || m.replyTo.deletedAt ? undefined : m.replyTo.attachments[0];
   if (!a) return null;
-  return a.kind === 'image' ? a.path : a.posterPath;
+  return a.kind === 'image' || isGiphyPath(a.path) ? a.path : a.posterPath;
 }
 
 /** Serialize rows for one viewer, signing every attachment URL (and reply thumbnail) in a single storage call. */
@@ -57,7 +61,9 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
     ...(m.deletedAt ? [] : m.attachments.flatMap((a) => [a.path, a.posterPath ?? ''])),
     replyThumbPath(m) ?? '',
   ]);
-  const signed = await signChatReads(paths);
+  // GIPHY links aren't in our bucket: they're rebuilt into URLs, not signed.
+  const signed = await signChatReads(paths.filter((p) => !isGiphyPath(p)));
+  const urlFor = (path: string) => giphyUrl(path) ?? signed.get(path);
 
   return rows.map((m) => {
     const deleted = m.deletedAt !== null;
@@ -92,7 +98,7 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
               text: rt.deletedAt ? null : rt.text,
               deleted: rt.deletedAt !== null,
               media: rt.deletedAt ? null : (rt.attachments[0]?.kind ?? null),
-              thumbUrl: thumbPath ? (signed.get(thumbPath) ?? null) : null,
+              thumbUrl: thumbPath ? (giphyUrl(thumbPath, true) ?? signed.get(thumbPath) ?? null) : null,
             }
           : null,
       pinnedAt: m.pinnedAt?.toISOString() ?? null,
@@ -103,12 +109,12 @@ export async function serializeMessages(rows: MessageRow[], viewerId: string): P
       attachments: deleted
         ? []
         : m.attachments
-            .filter((a) => signed.has(a.path))
+            .filter((a) => urlFor(a.path))
             .map((a) => ({
               id: a.id,
               kind: a.kind,
-              url: signed.get(a.path)!,
-              posterUrl: a.posterPath ? (signed.get(a.posterPath) ?? null) : null,
+              url: urlFor(a.path)!,
+              posterUrl: giphyUrl(a.path, true) ?? (a.posterPath ? (signed.get(a.posterPath) ?? null) : null),
               width: a.width,
               height: a.height,
               durationSec: a.durationSec,
@@ -235,6 +241,8 @@ export type SendInput = {
   mentionIds?: string[];
   mentionsAll?: boolean;
   attachments?: ChatAttachmentInput[];
+  /** A GIPHY GIF/sticker: a message of its own (no text or files). */
+  gif?: ChatGifInput;
 };
 
 /**
@@ -252,8 +260,10 @@ export async function sendMessage(
   const text = input.text?.trim() || null;
   const attachments = input.attachments ?? [];
   const clientNonce = input.clientNonce ?? null;
+  const gif = input.gif ?? null;
 
-  if (!text && attachments.length === 0) throw new ChatInputError('Type a message.');
+  if (gif && (text || attachments.length)) throw new ChatInputError('Send a GIF on its own.');
+  if (!text && attachments.length === 0 && !gif) throw new ChatInputError('Type a message.');
   if (attachments.length > CHAT_MAX_ATTACHMENTS) {
     throw new ChatInputError(`Up to ${CHAT_MAX_ATTACHMENTS} files per message.`);
   }
@@ -301,17 +311,28 @@ export async function sendMessage(
           mentions: { createMany: { data: mentionable.map((m) => ({ userId: m.userId })) } },
           attachments: {
             createMany: {
-              data: attachments.map((a, position) => ({
-                kind: a.kind,
-                path: a.path,
-                name: a.kind === 'file' ? (a.name ?? null) : null,
-                posterPath: a.posterPath ?? null,
-                width: a.width ?? null,
-                height: a.height ?? null,
-                durationSec: a.durationSec ?? null,
-                sizeBytes: a.sizeBytes,
-                position,
-              })),
+              data: gif
+                ? [
+                    {
+                      kind: gif.kind,
+                      // Built here from the validated id + file name, never taken from the client as a URL.
+                      path: giphyPath(gif.id, gif.file),
+                      name: gif.title || null,
+                      width: gif.width,
+                      height: gif.height,
+                    },
+                  ]
+                : attachments.map((a, position) => ({
+                    kind: a.kind,
+                    path: a.path,
+                    name: a.kind === 'file' ? (a.name ?? null) : null,
+                    posterPath: a.posterPath ?? null,
+                    width: a.width ?? null,
+                    height: a.height ?? null,
+                    durationSec: a.durationSec ?? null,
+                    sizeBytes: a.sizeBytes,
+                    position,
+                  })),
             },
           },
         },
