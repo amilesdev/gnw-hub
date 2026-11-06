@@ -11,8 +11,7 @@ import {
   type ChatMediaKind,
   type ChatMemberDTO,
 } from '@/lib/chat/types';
-import { cn } from '@/lib/utils';
-import { Check, FileText, Pencil, Plus, Send, X } from '@/components/shared/Icons';
+import { ArrowUp, Check, FileText, Pencil, Plus, X } from '@/components/shared/Icons';
 import { ChatAvatar } from './ChatAvatar';
 import { ReplyThumb, type ClientMessage } from './ChatMessages';
 import { GifPicker } from './GifPicker';
@@ -76,6 +75,8 @@ export function ChatComposer({
   onSaveEdit,
   onSend,
   onTyping,
+  onFocusInput,
+  onHeight,
 }: {
   chatId: string;
   meId: string;
@@ -91,6 +92,10 @@ export function ChatComposer({
   onSend: (m: OutgoingMessage) => void;
   /** Called on every keystroke of a new message: is there text in the box? (The thread throttles it.) */
   onTyping: (typing: boolean) => void;
+  /** The text box got focus (a tap on it): the thread drops to the newest messages. */
+  onFocusInput: () => void;
+  /** The composer floats over the messages; this reports how much of them it covers. */
+  onHeight: (px: number) => void;
 }) {
   const [text, setText] = useState('');
   const [caret, setCaret] = useState(0);
@@ -101,6 +106,20 @@ export function ChatComposer({
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const finePointer = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onHeightRef = useRef(onHeight);
+  onHeightRef.current = onHeight;
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onHeightRef.current(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      onHeightRef.current(0);
+    };
+  }, []);
 
   useEffect(() => {
     finePointer.current = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -217,6 +236,8 @@ export function ChatComposer({
   const canSend = editing
     ? text.trim().length > 0 || (editing.attachments.length > 0 && text.trim() !== (editing.text ?? ''))
     : (text.trim().length > 0 || ready.length > 0) && !uploading && !failed;
+  // Send takes GIF's spot once there's anything to send (disabled while uploads finish).
+  const showSend = !!editing || text.trim().length > 0 || drafts.length > 0;
 
   function submit() {
     if (!canSend) return;
@@ -265,11 +286,23 @@ export function ChatComposer({
   const replyMedia = replyTo?.attachments[0];
   const replyThumb = replyMedia ? (replyMedia.kind === 'image' ? replyMedia.url : replyMedia.posterUrl) : null;
 
+  const hasTray = !!(replyTo || editing || drafts.length || notice);
+
   return (
-    <div className="relative shrink-0 border-t border-line bg-surface/95 backdrop-blur" style={{ paddingBottom: bottomPad }}>
+    // Floats over the bottom of the messages (they scroll on underneath the
+    // glass); the thread pads its scroller by our measured height.
+    <div
+      ref={rootRef}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] pt-6"
+      style={{
+        paddingBottom: bottomPad,
+        // A soft fade so messages don't read straight through the controls.
+        background: 'linear-gradient(to top, rgb(var(--chat-canvas) / 0.75) 30%, rgb(var(--chat-canvas) / 0))',
+      }}
+    >
       {/* @mention suggestions float above the composer */}
       {suggestions.length > 0 && (
-        <ul className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-2xl border border-line bg-surface shadow-card-lg">
+        <ul className="pointer-events-auto absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-2xl border border-line bg-surface shadow-card-lg">
           {suggestions.map((s) => (
             <li key={s.id}>
               <button
@@ -292,8 +325,10 @@ export function ChatComposer({
         </ul>
       )}
 
+      {hasTray && (
+      <div className="glass pointer-events-auto mx-3 mb-2 animate-rise overflow-hidden rounded-[22px] pb-2">
       {(replyTo || editing) && (
-        <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm">
+        <div className="flex items-center gap-2 px-4 pt-2 text-sm">
           <span className="text-accent-ink">{editing ? <Pencil width={16} height={16} /> : '↩'}</span>
           <span className="min-w-0 flex-1 truncate">
             {editing ? (
@@ -371,8 +406,10 @@ export function ChatComposer({
           </button>
         </p>
       )}
+      </div>
+      )}
 
-      <div className="flex items-end gap-2 px-3 pt-2">
+      <div className="pointer-events-auto flex items-end gap-2 px-3">
         {!editing && (
           <>
             <button
@@ -380,9 +417,9 @@ export function ChatComposer({
               aria-label="Add photos, videos or PDFs"
               onClick={() => fileRef.current?.click()}
               disabled={drafts.length >= CHAT_MAX_ATTACHMENTS}
-              className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-surface-2 text-ink-soft transition active:scale-95 disabled:opacity-40"
+              className="glass grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition active:scale-90 disabled:opacity-40"
             >
-              <Plus width={21} height={21} />
+              <Plus width={22} height={22} />
             </button>
             <input
               ref={fileRef}
@@ -395,58 +432,72 @@ export function ChatComposer({
                 e.target.value = '';
               }}
             />
-            <button
-              type="button"
-              aria-label="Send a GIF or sticker"
-              onClick={() => setGifsOpen(true)}
-              className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-surface-2 text-[13px] font-extrabold tracking-wide text-ink-soft transition active:scale-95"
-            >
-              GIF
-            </button>
             {gifsOpen && <GifPicker onPick={sendGif} onClose={() => setGifsOpen(false)} />}
           </>
         )}
-        <textarea
-          ref={ref}
-          rows={1}
-          value={text}
-          maxLength={CHAT_TEXT_MAX}
-          placeholder={editing ? 'Edit your message' : placeholder}
-          aria-label="Message"
-          onChange={(e) => {
-            setText(e.target.value);
-            setCaret(e.target.selectionStart ?? e.target.value.length);
-            if (!editing) onTyping(e.target.value.trim().length > 0);
+        {/* The whole pill is the tap target for the text box (like iMessage). */}
+        <div
+          className="glass flex min-h-11 min-w-0 flex-1 cursor-text items-end rounded-[22px] py-[5px] pl-4 pr-[5px]"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) ref.current?.focus();
           }}
-          onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              if (editing) onCancelEdit();
-              else if (replyTo) onCancelReply();
-            }
-            if (e.key === 'Enter' && !e.shiftKey && finePointer.current && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              if (suggestions.length) pickMention(suggestions[0]);
-              else submit();
-            }
-          }}
-          className="no-scrollbar max-h-[132px] min-h-[42px] flex-1 resize-none rounded-[1.3rem] border border-line bg-surface px-4 py-2.5 text-base leading-snug text-ink outline-none placeholder:text-ink-faint focus:border-accent"
-        />
-        <button
-          type="button"
-          aria-label={editing ? 'Save edit' : 'Send'}
-          disabled={!canSend}
-          // Keep focus in the textarea (and the keyboard up) when tapping send.
-          onPointerDown={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={submit}
-          className={cn(
-            'grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full transition active:scale-95',
-            canSend ? 'bg-accent text-accent-fg shadow-pop' : 'bg-surface-2 text-ink-faint',
-          )}
         >
-          {editing ? <Check width={20} height={20} /> : <Send width={19} height={19} />}
-        </button>
+          <textarea
+            ref={ref}
+            rows={1}
+            value={text}
+            maxLength={CHAT_TEXT_MAX}
+            placeholder={editing ? 'Edit your message' : placeholder}
+            aria-label="Message"
+            onFocus={onFocusInput}
+            onChange={(e) => {
+              setText(e.target.value);
+              setCaret(e.target.selectionStart ?? e.target.value.length);
+              if (!editing) onTyping(e.target.value.trim().length > 0);
+            }}
+            onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                if (editing) onCancelEdit();
+                else if (replyTo) onCancelReply();
+              }
+              if (e.key === 'Enter' && !e.shiftKey && finePointer.current && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                if (suggestions.length) pickMention(suggestions[0]);
+                else submit();
+              }
+            }}
+            className="no-scrollbar max-h-[132px] min-h-8 min-w-0 flex-1 resize-none bg-transparent py-[5px] text-base leading-snug text-ink outline-none placeholder:text-ink-faint"
+          />
+          {/* Where iMessage keeps the mic: GIF while the box is empty, Send once there's something to send. */}
+          {showSend ? (
+            <button
+              key="send"
+              type="button"
+              aria-label={editing ? 'Save edit' : 'Send'}
+              disabled={!canSend}
+              // Keep focus in the textarea (and the keyboard up) when tapping send.
+              onPointerDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={submit}
+              className="ml-2 grid h-8 w-8 shrink-0 animate-send-in place-items-center rounded-full bg-accent text-accent-fg shadow-pop transition-[transform,opacity] active:scale-90 disabled:opacity-50"
+            >
+              {editing ? <Check width={18} height={18} /> : <ArrowUp width={18} height={18} strokeWidth={2.75} />}
+            </button>
+          ) : (
+            <button
+              key="gif"
+              type="button"
+              aria-label="Send a GIF or sticker"
+              onPointerDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setGifsOpen(true)}
+              className="glass-inset ml-2 grid h-8 shrink-0 animate-fade-in place-items-center rounded-full px-2.5 text-[12px] font-extrabold tracking-wide text-ink-soft transition active:scale-90"
+            >
+              GIF
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

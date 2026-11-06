@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,6 +23,51 @@ import { listCard } from '@/lib/ui-classes';
 import { useDataChanged } from '@/lib/data-changed';
 import { formatEventDate, formatTimeLabel } from '@/lib/dates';
 import { resolveScheduleLabel } from '@/lib/rehearsal-schedule';
+
+/**
+ * A gallery photo, popped up as a card over the whole screen. Portaled to
+ * <body> and fixed, so it's centred wherever the event page is scrolled to,
+ * and the page behind it can't scroll while it's up. Closes from the X or a
+ * tap anywhere outside the photo.
+ */
+function PhotoCard({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-lightbox flex animate-fade-in touch-none items-center justify-center overscroll-none bg-black/70 p-5"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        className="glass absolute right-5 grid h-11 w-11 place-items-center rounded-full text-ink"
+        style={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
+        onClick={onClose}
+        aria-label="Close"
+      >
+        <X width={20} height={20} />
+      </button>
+      <div
+        className="card w-full max-w-[400px] overflow-hidden p-2 shadow-card-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt="Attire reference"
+          className="mx-auto max-h-[70dvh] w-full rounded-[14px] object-contain"
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 /** Info row (CMP-11): 36px icon chip + 16/22 text, min 56 tall. */
 function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -463,24 +509,7 @@ export function EventDetail({
         )}
       </div>
 
-      {lightbox && (
-        <div
-          className="absolute inset-0 z-lightbox flex animate-fade-in items-center justify-center bg-black/85 p-6"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            type="button"
-            className="glass absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full text-ink"
-            style={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
-            onClick={() => setLightbox(null)}
-            aria-label="Close"
-          >
-            <X width={20} height={20} />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="Attire reference" className="max-h-full max-w-full rounded-[18px] object-contain" />
-        </div>
-      )}
+      {lightbox && <PhotoCard src={lightbox} onClose={() => setLightbox(null)} />}
       {song && <SongDetail song={song.song} context={song.context} onClose={() => setSong(null)} />}
       {onEdit && (
         <EventActions

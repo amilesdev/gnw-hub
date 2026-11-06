@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {
   ArrowDown as LArrowDown,
+  ArrowUp as LArrowUp,
   Bell as LBell,
   BellOff as LBellOff,
   BookOpen,
@@ -148,6 +149,7 @@ export const Maximize = lucide(Maximize2);
 export const MessageCircle = lucide(LMessageCircle);
 export const Send = lucide(LSend);
 export const ArrowDown = lucide(LArrowDown);
+export const ArrowUp = lucide(LArrowUp);
 export const Search = lucide(LSearch);
 export const Reply = lucide(LReply);
 export const Copy = lucide(LCopy);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -90,7 +91,11 @@ export function ChatThread({
   const [viewer, setViewer] = useState<{ items: ChatAttachmentDTO[]; start: number } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** How much of the bottom the floating composer covers (the scroller pads by it). */
+  const [composerH, setComposerH] = useState(0);
   const chatId = detail.id;
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => setPortalTarget(document.body), []);
 
   const scroller = useRef<HTMLDivElement>(null);
   /** At the live end: scrolled to the bottom AND holding the newest messages. */
@@ -137,10 +142,11 @@ export function ChatThread({
     }
   }, [messages]);
 
-  // Keyboard open/close changes the box — stay pinned if we were at the bottom.
+  // Keyboard open/close changes the box, and the composer grows with its text
+  // or a reply bar — stay pinned if we were at the bottom.
   useLayoutEffect(() => {
     if (atBottom.current && scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
-  }, [box?.height]);
+  }, [box?.height, composerH]);
 
   // ── read marks + "I'm looking" heartbeat ───────────────────────────────────
   const markRead = useCallback(
@@ -437,6 +443,13 @@ export function ChatThread({
       .catch(() => flash('Couldn’t load the latest messages.'));
   }
 
+  /** Tapping into the text box drops to the newest messages, like iMessage. */
+  function onComposerFocus() {
+    if (hasNewerRef.current) return jumpToLatest();
+    atBottom.current = true;
+    scrollToBottom();
+  }
+
   // Opened on a message (a search hit from another chat): centre it, then drop
   // ?m= so a reload or a later visit opens normally.
   useLayoutEffect(() => {
@@ -598,9 +611,12 @@ export function ChatThread({
   const actionMessage = actionFor ? messages.find((m) => m.id === actionFor.id) : undefined;
   const pickerMessage = pickerFor ? messages.find((m) => m.id === pickerFor) : undefined;
 
-  return (
+  // Portaled to <body>: inside the shell, <main>'s own stacking context (z-[1])
+  // would trap this layer under the dock and the tab bar would cover the composer.
+  if (!portalTarget) return null;
+  return createPortal(
     <div
-      className="fixed inset-x-0 z-[45] flex flex-col bg-chat-canvas"
+      className="fixed inset-x-0 z-[45] mx-auto flex w-full max-w-[430px] flex-col bg-chat-canvas"
       style={box ? { top: box.top, height: box.height } : { top: 0, bottom: 0 }}
     >
       {/* Header */}
@@ -671,7 +687,12 @@ export function ChatThread({
       </header>
 
       {/* Messages */}
-      <div ref={scroller} onScroll={onScroll} className="relative flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
+      <div
+        ref={scroller}
+        onScroll={onScroll}
+        className="relative flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+        style={composerH ? { paddingBottom: composerH + 8 } : undefined}
+      >
         {hasOlder ? (
           <p className="py-3 text-center text-xs text-ink-faint">{loadingOlder ? 'Loading earlier messages…' : ' '}</p>
         ) : (
@@ -696,7 +717,7 @@ export function ChatThread({
       {(newBelow > 0 || hasNewer || notice || jumping) && (
         <div
           className="pointer-events-none absolute inset-x-0 z-10 flex flex-col items-center gap-2"
-          style={{ bottom: `calc(${bottomPad} + 4.5rem)` }}
+          style={{ bottom: composerH ? composerH + 8 : `calc(${bottomPad} + 4.5rem)` }}
         >
           {notice && (
             <p className="pointer-events-auto flex max-w-[90%] items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-app shadow-pop">
@@ -746,6 +767,8 @@ export function ChatThread({
           onSaveEdit={saveEdit}
           onSend={send}
           onTyping={announceTyping}
+          onFocusInput={onComposerFocus}
+          onHeight={setComposerH}
         />
       )}
 
@@ -837,7 +860,8 @@ export function ChatThread({
           onClose={() => setSettingsOpen(false)}
         />
       )}
-    </div>
+    </div>,
+    portalTarget,
   );
 }
 
