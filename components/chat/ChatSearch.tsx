@@ -126,8 +126,7 @@ export function ChatSearch({
   return (
     <div
       className={cn('fixed inset-x-0 z-50 flex flex-col bg-app', !open && 'hidden')}
-      // --screen-h: the true screen height in the installed app (globals.css).
-      style={box ? { top: box.top, height: box.height } : { top: 0, height: 'var(--screen-h, 100%)' }}
+      style={box ? { top: box.top, height: box.height } : { top: 0, bottom: 0 }}
       role="dialog"
       aria-label="Search messages"
     >
