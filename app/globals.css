@@ -181,6 +181,20 @@ body {
   display: flex; flex-direction: column;
 }
 
+/* iOS fills the status strip with one flat colour, taken from the body
+   background or from a full-width fixed element at the top edge. This strip
+   hands it the colour the wash + grain actually render as under the strip
+   (sampled off-device: #E8EADE light), so there's no seam. Clipping the
+   background to (empty) text keeps it invisible and untappable. Unofficial
+   WebKit behaviour: if iOS stops sampling it, the strip just goes back to cream. */
+.status-tint {
+  position: fixed; top: 0; left: 0; right: 0; height: 12px; z-index: 9998; pointer-events: none;
+  background-color: #E8EADE; -webkit-background-clip: text; background-clip: text;
+}
+.dark .status-tint { background-color: #181A14; }
+/* Play is its own world; let its background colour the strip. */
+html.play-active .status-tint { display: none; }
+
 /* === Grain (§4) === */
 /* A) Global page grain — fixed overlay across the whole app. */
 body::after {

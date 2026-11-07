@@ -81,6 +81,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${albertSans.variable} ${literata.variable} ${playDisplay.variable}`} suppressHydrationWarning>
       <body>
         <ThemeScript />
+        {/* Tints the iOS status strip to match the top of the wash (globals.css). */}
+        <div className="status-tint" aria-hidden />
         <Providers>{children}</Providers>
         <ServiceWorkerRegistrar />
       </body>
