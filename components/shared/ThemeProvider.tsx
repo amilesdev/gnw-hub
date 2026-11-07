@@ -5,8 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 export type ThemePreference = 'light' | 'system' | 'dark';
 
 const STORAGE_KEY = 'gnw-theme';
-// Status strip = the glow-top token, so the strip and the page's top wash
-// (.app-wash) read as one continuous colour (CMP-1). Still no edge-to-edge.
+// theme-color = the glow-top token (CMP-1). The page itself now paints behind
+// the iOS status bar (edge-to-edge), so this mainly tints browser chrome.
 const LIGHT_BAR = '#EEF0E3';
 const DARK_BAR = '#1B1D16';
 

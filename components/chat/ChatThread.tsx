@@ -617,7 +617,8 @@ export function ChatThread({
   return createPortal(
     <div
       className="fixed inset-x-0 z-[45] mx-auto flex w-full max-w-[430px] flex-col bg-chat-canvas"
-      style={box ? { top: box.top, height: box.height } : { top: 0, bottom: 0 }}
+      // --screen-h: the true screen height in the installed app (globals.css).
+      style={box ? { top: box.top, height: box.height } : { top: 0, height: 'var(--screen-h, 100%)' }}
     >
       {/* Header */}
       <header

@@ -53,7 +53,8 @@ export function DockToasts() {
   return createPortal(
     <div
       className="pointer-events-none fixed inset-x-0 z-toast mx-auto w-full max-w-[430px]"
-      style={{ bottom: 'calc(var(--dock-h, 28px) + 8px)' }}
+      // --ios-gap: this layer sits on the short standalone viewport (globals.css).
+      style={{ bottom: 'calc(var(--dock-h, 28px) + 8px - var(--ios-gap, 0px))' }}
     >
       <ToastHost />
     </div>,

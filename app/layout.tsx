@@ -47,10 +47,12 @@ export const metadata: Metadata = {
   description: 'Communication hub for the GNW team.',
   applicationName: 'GNW Hub',
   manifest: '/manifest.webmanifest',
-  // `default` status bar (tinted to match via theme-color) keeps the layout inside
-  // the safe area so the bottom nav sits flush — matches the proven GNW Roll Call setup.
+  // Edge-to-edge: `black-translucent` + `viewportFit: 'cover'` let the wash and
+  // grain run up behind the status bar (with `default`, iOS paints that strip a
+  // flat body colour). Headers pad by env(safe-area-inset-top); the iOS
+  // standalone short-viewport bug this triggers is handled in globals.css.
   // startupImage: the launch screen shown while the installed app opens (lib/splash).
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'GNW Hub', startupImage: splashStartupImages },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'GNW Hub', startupImage: splashStartupImages },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -65,6 +67,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
   // Shrink the layout viewport when the soft keyboard opens instead of letting it
   // overlay content, so focused inputs and submit buttons stay on-screen.
   interactiveWidget: 'resizes-content',

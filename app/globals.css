@@ -172,13 +172,26 @@ body {
 }
 
 /* Fixed, centered phone shell (max 430px) with a pinned bottom nav. */
-/* Anchored top+bottom to the visible viewport (no `viewport-fit=cover`), so the
-   layout stays inside the safe area and the bottom nav sits flush — same proven
-   approach as GNW Roll Call. */
 .app-shell {
   position: fixed; top: 0; bottom: 0; left: 50%;
   transform: translateX(-50%); width: 100%; max-width: 430px;
   display: flex; flex-direction: column;
+}
+
+/* Edge-to-edge on the installed iOS app (viewport-fit=cover + black-translucent).
+   iOS standalone then reports the viewport (100%, 100dvh, innerHeight, and so
+   `bottom: 0` on fixed layers) short by the status-bar height, leaving a dead
+   band under the bottom nav (openchamber/openchamber#2287). 100vh is the true
+   screen, so size from that and stretch body-level fixed layers by the gap.
+   --ios-gap is 0 wherever the bug isn't present. */
+@media (display-mode: standalone) {
+  :root { --ios-gap: calc(100vh - 100dvh); --screen-h: 100vh; }
+  html, body { height: 100vh; }
+  /* The shell's transform makes it the containing block for the fixed layers
+     inside it (chat, event detail), so sizing it sizes them too. */
+  .app-shell { bottom: auto; height: 100vh; }
+  /* Overlays, modals and sheets portaled to <body> sit on the short viewport. */
+  body > .fixed.inset-0, body > .fixed.bottom-0 { bottom: calc(0px - var(--ios-gap)); }
 }
 
 /* === Grain (§4) === */

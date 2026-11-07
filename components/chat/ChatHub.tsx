@@ -69,8 +69,10 @@ export function ChatHub({
 
   return (
     <div className="fixed inset-0 z-[45] flex flex-col bg-app">
+      {/* The same fading top wash as every other screen, not a solid band. */}
+      <div className="app-wash" aria-hidden />
       <header
-        className="flex shrink-0 items-center justify-between bg-glow-top px-3 pb-1"
+        className="relative flex shrink-0 items-center justify-between px-3 pb-1"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
       >
         <Link
@@ -104,7 +106,7 @@ export function ChatHub({
         </div>
       </header>
 
-      <div className="no-scrollbar flex-1 overflow-y-auto overscroll-contain pb-10">
+      <div className="no-scrollbar relative flex-1 overflow-y-auto overscroll-contain pb-10">
         <div className="flex flex-col items-center px-6 pb-5 pt-1 text-center">
           <ChatTile name={item.name} size="lg" />
           <h1 className="mt-3 flex items-center gap-2 font-display text-[1.75rem] font-semibold leading-tight">
