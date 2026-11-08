@@ -62,20 +62,6 @@ enum VocalPart {
   Tenor
 }
 
-// === GNW Play ===
-// True/False is stored as a degenerate multiple-choice (options ["True","False"]),
-// so `type` only distinguishes how the builder/play UI renders it.
-enum QuestionType {
-  multiple_choice
-  true_false
-}
-
-enum GameMode {
-  classic
-  team_battle
-  survival
-}
-
 // Lifecycle of a leader-initiated group call.
 enum CallStatus {
   active
@@ -90,86 +76,65 @@ enum CallAudience {
   leaders_only
 }
 
-enum SessionStatus {
-  lobby
-  active
-  ended
-}
-
-// Round lifecycle. The server owns this; clients render from it but never write.
-enum RoundStatus {
-  answering
-  revealing
-  between_rounds
-}
-
 model User {
-  id             String         @id @default(cuid())
-  name           String
-  email          String         @unique
-  passwordHash   String?
-  role           Role           @default(member)
-  section        MemberSection?
-  part           MemberPart?
+  id              String         @id @default(cuid())
+  name            String
+  email           String         @unique
+  passwordHash    String?
+  role            Role           @default(member)
+  section         MemberSection?
+  part            MemberPart?
   // Profile picture: Supabase Storage public URL (bucket `gnw-media`, under
   // `avatars/<userId>/`). Null → the UI falls back to the member's initial.
-  image          String?
-  status         UserStatus     @default(pending)
+  image           String?
+  status          UserStatus     @default(pending)
   // Only one super-admin exists; they alone may grant the leader role.
-  isSuperAdmin   Boolean        @default(false)
+  isSuperAdmin    Boolean        @default(false)
   // Whether this user may join "Leaders Only" calls. DELIBERATELY separate from
   // `role` / the leader tag — it's an explicit, opt-in designation assigned only
   // for the call feature, and defaults to off for everyone until set.
-  callLeader     Boolean        @default(false)
+  callLeader      Boolean        @default(false)
   // Whether this user may add/replace/remove a song's four vocal-part audio
   // files (the vocal director). Like `callLeader`, DELIBERATELY separate from
   // `role`: it's one narrow capability, not leadership — it grants nothing over
   // events, setlists, song metadata, band content, or retiring songs. Assigned
   // from the backend only (`npm run set-vocal-director`); there is no in-app
   // switch. See lib/access.ts → canEditVocalParts.
-  vocalDirector  Boolean        @default(false)
+  vocalDirector   Boolean        @default(false)
   // Whether this user may import/replace/remove a song's lyric chart (the
   // administrative assistant). Same shape and intent as `vocalDirector`: one
   // narrow capability, not leadership — it grants nothing over events,
   // setlists, song metadata, vocal parts, band content, or retiring songs.
   // Assigned from the backend only (`npm run set-admin-assistant`); there is no
   // in-app switch. See lib/access.ts → canEditLyricCharts.
-  adminAssistant Boolean        @default(false)
+  adminAssistant  Boolean        @default(false)
   // Whether this user reviews Crossover looks (approve / ask for changes). Same
   // shape as the two above: one narrow capability, granted from the backend
   // only (`npm run set-attire-reviewer`). See lib/access.ts → canReviewLooks.
-  attireReviewer Boolean        @default(false)
+  attireReviewer  Boolean        @default(false)
   // Whether this user moderates chat: deletes anyone's message, removes chat
   // members, archives a chat/topic. Same shape as the three above: granted
   // from the backend only (`npm run set-chat-moderator`). The super admin is
   // always a moderator regardless. See lib/access.ts → canModerateChat.
-  chatModerator  Boolean        @default(false)
+  chatModerator   Boolean        @default(false)
   // Whether this non-leader may use chat during the soft launch (while
   // CHAT_OPEN_TO_MEMBERS is false), for a member's-eye view while testing.
   // Grants nothing beyond what any member gets once chat opens. Backend only
   // (`npm run set-chat-early-access`). See lib/access.ts → canUseChat.
-  chatEarlyAccess Boolean       @default(false)
-  inviteToken   String?        @unique
-  inviteExpiry   DateTime?
+  chatEarlyAccess Boolean        @default(false)
+  inviteToken     String?        @unique
+  inviteExpiry    DateTime?
   // Bumped to invalidate every existing JWT for this user at once (password
   // reset, "sign out everywhere"). The live session check compares the token's
   // copy against this; a mismatch forces re-login. See lib/auth.ts.
-  tokenVersion   Int            @default(0)
+  tokenVersion    Int            @default(0)
   // Self-serve password reset (active users only). Short-lived, single-use.
-  resetToken     String?        @unique
-  resetExpiry    DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  resetToken      String?        @unique
+  resetExpiry     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   pushSubscriptions PushSubscription[]
-
-  // GNW Play — all-time wins. Only ever incremented for a game's 1st place;
-  // surfaced solely on Play Home + the Play leaderboard (not elsewhere in Hub).
-  playPoints Int @default(0)
-
-  questionPacks  QuestionPack[] // packs this user authored
-  hostedSessions GameSession[] // game sessions this user hosts
-  gamePlayers    GamePlayer[] // this user's seats across sessions
 
   announcements Announcement[] // announcements this user authored
 
@@ -735,135 +700,6 @@ model PollVote {
   @@unique([pollId, userId, choiceId]) // can't pick the same choice twice
   @@index([pollId, userId])
   @@index([choiceId])
-}
-
-// ===========================================================================
-// GNW Play — real-time quiz game. Lives under /app/play. Server (API routes) is
-// the single source of truth for timestamps, scoring, and round state; Supabase
-// Realtime Broadcast is only the fast push layer on channel `game:${sessionId}`.
-// ===========================================================================
-
-// A reusable set of questions a leader authors in the Pack Builder.
-model QuestionPack {
-  id          String        @id @default(cuid())
-  // Author. Packs are owned content, so they're removed with their creator.
-  createdById String?
-  creator     User?         @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  name        String
-  questions   Question[]
-  sessions    GameSession[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  @@index([createdById, updatedAt])
-}
-
-model Question {
-  id            String       @id @default(cuid())
-  packId        String
-  pack          QuestionPack @relation(fields: [packId], references: [id], onDelete: Cascade)
-  type          QuestionType
-  questionText  String
-  // MCQ: array of 4 strings. T/F: always ["True","False"].
-  options       Json
-  // The correct option string, exactly as it appears in `options`.
-  correctAnswer String
-  orderIndex    Int
-  answers       GameAnswer[]
-  createdAt     DateTime     @default(now())
-
-  @@index([packId, orderIndex])
-}
-
-// One live (or finished) play-through of a pack. Only one session may be in a
-// non-ended state across all of Hub at a time (enforced in the API, not the DB).
-model GameSession {
-  id                   String        @id @default(cuid())
-  packId               String
-  pack                 QuestionPack  @relation(fields: [packId], references: [id])
-  hostId               String
-  host                 User          @relation(fields: [hostId], references: [id])
-  mode                 GameMode
-  status               SessionStatus @default(lobby)
-  // { time_per_question, shuffle, team_names? }
-  settings             Json
-  // Ordered array of question IDs as they will be played.
-  questionOrder        Json
-  currentQuestionIndex Int           @default(0)
-  guestAccessEnabled   Boolean       @default(false)
-  guestLinkToken       String?       @unique
-
-  players    GamePlayer[]
-  answers    GameAnswer[]
-  teams      GameTeam[]
-  roundState RoundState?
-
-  startedAt DateTime?
-  endedAt   DateTime?
-  createdAt DateTime  @default(now())
-
-  @@index([status])
-}
-
-// A seat in a session: a Hub user or a named guest (userId null).
-model GamePlayer {
-  id               String      @id @default(cuid())
-  sessionId        String
-  session          GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId           String?
-  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  guestName        String? // used only when userId is null
-  team             String? // team_battle only
-  hearts           Int         @default(3) // survival only
-  isEliminated     Boolean     @default(false)
-  isSpectator      Boolean     @default(false)
-  playPointsEarned Int         @default(0)
-  joinedAt         DateTime    @default(now())
-
-  answers GameAnswer[]
-
-  @@index([sessionId])
-  @@index([userId])
-}
-
-model GameAnswer {
-  id           String      @id @default(cuid())
-  sessionId    String
-  session      GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  playerId     String
-  player       GamePlayer  @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  questionId   String
-  question     Question    @relation(fields: [questionId], references: [id])
-  answer       String
-  // ALWAYS server-recorded (Date.now() in the API route); never client-supplied.
-  submittedAt  DateTime
-  isCorrect    Boolean?
-  // submittedAt − round_state.questionStartAt, computed on the server.
-  timeTakenMs  Int?
-  pointsEarned Int         @default(0)
-
-  @@unique([playerId, questionId]) // one answer per player per question
-  @@index([sessionId, questionId])
-}
-
-// Per-session round clock + lifecycle. One row per session (PK = sessionId).
-model RoundState {
-  sessionId       String      @id
-  session         GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  // Set when the server starts a question; the timing anchor for speed scoring.
-  questionStartAt DateTime?
-  roundNumber     Int         @default(0)
-  status          RoundStatus @default(between_rounds)
-}
-
-model GameTeam {
-  id         String      @id @default(cuid())
-  sessionId  String
-  session    GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  name       String
-  teamPoints Int         @default(0)
-
-  @@index([sessionId])
 }
 
 // ===========================================================================

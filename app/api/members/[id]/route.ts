@@ -43,27 +43,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     return NextResponse.json({ error: 'The super-admin account cannot be removed.' }, { status: 400 });
   }
 
-  // GNW Play hangs two RESTRICT foreign keys off rows this member may own, and
-  // either one makes a bare user.delete() fail with a foreign-key error:
-  //
-  //   GameSession.hostId → User          — they have hosted a game
-  //   GameSession.packId → QuestionPack  — a pack they wrote was played, which
-  //     also blocks the QuestionPack.createdById → User cascade behind it
-  //
-  // Clearing those sessions first takes their players, answers, teams and round
-  // state with them (all CASCADE), which in turn frees the pack cascade to run
-  // with the user. Same shape as DELETE /api/play/packs/[packId], which already
-  // has to clear finished sessions before it can drop a pack.
-  const packIds = (
-    await prisma.questionPack.findMany({ where: { createdById: id }, select: { id: true } })
-  ).map((p) => p.id);
-
-  await prisma.$transaction([
-    prisma.gameSession.deleteMany({
-      where: { OR: [{ hostId: id }, ...(packIds.length ? [{ packId: { in: packIds } }] : [])] },
-    }),
-    prisma.user.delete({ where: { id } }),
-  ]);
+  await prisma.user.delete({ where: { id } });
   revalidateMembers();
   return NextResponse.json({ ok: true });
 }

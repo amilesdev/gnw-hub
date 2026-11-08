@@ -61,11 +61,15 @@ function orderedModels() {
   return ordered;
 }
 
-function reviveDates(model, rows) {
+// Shape backup rows for the CURRENT schema: drop any column the schema no
+// longer has (e.g. User.playPoints in pre-2026-11 backups — passing it would
+// make createMany throw and abort the whole restore), and revive DateTimes.
+function prepareRows(model, rows) {
+  const columns = new Set(model.fields.filter((f) => f.kind === 'scalar' || f.kind === 'enum').map((f) => f.name));
   const dateFields = model.fields.filter((f) => f.type === 'DateTime').map((f) => f.name);
-  if (!dateFields.length) return rows;
   return rows.map((row) => {
-    const out = { ...row };
+    const out = {};
+    for (const [k, v] of Object.entries(row)) if (columns.has(k)) out[k] = v;
     for (const f of dateFields) if (out[f] != null) out[f] = new Date(out[f]);
     return out;
   });
@@ -90,7 +94,7 @@ async function main() {
     const rows = data[model.name];
     if (!rows?.length) continue;
     const res = await prisma[delegateOf(model.name)].createMany({
-      data: reviveDates(model, rows),
+      data: prepareRows(model, rows),
       skipDuplicates: true,
     });
     console.log(`  ${model.name}: ${res.count}/${rows.length} inserted`);

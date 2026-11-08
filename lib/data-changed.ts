@@ -9,8 +9,8 @@ import { useEffect, useRef } from 'react';
  */
 export const DATA_CHANGED_EVENT = 'gnw:data-changed';
 
-/** Writes with their own live paths (chat, Play, calls) or that only touch this device. */
-const QUIET_WRITE_PREFIXES = ['/api/chat/', '/api/play/', '/api/calls', '/api/push/'];
+/** Writes with their own live paths (chat, calls) or that only touch this device. */
+const QUIET_WRITE_PREFIXES = ['/api/chat/', '/api/calls', '/api/push/'];
 
 export function announceDataChanged() {
   window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
