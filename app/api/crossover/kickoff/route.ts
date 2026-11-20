@@ -3,9 +3,12 @@ import { sendDueKickoffs } from '@/lib/crossover';
 
 // GET /api/crossover/kickoff — opens the Crossover season and sends the "It's
 // Crossover Season!" pushes when due (leaders Sep 1, members Oct 1, Eastern).
-// Hit every 5 minutes by .github/workflows/production-reminders.yml with
-// `Authorization: Bearer $CRON_SECRET`. Each push is sent once, so extra calls
-// are harmless.
+// Called by .github/workflows/production-reminders.yml (its crossover-kickoff
+// job) only twice a day (~9:30am and ~5:30pm Eastern) on Sep 1–7 and Oct 1–7,
+// with `Authorization: Bearer $CRON_SECRET`. That's ~14 attempts per push inside
+// its 7-day grace window, so a missed GitHub run is recovered by the next one;
+// keep that in mind before shortening the grace window or the run days. Each
+// push is sent once, so extra calls are harmless.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 

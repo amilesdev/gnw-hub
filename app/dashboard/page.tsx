@@ -15,7 +15,7 @@ export default async function LeaderHomePage() {
   const [events, announcements, thisWeek, alerts, production] = await Promise.all([
     getUpcomingEvents(),
     getActiveAnnouncements(),
-    getThisWeekSetlist(),
+    getThisWeekSetlist(user.role),
     getLeaderAlerts(),
     getMyProductionTasks(user.id),
   ]);

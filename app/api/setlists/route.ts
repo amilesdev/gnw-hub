@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
-import { serializeSetlist, setlistInclude, sortSetlistsForListing } from '@/lib/setlist-serialize';
+import { serializeSetlist, setlistInclude, setlistsVisibleTo, sortSetlistsForListing } from '@/lib/setlist-serialize';
+import { SW_CACHE_SCOPE_HEADER, swCacheScope } from '@/lib/sw-cache';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import { leadUserIdsSchema, leadsExist, applyLeads } from '@/lib/setlist-leads';
 import { monthKey } from '@/lib/dates';
@@ -27,7 +28,10 @@ export async function GET(req: Request) {
     include: setlistInclude,
   });
 
-  return NextResponse.json({ setlists: sortSetlistsForListing(setlists).map(serializeSetlist) });
+  return NextResponse.json(
+    { setlists: sortSetlistsForListing(setlistsVisibleTo(setlists, guard.user.role)).map(serializeSetlist) },
+    { headers: { [SW_CACHE_SCOPE_HEADER]: swCacheScope(guard.user.role) } },
+  );
 }
 
 const createSchema = z.object({

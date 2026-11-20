@@ -1,4 +1,5 @@
-import { Prisma, type EventType, type ProductionKind } from '@prisma/client';
+import { Prisma, type EventType, type ProductionKind, type Role } from '@prisma/client';
+import { crossoverVisibleTo, visibleEvents } from '@/lib/crossover-season';
 import { prisma } from '@/lib/prisma';
 import { sendPush } from '@/lib/push';
 import { startOfToday, toYmd, formatTimeLabel } from '@/lib/dates';
@@ -209,20 +210,25 @@ function toEventDTO(e: { id: string; eventName: string; type: EventType; date: D
   return { id: e.id, eventName: e.eventName, type: e.type, date: e.date.toISOString(), time: e.time };
 }
 
-/** Upcoming events that carry production, soonest first. */
-export async function getUpcomingProductionEvents(take = 8): Promise<ProductionEventDTO[]> {
+const productionEventSelect = {
+  id: true, eventName: true, type: true, date: true, time: true, crossoverKind: true, crossoverLeadersOnly: true,
+} as const;
+
+/** Upcoming events that carry production and this viewer may see, soonest first. */
+export async function getUpcomingProductionEvents(role: Role, take = 8): Promise<ProductionEventDTO[]> {
   const rows = await prisma.event.findMany({
     where: { type: { in: PRODUCTION_EVENT_TYPES }, date: { gte: startOfToday() } },
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
-    take,
-    select: { id: true, eventName: true, type: true, date: true, time: true },
+    take: take * 2, // headroom for Crossover events a member can't see yet
+    select: productionEventSelect,
   });
-  return rows.map(toEventDTO);
+  return visibleEvents(rows, role).slice(0, take).map(toEventDTO);
 }
 
-export async function getProductionEvent(id: string): Promise<ProductionEventDTO | null> {
-  const e = await prisma.event.findUnique({ where: { id }, select: { id: true, eventName: true, type: true, date: true, time: true } });
-  return e && productionKindFor(e.type) ? toEventDTO(e) : null;
+/** One production event by id — null if it carries no production or this viewer can't see it. */
+export async function getProductionEvent(id: string, role: Role): Promise<ProductionEventDTO | null> {
+  const e = await prisma.event.findUnique({ where: { id }, select: productionEventSelect });
+  return e && productionKindFor(e.type) && crossoverVisibleTo(e, role) ? toEventDTO(e) : null;
 }
 
 /** Active members, for the owner picker. */
@@ -299,9 +305,12 @@ export async function getMyProductionTasks(userId: string): Promise<MyProduction
  * per event (EventProduction.remindedAt). Owners with everything done are skipped.
  */
 export async function sendDueReminders(now = new Date()): Promise<{ events: number; sent: number }> {
+  // Today AND tomorrow: a 12:15am event's reminder is due at 11:45pm the day before.
   const today = startOfToday();
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   const events = await prisma.event.findMany({
-    where: { type: { in: PRODUCTION_EVENT_TYPES }, date: today },
+    where: { type: { in: PRODUCTION_EVENT_TYPES }, date: { in: [today, tomorrow] } },
     select: { id: true, eventName: true, type: true, date: true, time: true },
   });
   let sentEvents = 0;
@@ -353,10 +362,17 @@ export type ProductionScreenData = {
  * belongs to the event it was opened from; with no event given (an old link),
  * it falls back to the next upcoming service.
  */
-export async function getProductionScreenData(eventId: string | null, isLeader: boolean): Promise<ProductionScreenData> {
-  let event = eventId ? await getProductionEvent(eventId) : null;
+// `role` decides which events the viewer may open (Crossover visibility);
+// `withTemplates` whether the leader-only template editor data is included.
+export async function getProductionScreenData(
+  eventId: string | null,
+  role: Role,
+  withTemplates: boolean = role === 'leader',
+): Promise<ProductionScreenData> {
+  const isLeader = withTemplates && role === 'leader';
+  let event = eventId ? await getProductionEvent(eventId, role) : null;
   if (!event) {
-    const upcoming = await getUpcomingProductionEvents();
+    const upcoming = await getUpcomingProductionEvents(role);
     event = upcoming.find((e) => e.type !== 'other') ?? upcoming[0] ?? null;
   }
 

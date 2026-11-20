@@ -214,6 +214,12 @@ model Event {
 
   // Series grouping — occurrences generated from one recurring create share a seriesId.
   seriesId String?
+  // Recurring series only: the series' original first date, copied onto every
+  // occurrence. Every slot is computed from it (start + k weeks / 2 weeks /
+  // months, with month-end clamping), so moving or deleting any one occurrence
+  // can't shift the rest of the series. Null on one-off events and on series
+  // created before this column (those still step from their latest occurrence).
+  seriesStart DateTime?
 
   // Attire (optional)
   attirePrimary       String?

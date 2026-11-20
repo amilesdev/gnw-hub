@@ -1,28 +1,39 @@
 /* GNW Hub — service worker.
  * Auth-gated app, so it caches carefully:
  *  • immutable hashed build assets + icons → cache-first
- *  • a small allowlist of GLOBAL, non-user-specific read APIs (events, setlists,
- *    announcements — identical for every member and leader) → stale-while-revalidate,
- *    so revisiting a screen paints instantly then refreshes in the background; when
- *    the refresh differs from what was painted, the page is told to reload it
- *    (lib/data-changed) instead of showing the old copy until the next visit
+ *  • a small allowlist of team-wide read APIs (events, setlists, announcements) →
+ *    stale-while-revalidate, so revisiting a screen paints instantly then refreshes
+ *    in the background; when the refresh differs from what was painted, the page is
+ *    told to reload it (lib/data-changed) instead of showing the old copy until the
+ *    next visit. Events and setlists are role-filtered (Crossover visibility), so
+ *    only their member view is stored — see SW_SCOPE_HEADER below
  *  • page navigations (per-user HTML) and every other API → network-first / never
  *    cached, which keeps private and role-specific data off disk
  * Safety: only 200 same-origin responses are stored; a 401/403/redirect evicts any
  * stale copy; and ANY write or auth call (login/logout, POST/PATCH/DELETE to /api)
  * wipes the read cache, so nothing survives a sign-out/sign-in on a shared device.
  */
-// v5: the 3a redesign (new offline page, fonts and styles).
-const VERSION = 'gnw-v5';
+// v6: role-filtered reads are only cached in their member view (drops any
+// leader-only copy a v5 cache may still hold). v5: the 3a redesign.
+const VERSION = 'gnw-v6';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];
 
-// Only these exact GET paths are cache-served. Each returns the same team-wide
-// data to every authenticated user (no role- or user-specific fields), so a cached
-// copy can never leak one user's data to another. Do NOT add user/role-specific or
-// real-time endpoints here (e.g. /api/members, /api/polls/*, /api/play/*).
+// Only these exact GET paths are cache-served. Each returns team-wide data with no
+// user-specific fields. Do NOT add user-specific or real-time endpoints here
+// (e.g. /api/members, /api/polls/*).
 const API_SWR_PATHS = new Set(['/api/events', '/api/setlists', '/api/announcements']);
+
+// Role-filtered reads (events, setlists) mark themselves with this header
+// (lib/sw-cache.ts). Only `shared` — the member view, safe for every viewer — is
+// stored; a `private` (leader) response is passed through and never cached, so a
+// cached copy can't show someone events they've since lost access to. A response
+// without the header (announcements) is global and cached as before.
+const SW_SCOPE_HEADER = 'X-GNW-Cache-Scope';
+function cacheable(res) {
+  return res.headers.get(SW_SCOPE_HEADER) !== 'private';
+}
 
 // Writes that touch ONLY this device's own push-subscription row, so they can't
 // invalidate any cached read above. Exempt from the cache-clearing rule below:
@@ -117,7 +128,7 @@ self.addEventListener('fetch', (event) => {
           .then((res) => {
             // Store only a good, same-origin response. A 401/403/redirect means the
             // session is gone or forbidden → drop any stale copy rather than serve it.
-            if (res && res.status === 200 && res.type === 'basic') {
+            if (res && res.status === 200 && res.type === 'basic' && cacheable(res)) {
               if (epoch === writeEpoch) cache.put(request, res.clone());
             } else {
               cache.delete(request);

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { AuthCard } from '@/components/shared/AuthCard';
 import { TextField } from '@/components/shared/Field';
 import { PasswordField } from '@/components/shared/PasswordField';
+import { safeCallbackPath } from '@/lib/safe-redirect';
 
 function LoginForm() {
   const router = useRouter();
@@ -27,7 +28,8 @@ function LoginForm() {
       return;
     }
     // Root page routes to /home or /dashboard by role.
-    router.push(params.get('callbackUrl') || '/');
+    // callbackUrl is attacker-controllable: only same-site paths are followed.
+    router.push(safeCallbackPath(params.get('callbackUrl'), window.location.origin));
     router.refresh();
   }
 

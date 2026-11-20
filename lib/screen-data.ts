@@ -1,5 +1,11 @@
 import { prisma } from '@/lib/prisma';
-import { serializeSetlist, setlistInclude, sortSetlistsForListing, type SetlistDTO } from '@/lib/setlist-serialize';
+import {
+  serializeSetlist,
+  setlistInclude,
+  setlistsVisibleTo,
+  sortSetlistsForListing,
+  type SetlistDTO,
+} from '@/lib/setlist-serialize';
 import { serializeEvent, eventInclude, type EventDTO } from '@/lib/serialize';
 import { pruneExpiredSetlists } from '@/lib/setlist-cleanup';
 import type { Role } from '@prisma/client';
@@ -14,11 +20,11 @@ import { visibleEvents } from '@/lib/crossover-season';
 // Kept identical to the GET handlers in app/api/setlists and app/api/events —
 // including the maintenance side-effects — so first paint matches later refetches.
 
-/** All setlists, newest month first — mirror of GET /api/setlists (no filters). */
-export async function getAllSetlists(): Promise<SetlistDTO[]> {
+/** All setlists this viewer may see, newest month first — mirror of GET /api/setlists (no filters). */
+export async function getAllSetlists(role: Role): Promise<SetlistDTO[]> {
   await pruneExpiredSetlists();
   const setlists = await prisma.setlist.findMany({ include: setlistInclude });
-  return sortSetlistsForListing(setlists).map(serializeSetlist);
+  return sortSetlistsForListing(setlistsVisibleTo(setlists, role)).map(serializeSetlist);
 }
 
 /** Upcoming events from today onward, as this viewer may see them — mirror of GET /api/events?scope=all. */

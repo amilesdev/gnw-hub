@@ -62,13 +62,14 @@ function InviteFlow() {
         body: JSON.stringify({ token, password, confirm }),
       });
       haptics.success();
-      // Auto sign-in then land on member home.
+      // Auto sign-in, then let the root page route by role (/home or /dashboard),
+      // so someone invited as a leader lands in the leader app.
       const res = await signIn('credentials', { email, password, redirect: false });
       if (res?.error) {
         router.push('/login');
         return;
       }
-      router.push('/home');
+      router.push('/');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');

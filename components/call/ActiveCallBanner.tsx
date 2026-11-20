@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
+import { onPageVisible, pageVisible } from '@/lib/page-visible';
 import { Phone, X } from '@/components/shared/Icons';
 import { useCall } from './CallProvider';
 
@@ -33,13 +34,17 @@ export function ActiveCallBanner() {
       }
     };
     void load();
-    const timer = setInterval(load, 10000);
-    const onFocus = () => void load();
-    window.addEventListener('focus', onFocus);
+    // Slow cadence + skip while hidden: a call start also sends a push, and
+    // coming back to the app (focus / visible) checks immediately.
+    const timer = setInterval(() => {
+      if (pageVisible()) void load();
+    }, 45_000);
+    // Covers both focus and visibilitychange, deduped to one fetch per return.
+    const offVisible = onPageVisible(() => void load());
     return () => {
       alive = false;
       clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
+      offVisible();
     };
   }, []);
 

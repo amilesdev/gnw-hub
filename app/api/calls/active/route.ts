@@ -26,9 +26,18 @@ export async function GET() {
     include: { startedBy: { select: { name: true } } },
   });
 
-  const counts = livekitConfigured
-    ? await roomParticipantCounts().catch(() => new Map<string, number>())
-    : new Map<string, number>();
+  // A failed lookup must NOT look like "every room is empty", or one LiveKit blip
+  // would retire every live call below. Answer 503 instead and end nothing; the
+  // banner keeps showing what it last had and retries on its next poll.
+  let counts = new Map<string, number>();
+  if (livekitConfigured) {
+    try {
+      counts = await roomParticipantCounts();
+    } catch (err) {
+      console.error('[calls/active] LiveKit participant lookup failed', err);
+      return NextResponse.json({ error: 'Call status is temporarily unavailable' }, { status: 503 });
+    }
+  }
 
   const now = Date.now();
   const withCounts = calls.map((c) => ({
@@ -36,9 +45,8 @@ export async function GET() {
     participants: counts.get(c.roomName) ?? 0,
   }));
 
-  // Retire calls that are empty and past the start grace. Only do this when we
-  // actually have live counts from LiveKit — otherwise a transient LiveKit
-  // outage would wrongly end every call.
+  // Retire calls that are empty and past the start grace. We only get here with
+  // real counts from LiveKit (a failed lookup returned 503 above).
   const toEnd = livekitConfigured
     ? withCounts
         .filter((c) => c.participants === 0 && now - c.call.startedAt.getTime() > START_GRACE_MS)

@@ -1,6 +1,6 @@
 import type { Event, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { seriesHorizonEnd, startOfToday, stepDate } from '@/lib/dates';
+import { firstSlotIndexOnOrAfter, seriesHorizonEnd, seriesSlot, startOfToday, stepDate } from '@/lib/dates';
 import { seasonEnd, seasonYearForDate } from '@/lib/crossover-season';
 
 // Safety cap so a long-dormant series can't loop forever while catching up.
@@ -22,6 +22,7 @@ function occurrenceFromAnchor(anchor: Event, date: Date): Prisma.EventCreateMany
     location: anchor.location,
     repeats: anchor.repeats,
     seriesId: anchor.seriesId,
+    seriesStart: anchor.seriesStart,
     crossoverKind: anchor.crossoverKind,
     crossoverSeasonId: anchor.crossoverSeasonId,
     notes: null,
@@ -64,7 +65,9 @@ export async function ensureRecurringWindow(): Promise<void> {
   if (groups.length === 0) return;
 
   const anchorKeys = groups
-    .filter((g): g is { seriesId: string; _max: { date: Date } } => !!g.seriesId && !!g._max.date)
+    .filter(
+      (g): g is typeof g & { seriesId: string; _max: { date: Date } } => !!g.seriesId && !!g._max.date,
+    )
     .map((g) => ({ seriesId: g.seriesId, date: g._max.date }));
   if (anchorKeys.length === 0) return;
 
@@ -83,6 +86,26 @@ export async function ensureRecurringWindow(): Promise<void> {
     const seasonYear = anchor.crossoverKind ? seasonYearForDate(anchor.date) : null;
     const lastDate = seasonYear != null ? seasonEnd(seasonYear) : null;
 
+    const isSkipped = (d: Date) => skipped.has(`${anchor.seriesId}|${d.getTime()}`);
+
+    if (anchor.seriesStart) {
+      // Slots come from the series' start, never from another occurrence, so a
+      // moved or deleted occurrence can't shift the schedule. Every slot in
+      // [today, horizon) is offered: ones that already exist are dropped by
+      // skipDuplicates, and ones vacated on purpose (deleted, or moved away —
+      // PATCH records those) are in SeriesSkip.
+      const start = anchor.seriesStart;
+      for (let k = firstSlotIndexOnOrAfter(start, anchor.repeats, today), i = 0; i < MAX_STEPS; k++, i++) {
+        const slot = seriesSlot(start, anchor.repeats, k);
+        if (slot >= horizonEnd) break; // reached the edge of the window
+        if (lastDate && slot > lastDate) break; // the Crossover season is over
+        if (!isSkipped(slot)) toCreate.push(occurrenceFromAnchor(anchor, slot));
+      }
+      continue;
+    }
+
+    // Legacy series (created before `seriesStart`): step from the latest
+    // occurrence, as before, so they keep the dates the team already sees.
     const cursor = new Date(anchor.date);
     for (let i = 0; i < MAX_STEPS; i++) {
       stepDate(cursor, anchor.repeats);
@@ -90,7 +113,7 @@ export async function ensureRecurringWindow(): Promise<void> {
       if (lastDate && cursor > lastDate) break; // the Crossover season is over
       // Materialize future slots inside the horizon, except dates a leader
       // intentionally deleted (past slots are skipped regardless).
-      if (cursor >= today && !skipped.has(`${anchor.seriesId}|${cursor.getTime()}`)) {
+      if (cursor >= today && !isSkipped(cursor)) {
         toCreate.push(occurrenceFromAnchor(anchor, new Date(cursor)));
       }
     }

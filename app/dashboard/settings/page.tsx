@@ -55,7 +55,7 @@ export default async function LeaderSettingsPage() {
         image={user.image ?? null}
         isSuperAdmin={user.isSuperAdmin}
       />
-      <MembersManager initialMembers={initialMembers} />
+      <MembersManager initialMembers={initialMembers} canGrantLeader={user.isSuperAdmin} />
     </div>
   );
 }

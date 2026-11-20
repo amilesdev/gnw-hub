@@ -11,7 +11,7 @@ export default async function MemberProductionPage({ searchParams }: Props) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
   const { event, tab } = await searchParams;
-  const data = await getProductionScreenData(event ?? null, false);
+  const data = await getProductionScreenData(event ?? null, user.role, false);
   return (
     <ProductionScreen
       key={data.event?.id ?? 'none'}

@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { isValidHhmm, isValidYmd } from '@/lib/dates';
+
+/** A real "YYYY-MM-DD" calendar day (rejects 2026-02-30 and the like). */
+const calendarDate = (message: string) => z.string().refine(isValidYmd, message);
 
 export const sectionEnum = z.enum(['Vocalist', 'Band']);
 export const VOCALIST_PARTS = ['Soprano', 'Alto', 'Tenor'] as const;
@@ -11,7 +15,7 @@ export const crossoverKindEnum = z.enum(['gnw_rehearsal', 'all_team_rehearsal', 
 export const songScopeEnum = z.enum(['library', 'crossover']);
 
 /** A part must belong to its section (vocal parts for Vocalist, instruments for Band). */
-function partMatchesSection(section: 'Vocalist' | 'Band', part: string): boolean {
+export function partMatchesSection(section: 'Vocalist' | 'Band', part: string): boolean {
   return section === 'Vocalist'
     ? (VOCALIST_PARTS as readonly string[]).includes(part)
     : (BAND_PARTS as readonly string[]).includes(part);
@@ -140,8 +144,8 @@ export const rehearsalScheduleSchema = z
 export const eventSchema = z.object({
   eventName: z.string().min(1, 'Event name required').max(200),
   type: eventTypeEnum,
-  date: z.string().min(1, 'Date required'), // YYYY-MM-DD
-  time: z.string().min(1, 'Time required'), // HH:mm
+  date: z.string().min(1, 'Date required').refine(isValidYmd, 'Enter a valid date'), // YYYY-MM-DD
+  time: z.string().min(1, 'Time required').refine(isValidHhmm, 'Enter a valid time'), // HH:mm (24h)
   location: z.string().min(1, 'Location required').max(200),
   repeats: repeatEnum.default('once'),
   notes: z.string().max(2000).optional().nullable(),
@@ -160,6 +164,16 @@ export const eventSchema = z.object({
   assignments: assignmentsSchema.optional().default([]),
   // Tags the event as part of a Crossover season (null = a regular event).
   crossoverKind: crossoverKindEnum.optional().nullable(),
+});
+
+/**
+ * PATCH body for one occurrence. Same as eventSchema with every field optional,
+ * except `time` is only loosely checked here: the edit form re-sends the stored
+ * time on every save, so an older event with a legacy time ("9:30", "7:00 PM")
+ * must still be savable. The route enforces HH:mm only when the time CHANGES.
+ */
+export const eventUpdateSchema = eventSchema.partial().extend({
+  time: z.string().max(20).optional(),
 });
 
 export const prayerRequestSchema = z.object({
@@ -193,8 +207,8 @@ export const suggestionToLibrarySchema = z.object({
 // behalf) and ignored for a member marking their own — the API decides whose.
 export const availabilitySchema = z
   .object({
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date required'),
-    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date required'),
+    startDate: calendarDate('Enter a valid start date'),
+    endDate: calendarDate('Enter a valid end date'),
     reason: z.string().max(200).optional().nullable(),
     userId: z.string().min(1).optional(),
   })

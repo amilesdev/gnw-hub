@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
-import { serializeSetlist, setlistInclude } from '@/lib/setlist-serialize';
+import { serializeSetlist, setlistInclude, setlistsVisibleTo } from '@/lib/setlist-serialize';
 import { leadUserIdsSchema, leadsExist, applyLeads } from '@/lib/setlist-leads';
 import { monthKey } from '@/lib/dates';
 import { revalidateSetlists } from '@/lib/cache-tags';
@@ -13,7 +13,9 @@ export async function GET(_req: Request, { params }: Ctx) {
   const guard = await requireUser();
   if ('error' in guard) return guard.error;
   const { id } = await params;
-  const setlist = await prisma.setlist.findUnique({ where: { id }, include: setlistInclude });
+  const found = await prisma.setlist.findUnique({ where: { id }, include: setlistInclude });
+  // A member gets 404 for a setlist that only belongs to Crossover events they can't see yet.
+  const [setlist] = found ? setlistsVisibleTo([found], guard.user.role) : [];
   if (!setlist) return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
   return NextResponse.json({ setlist: serializeSetlist(setlist) });
 }

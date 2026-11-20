@@ -1,4 +1,5 @@
-import type { Setlist, Song, SetlistSong, SongLead, Event, SongScope } from '@prisma/client';
+import type { Setlist, Song, SetlistSong, SongLead, Event, SongScope, Role } from '@prisma/client';
+import { crossoverVisibleTo } from '@/lib/crossover-season';
 
 // A single line of a parsed lyric chart. `section` lines are verse/chorus/etc.
 // labels; `lyric` lines are sung text; `blank` lines are spacers.
@@ -74,7 +75,9 @@ export type SetlistDTO = {
   createdAt: string;
 };
 
-type LinkedEvent = Pick<Event, 'id' | 'eventName' | 'date' | 'time'>;
+// The Crossover fields are read only to apply crossoverVisibleTo (see
+// setlistsVisibleTo); they aren't serialized.
+type LinkedEvent = Pick<Event, 'id' | 'eventName' | 'date' | 'time' | 'crossoverKind' | 'crossoverLeadersOnly'>;
 
 // A setlist's song as read from the DB: the join row (carrying its position and
 // lead rows) with the library Song it points at.
@@ -89,7 +92,9 @@ export const setlistInclude = {
     include: { song: true, leads: { include: { user: { select: leadUserSelect } } } },
     orderBy: { position: 'asc' },
   },
-  events: { select: { id: true, eventName: true, date: true, time: true } },
+  events: {
+    select: { id: true, eventName: true, date: true, time: true, crossoverKind: true, crossoverLeadersOnly: true },
+  },
 } as const;
 
 /**
@@ -143,6 +148,24 @@ export function serializeSetlist(s: FullSetlist): SetlistDTO {
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .map((e) => ({ id: e.id, eventName: e.eventName, date: e.date.toISOString(), time: e.time })),
   };
+}
+
+/**
+ * Apply the Crossover visibility rule (crossoverVisibleTo) to setlists before
+ * they reach a member: hidden linked events are removed, and a setlist whose
+ * linked events are ALL hidden is dropped entirely (its name/songs would reveal
+ * the hidden event). Setlists with no linked events are kept. Leaders see all.
+ * Every member-facing setlist read must pass through this, like visibleEvents.
+ */
+export function setlistsVisibleTo<T extends FullSetlist>(setlists: T[], role: Role): T[] {
+  if (role === 'leader') return setlists;
+  const out: T[] = [];
+  for (const s of setlists) {
+    const events = s.events.filter((e) => crossoverVisibleTo(e, role));
+    if (s.events.length > 0 && events.length === 0) continue;
+    out.push({ ...s, events });
+  }
+  return out;
 }
 
 export const AUDIO_PARTS = ['audioSoprano', 'audioAlto', 'audioTenor', 'audioAllParts'] as const;

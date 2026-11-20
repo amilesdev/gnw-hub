@@ -12,7 +12,7 @@ export default async function LeaderProductionPage({ searchParams }: Props) {
   if (!user) redirect('/login');
   if (user.role !== 'leader') redirect('/home/production');
   const { event, tab } = await searchParams;
-  const data = await getProductionScreenData(event ?? null, true);
+  const data = await getProductionScreenData(event ?? null, user.role, true);
   return (
     <ProductionScreen
       key={data.event?.id ?? 'none'}

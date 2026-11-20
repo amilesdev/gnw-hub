@@ -79,8 +79,27 @@ export function seriesHorizonEnd(from: Date): Date {
   return d;
 }
 
-/** Advance a date in place by one cadence step (UTC). No-op for `once`. */
-export function stepDate(d: Date, repeats: RepeatCadence): void {
+/**
+ * The UTC-midnight date `months` months after `date`, on `dayOfMonth` — clamped
+ * to the last day of the target month when it's shorter. So a series meant for
+ * the 31st runs Jan 31 → Feb 28 (29 in a leap year) → Mar 31 → Apr 30, never
+ * overflowing into the next month (raw setUTCMonth turned Jan 31 into Mar 3).
+ */
+export function addMonthsClamped(date: Date, months: number, dayOfMonth: number = date.getUTCDate()): Date {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + months;
+  // Day 0 of the following month = last day of the target month.
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(dayOfMonth, lastDay)));
+}
+
+/**
+ * Advance a date in place by one cadence step (UTC). No-op for `once`.
+ * `monthlyDay` is the series' intended day of month (defaults to the date's own
+ * day); pass it so a month-end series that was clamped (e.g. to Feb 28) snaps
+ * back to the 31st instead of drifting to the 28th forever.
+ */
+export function stepDate(d: Date, repeats: RepeatCadence, monthlyDay?: number): void {
   switch (repeats) {
     case 'weekly':
       d.setUTCDate(d.getUTCDate() + 7);
@@ -89,14 +108,66 @@ export function stepDate(d: Date, repeats: RepeatCadence): void {
       d.setUTCDate(d.getUTCDate() + 14);
       break;
     case 'monthly':
-      d.setUTCMonth(d.getUTCMonth() + 1);
+      d.setTime(addMonthsClamped(d, 1, monthlyDay ?? d.getUTCDate()).getTime());
       break;
   }
+}
+
+/**
+ * The k-th slot (k = 0 is the start) of a recurring series, computed from the
+ * series' start rather than from the previous occurrence, so a moved/deleted
+ * occurrence can't shift the rest: weekly = start + 7k days, biweekly = + 14k,
+ * monthly = start + k months on the start's day (clamped in short months).
+ */
+export function seriesSlot(start: Date, repeats: RepeatCadence, k: number): Date {
+  const d = new Date(start);
+  switch (repeats) {
+    case 'weekly':
+      d.setUTCDate(d.getUTCDate() + 7 * k);
+      return d;
+    case 'biweekly':
+      d.setUTCDate(d.getUTCDate() + 14 * k);
+      return d;
+    case 'monthly':
+      return addMonthsClamped(start, k, start.getUTCDate());
+    default:
+      return d; // `once` has a single slot
+  }
+}
+
+/** Index of the first slot on or after `from` (0 when `from` is before the start). */
+export function firstSlotIndexOnOrAfter(start: Date, repeats: RepeatCadence, from: Date): number {
+  if (repeats === 'once' || from <= start) return 0;
+  let k: number;
+  if (repeats === 'monthly') {
+    k = (from.getUTCFullYear() - start.getUTCFullYear()) * 12 + (from.getUTCMonth() - start.getUTCMonth()) - 1;
+  } else {
+    const period = (repeats === 'weekly' ? 7 : 14) * 86_400_000;
+    k = Math.floor((from.getTime() - start.getTime()) / period) - 1;
+  }
+  k = Math.max(0, k);
+  while (seriesSlot(start, repeats, k) < from) k++;
+  return k;
 }
 
 /** Parse a "YYYY-MM-DD" form value into a UTC-midnight calendar date. */
 export function parseCalendarDate(ymd: string): Date {
   return new Date(`${ymd}T00:00:00.000Z`);
+}
+
+/**
+ * Is this a real "YYYY-MM-DD" calendar day? Rejects malformed strings and
+ * impossible days like 2026-02-30 (which Date would silently roll to Mar 2).
+ */
+export function isValidYmd(ymd: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+  const d = parseCalendarDate(ymd);
+  return !Number.isNaN(d.getTime()) && toYmd(d) === ymd;
+}
+
+/** Is this a 24h "HH:mm" time (what a native time input sends)? */
+export function isValidHhmm(time: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 }
 
 /** "YYYY-MM-DD" from a UTC-midnight calendar date — the inverse of parseCalendarDate. */
@@ -130,12 +201,13 @@ export function eachDayYmd(startYmd: string, endYmd: string): string[] {
 export function generateOccurrences(seed: Date, repeats: RepeatCadence): Date[] {
   if (repeats === 'once') return [new Date(seed)];
 
+  // Same slot math as ensureRecurringWindow (seed = the series' start).
   const end = seriesHorizonEnd(seed);
   const occurrences: Date[] = [];
-  const cursor = new Date(seed);
-  while (cursor < end) {
-    occurrences.push(new Date(cursor));
-    stepDate(cursor, repeats);
+  for (let k = 0; ; k++) {
+    const slot = seriesSlot(seed, repeats, k);
+    if (slot >= end) break;
+    occurrences.push(slot);
   }
   return occurrences;
 }

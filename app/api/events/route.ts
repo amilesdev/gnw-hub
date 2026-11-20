@@ -11,6 +11,7 @@ import { revalidateEvents } from '@/lib/cache-tags';
 import { carriesAssignments } from '@/lib/event-types';
 import { ensureCrossoverSeason, seasonForEventDate } from '@/lib/crossover';
 import { seasonEnd, visibleEvents } from '@/lib/crossover-season';
+import { SW_CACHE_SCOPE_HEADER, swCacheScope } from '@/lib/sw-cache';
 
 // GET /api/events?scope=upcoming|all|month&month=YYYY-MM
 export async function GET(req: Request) {
@@ -45,7 +46,10 @@ export async function GET(req: Request) {
     include: eventInclude,
   });
 
-  return NextResponse.json({ events: visibleEvents(events.map(serializeEvent), guard.user.role) });
+  return NextResponse.json(
+    { events: visibleEvents(events.map(serializeEvent), guard.user.role) },
+    { headers: { [SW_CACHE_SCOPE_HEADER]: swCacheScope(guard.user.role) } },
+  );
 }
 
 // POST /api/events — create event (and occurrences if recurring). Leader only.
@@ -60,10 +64,7 @@ export async function POST(req: Request) {
   }
 
   const d = parsed.data;
-  const seed = parseCalendarDate(d.date);
-  if (Number.isNaN(seed.getTime())) {
-    return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
-  }
+  const seed = parseCalendarDate(d.date); // eventSchema already guarantees a real calendar day
 
   // A Crossover event belongs to the season of its date, which must be a
   // running (or existing) Sep–Dec season; a recurring one stops at Dec 31.
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
     repeats: d.repeats,
     notes: d.notes ?? null,
     seriesId,
+    // Every later slot is computed from the series' start (see ensureRecurringWindow).
+    seriesStart: seriesId ? seed : null,
     attirePrimary: d.attirePrimary ?? null,
     attirePrimaryHex: d.attirePrimaryHex ?? null,
     attireSecondary: d.attireSecondary ?? null,

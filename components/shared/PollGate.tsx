@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PollDTO, PollResultsDTO } from '@/lib/serialize';
 import { apiFetch } from '@/lib/api-client';
+import { onPageVisible, pageVisible } from '@/lib/page-visible';
 import { haptics } from '@/lib/haptics';
 import { PollResults, ChoiceButton } from './PollResults';
 
-const POLL_INTERVAL_MS = 20_000;
+// Slow + skipped while hidden; reopening the app checks immediately.
+const POLL_INTERVAL_MS = 60_000;
 // While a voter is looking at their results, refresh the tallies on this
 // cadence so they watch answers come in live (matches the leader's view).
 const RESULTS_INTERVAL_MS = 5_000;
@@ -43,15 +45,15 @@ export function PollGate() {
 
   useEffect(() => {
     fetchActive();
-    const onFocus = () => {
+    // Covers both focus and visibilitychange, deduped to one fetch per return.
+    const offVisible = onPageVisible(() => {
       if (!pausedRef.current) fetchActive();
-    };
-    window.addEventListener('focus', onFocus);
+    });
     const timer = setInterval(() => {
-      if (!pausedRef.current) fetchActive();
+      if (!pausedRef.current && pageVisible()) fetchActive();
     }, POLL_INTERVAL_MS);
     return () => {
-      window.removeEventListener('focus', onFocus);
+      offVisible();
       clearInterval(timer);
     };
   }, [fetchActive]);
@@ -68,6 +70,7 @@ export function PollGate() {
   useEffect(() => {
     if (!shownId || shownEnded) return;
     const t = setInterval(async () => {
+      if (!pageVisible()) return;
       try {
         const data = await apiFetch<{ results: PollResultsDTO }>(`/api/polls/${shownId}`);
         setResults(data.results);

@@ -1,52 +1,103 @@
 name: Production Reminders
 
-# Every 5 minutes, asks the app to push "your production tasks start soon" to
-# each task owner whose event starts within the next 30 minutes. The app sends
-# at most once per event, so overlapping or extra runs are harmless.
+# Pushes "your production tasks start soon" to each task owner 30 minutes before
+# their event (Service / Encounter Night / Other).
+#
+# To save Vercel CPU (Hobby plan cap), each run first asks the database DIRECTLY
+# (not through the app) whether an un-reminded production event starts in the
+# next 35 minutes, Eastern. Only then does it call the app, so on days with no
+# such event the app is never touched. The app sends at most once per event, so
+# overlapping or extra runs are harmless.
+#
+# The Crossover season kickoff pushes (leaders Sep 1, members Oct 1) run on their
+# own schedule: twice a day during Sep 1–7 and Oct 1–7 only (each push is sent
+# once, and only within 7 days of its date).
 #
 # Requires:
-#   - Repository variable APP_URL (same one keep-warm uses), e.g. https://gnw-hub.vercel.app
-#   - Repository secret CRON_SECRET (Settings → Secrets and variables → Actions → Secrets)
-#   - The same CRON_SECRET value set as an environment variable in Vercel
-#
-# GitHub cron can run a few minutes late under load; the 30-minute lead absorbs it.
-#
-# The same run also opens the Crossover season and sends its "It's Crossover
-# Season!" pushes (leaders Sep 1, members Oct 1) — each once, so it shares this
-# schedule instead of needing a once-a-year cron that GitHub might skip.
+#   - Repository variable APP_URL, e.g. https://gnw-hub.vercel.app (no trailing slash)
+#   - Repository secret CRON_SECRET (same value as the Vercel env var)
+#   - Repository secret DIRECT_URL (already used by the backup workflow)
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Reminders: every 5 min, except 06:00–09:59 UTC. GitHub cron is UTC-only, so
+    # the quiet gap moves with daylight saving: 1:00–4:59am Eastern in winter (EST),
+    # 2:00–5:59am in summer (EDT). Either way runs resume by 6:00am Eastern, so
+    # events from 6:30am on get their full 30-minute reminder all year.
+    - cron: '*/5 0-5,10-23 * * *'
+    # Crossover kickoff: ~9:30am and ~5:30pm Eastern, Sep 1–7 and Oct 1–7.
+    - cron: '30 13,21 1-7 9,10 *'
   workflow_dispatch: {}
 
 concurrency:
-  group: production-reminders
+  group: production-reminders-${{ github.event.schedule || 'manual' }}
   cancel-in-progress: true
 
 jobs:
   remind:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 0-5,10-23 * * *'
     runs-on: ubuntu-latest
     steps:
+      - name: Check for an event starting soon (DB only, no app call)
+        id: gate
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "DIRECT_URL secret is not set; falling back to calling the app."
+            echo "due=yes" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          # psql rejects Prisma-only URL params, so drop the query string.
+          url="${DIRECT_URL%%\?*}?sslmode=require"
+          # Compares real start instants (date + time, Eastern), not "HH:mm" text, so
+          # unpadded times ("9:30") and events just after midnight (looked up on
+          # tomorrow's date) match the way the app's sendDueReminders does. The CASE
+          # skips malformed times instead of failing the cast.
+          n=$(psql "$url" -tAX -c "
+            WITH today_et AS (SELECT (now() AT TIME ZONE 'America/New_York')::date AS d),
+            due AS (
+              SELECT e.id,
+                CASE WHEN e.\"time\" ~ '^([01]?[0-9]|2[0-3]):[0-5][0-9]\$'
+                  THEN (e.\"date\"::date + e.\"time\"::time) AT TIME ZONE 'America/New_York'
+                END AS starts_at
+              FROM today_et, \"Event\" e
+              WHERE e.\"type\"::text IN ('service','encounter_night','other')
+                AND e.\"date\"::date IN (today_et.d, today_et.d + 1)
+            )
+            SELECT count(*) FROM due
+            LEFT JOIN \"EventProduction\" p ON p.\"eventId\" = due.id
+            WHERE due.starts_at > now()
+              AND due.starts_at <= now() + interval '35 minutes'
+              AND p.\"remindedAt\" IS NULL;
+          ") || { echo "DB check failed; falling back to calling the app."; n=1; }
+          echo "Events due soon: $n"
+          if [ "${n:-0}" -gt 0 ]; then echo "due=yes" >> "$GITHUB_OUTPUT"; else echo "due=no" >> "$GITHUB_OUTPUT"; fi
+
       - name: Send due reminders
+        if: steps.gate.outputs.due == 'yes'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "${{ vars.APP_URL }}" ] || [ -z "$CRON_SECRET" ]; then
-            echo "APP_URL variable or CRON_SECRET secret is not set — skipping."
+            echo "APP_URL variable or CRON_SECRET secret is not set; skipping."
             exit 0
           fi
           code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 --retry 2 \
             -H "Authorization: Bearer $CRON_SECRET" "${{ vars.APP_URL }}/api/production/reminders")
           echo "HTTP $code"; cat /tmp/out.json; echo
           [ "$code" = "200" ]
+
+  crossover-kickoff:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 13,21 1-7 9,10 *'
+    runs-on: ubuntu-latest
+    steps:
       - name: Crossover season kickoff
-        if: always()
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "${{ vars.APP_URL }}" ] || [ -z "$CRON_SECRET" ]; then
-            echo "APP_URL variable or CRON_SECRET secret is not set — skipping."
+            echo "APP_URL variable or CRON_SECRET secret is not set; skipping."
             exit 0
           fi
           code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 --retry 2 \

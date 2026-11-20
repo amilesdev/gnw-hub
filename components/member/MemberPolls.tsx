@@ -7,6 +7,7 @@ import { haptics } from '@/lib/haptics';
 import { PollResults, ChoiceButton } from '@/components/shared/PollResults';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ChevronRight, Pencil } from '@/components/shared/Icons';
+import { pageVisible } from '@/lib/page-visible';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -43,7 +44,9 @@ export function MemberPolls() {
   const watching = !!openPoll && !openPoll.ended && editId === null;
   useEffect(() => {
     if (!watching) return;
-    const t = setInterval(refresh, 5000);
+    const t = setInterval(() => {
+      if (pageVisible()) refresh();
+    }, 5000);
     return () => clearInterval(t);
   }, [watching]);
 

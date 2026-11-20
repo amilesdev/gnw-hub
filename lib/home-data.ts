@@ -10,6 +10,8 @@ import {
 import { serializeSong, setlistInclude, type SongDTO } from '@/lib/setlist-serialize';
 import { startOfToday, upcomingWindowEnd } from '@/lib/dates';
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from '@/lib/cache-tags';
+import { visibleEvents } from '@/lib/crossover-season';
+import type { Role } from '@prisma/client';
 
 // The home & dashboard screens are the most-visited surfaces, so their reads are
 // cached in Next's Data Cache. Everything here is GLOBAL team data (identical for
@@ -52,16 +54,21 @@ export const getActiveAnnouncements = unstable_cache(
  *  Depends on both events (which event is soonest / its setlist link) and setlists
  *  (the songs), so it's tagged with both — plus members, since each song carries
  *  its leads' names and photos and a rename/removal has to bust this too. */
+//  `role` is an argument, so unstable_cache keeps one entry per role: a member
+//  never gets a setlist picked from a Crossover event they can't see yet.
 export const getThisWeekSetlist = unstable_cache(
-  async (): Promise<ThisWeekSetlist> => {
-    const event = await prisma.event.findFirst({
+  async (role: Role): Promise<ThisWeekSetlist> => {
+    const candidates = await prisma.event.findMany({
       where: { date: { gte: startOfToday(), lte: upcomingWindowEnd() }, setlistId: { not: null } },
       orderBy: [{ date: 'asc' }, { time: 'asc' }],
-      include: { setlist: { include: setlistInclude } },
+      select: { date: true, crossoverKind: true, crossoverLeadersOnly: true, setlistId: true },
     });
-    if (!event?.setlist) return null;
+    const pick = visibleEvents(candidates, role)[0];
+    if (!pick?.setlistId) return null;
+    const setlist = await prisma.setlist.findUnique({ where: { id: pick.setlistId }, include: setlistInclude });
+    if (!setlist) return null;
 
-    return { month: event.setlist.month, songs: event.setlist.songs.map(serializeSong) };
+    return { month: setlist.month, songs: setlist.songs.map(serializeSong) };
   },
   ['home:this-week-setlist'],
   { tags: [CACHE_TAGS.events, CACHE_TAGS.setlists, CACHE_TAGS.members], revalidate: CACHE_TTL_SECONDS },

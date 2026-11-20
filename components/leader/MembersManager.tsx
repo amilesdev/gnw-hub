@@ -34,7 +34,15 @@ const PARTS_BY_SECTION: Record<Section, Part[]> = {
   Band: ['Keys', 'Guitar', 'Bass', 'Drums'],
 };
 
-export function MembersManager({ initialMembers }: { initialMembers: MemberRow[] }) {
+// `canGrantLeader`: only the super-admin may set anyone's role (the API enforces
+// it too), so other leaders don't see the Role control at all.
+export function MembersManager({
+  initialMembers,
+  canGrantLeader,
+}: {
+  initialMembers: MemberRow[];
+  canGrantLeader: boolean;
+}) {
   const [members, setMembers] = useState<MemberRow[]>(initialMembers);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editing, setEditing] = useState<MemberRow | null>(null);
@@ -222,6 +230,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
 
       <InviteModal
         open={inviteOpen}
+        canGrantLeader={canGrantLeader}
         onClose={() => setInviteOpen(false)}
         onDone={async (msg, error) => {
           setInviteOpen(false);
@@ -233,6 +242,7 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
       {editing && (
         <EditModal
           member={editing}
+          canGrantLeader={canGrantLeader}
           onClose={() => setEditing(null)}
           onDone={async () => {
             setEditing(null);
@@ -260,10 +270,12 @@ export function MembersManager({ initialMembers }: { initialMembers: MemberRow[]
 
 function InviteModal({
   open,
+  canGrantLeader,
   onClose,
   onDone,
 }: {
   open: boolean;
+  canGrantLeader: boolean;
   onClose: () => void;
   onDone: (msg: string, error?: boolean) => void;
 }) {
@@ -287,7 +299,7 @@ function InviteModal({
     try {
       const res = await apiFetch<{ emailSkipped: boolean; emailSent: boolean; emailError?: string }>('/api/members', {
         method: 'POST',
-        body: JSON.stringify({ name, email, section, part, role }),
+        body: JSON.stringify({ name, email, section, part, role: canGrantLeader ? role : 'member' }),
       });
       if (res.emailSkipped) {
         onDone(`Invite created for ${email}. Email isn’t configured, so the link is in the server logs.`, true);
@@ -344,17 +356,19 @@ function InviteModal({
             options={PARTS_BY_SECTION[section].map((p) => ({ value: p, label: p }))}
           />
         </div>
-        <div className="space-y-1.5">
-          <FieldLabel>Role</FieldLabel>
-          <SegmentedControl
-            value={role}
-            onChange={setRole}
-            options={[
-              { value: 'member', label: 'Member' },
-              { value: 'leader', label: 'Leader' },
-            ]}
-          />
-        </div>
+        {canGrantLeader && (
+          <div className="space-y-1.5">
+            <FieldLabel>Role</FieldLabel>
+            <SegmentedControl
+              value={role}
+              onChange={setRole}
+              options={[
+                { value: 'member', label: 'Member' },
+                { value: 'leader', label: 'Leader' },
+              ]}
+            />
+          </div>
+        )}
         {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
           {busy ? 'Sending…' : 'Send invite'}
@@ -366,13 +380,17 @@ function InviteModal({
 
 function EditModal({
   member,
+  canGrantLeader,
   onClose,
   onDone,
 }: {
   member: MemberRow;
+  canGrantLeader: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
+  // The super-admin's own role is fixed; everyone else's is the super-admin's call.
+  const showRole = canGrantLeader && !member.isSuperAdmin;
   const [name, setName] = useState(member.name);
   const [section, setSection] = useState<Section>(member.section ?? 'Vocalist');
   const [part, setPart] = useState<Part>(member.part ?? 'Soprano');
@@ -393,7 +411,7 @@ function EditModal({
     try {
       await apiFetch(`/api/members/${member.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name, section, part, role }),
+        body: JSON.stringify({ name, section, part, ...(showRole ? { role } : {}) }),
       });
       onDone();
     } catch (err) {
@@ -430,17 +448,19 @@ function EditModal({
             options={PARTS_BY_SECTION[section].map((p) => ({ value: p, label: p }))}
           />
         </div>
-        <div className="space-y-1.5">
-          <FieldLabel>Role</FieldLabel>
-          <SegmentedControl
-            value={role}
-            onChange={setRole}
-            options={[
-              { value: 'member', label: 'Member' },
-              { value: 'leader', label: 'Leader' },
-            ]}
-          />
-        </div>
+        {showRole && (
+          <div className="space-y-1.5">
+            <FieldLabel>Role</FieldLabel>
+            <SegmentedControl
+              value={role}
+              onChange={setRole}
+              options={[
+                { value: 'member', label: 'Member' },
+                { value: 'leader', label: 'Leader' },
+              ]}
+            />
+          </div>
+        )}
         {member.isSuperAdmin && (
           <p className="-mt-2 text-xs text-ink-faint">Heads up: this is the super-admin account.</p>
         )}

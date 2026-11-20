@@ -21,7 +21,9 @@ export async function DELETE(req: Request, { params }: Ctx) {
   if (!target?.added) return NextResponse.json({ error: 'Only added gear can be removed' }, { status: 400 });
 
   // A quick-add is "add_<token>" plus, for a wireless mic, "addrx_<token>".
-  const token = id.replace(/^addrx?_/, '');
+  // (The old /^addrx?_/ required the "r", so plain "add_…" ids were never
+  // stripped and the delete silently removed nothing.)
+  const token = id.replace(/^add(rx)?_/, '');
   const gone = new Set([`add_${token}`, `addrx_${token}`]);
   const next: StageMapData = {
     ...data,

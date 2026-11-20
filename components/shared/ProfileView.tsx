@@ -77,10 +77,16 @@ export function ProfileView({ userId, name: initialName, role, part, image }: Pr
     if (next.length < 8) return setError('Password must be at least 8 characters.');
     setBusy(true);
     try {
-      await apiFetch('/api/profile/password', {
+      const res = await apiFetch<{ ok: true; signedOut?: boolean }>('/api/profile/password', {
         method: 'POST',
         body: JSON.stringify({ currentPassword: current, newPassword: next, confirm }),
       });
+      // Other devices are signed out; this one normally stays signed in. If the
+      // server couldn't renew this session either, sign in with the new password.
+      if (res.signedOut) {
+        window.location.href = '/login';
+        return;
+      }
       setDone(true);
       setCurrent('');
       setNext('');

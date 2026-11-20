@@ -21,6 +21,11 @@ export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Give the task a name' }, { status: 400 });
+  // Same rule as reassigning a task (PATCH /api/production/tasks/[id]).
+  if (parsed.data.ownerId) {
+    const owner = await prisma.user.findUnique({ where: { id: parsed.data.ownerId }, select: { status: true } });
+    if (!owner || owner.status !== 'active') return NextResponse.json({ error: 'That member isn\'t active' }, { status: 400 });
+  }
 
   if (!(await ensureChecklist(id))) return NextResponse.json({ error: 'This event has no production checklist' }, { status: 404 });
   const last = await prisma.productionTask.aggregate({ where: { eventId: id }, _max: { sortOrder: true } });

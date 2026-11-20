@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireLeader } from '@/lib/session';
-import { eventSchema } from '@/lib/validation';
+import { eventUpdateSchema } from '@/lib/validation';
 import { serializeEvent, eventInclude } from '@/lib/serialize';
-import { parseCalendarDate } from '@/lib/dates';
+import { isValidHhmm, parseCalendarDate } from '@/lib/dates';
 import { deleteObjects, pathFromPublicUrl } from '@/lib/supabase';
 import { revalidateEvents } from '@/lib/cache-tags';
 import { carriesAssignments } from '@/lib/event-types';
@@ -35,11 +35,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
   const body = await req.json().catch(() => null);
-  const parsed = eventSchema.partial().safeParse(body);
+  const parsed = eventUpdateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
   const d = parsed.data;
+  // A legacy stored time re-sent unchanged is fine; a new time must be HH:mm.
+  if (d.time !== undefined && d.time !== existing.time && !isValidHhmm(d.time)) {
+    return NextResponse.json({ error: d.time ? 'Enter a valid time' : 'Time required' }, { status: 400 });
+  }
 
   const data: Record<string, unknown> = {};
   if (d.eventName !== undefined) data.eventName = d.eventName;
@@ -115,6 +119,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   try {
     const event = await prisma.$transaction(async (tx) => {
+      // Moving a series occurrence vacates its slot: record the old date so the
+      // rolling window (which computes slots from the series' start) doesn't
+      // re-create it next to the moved one.
+      const newDate = data.date as Date | undefined;
+      if (existing.seriesId && newDate && newDate.getTime() !== existing.date.getTime()) {
+        await tx.seriesSkip.upsert({
+          where: { seriesId_date: { seriesId: existing.seriesId, date: existing.date } },
+          create: { seriesId: existing.seriesId, date: existing.date },
+          update: {},
+        });
+      }
       if (nextAssignments !== undefined) {
         await tx.eventAssignment.deleteMany({ where: { eventId: id } });
         if (nextAssignments.length) {

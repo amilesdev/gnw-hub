@@ -9,6 +9,7 @@ import { PollResults } from '@/components/shared/PollResults';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Skeleton, SkeletonList } from '@/components/shared/Skeleton';
 import { ChevronRight, Trash, Download, Check } from '@/components/shared/Icons';
+import { pageVisible } from '@/lib/page-visible';
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -53,7 +54,9 @@ export function PollsManager({ creating, onCreatingChange }: { creating: boolean
   const watching = !!openPoll && !openPoll.ended;
   useEffect(() => {
     if (!watching) return;
-    const t = setInterval(refresh, 5000);
+    const t = setInterval(() => {
+      if (pageVisible()) refresh();
+    }, 5000);
     return () => clearInterval(t);
   }, [watching]);
 

@@ -15,7 +15,7 @@ export default async function MemberHomePage() {
   const [events, announcements, thisWeek, production] = await Promise.all([
     getUpcomingEvents(),
     getActiveAnnouncements(),
-    getThisWeekSetlist(),
+    getThisWeekSetlist(user.role),
     getMyProductionTasks(user.id),
   ]);
   const verse = getVerseOfDay(); // local, instant — verse-of-the-day ribbon + empty states
