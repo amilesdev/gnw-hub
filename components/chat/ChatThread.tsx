@@ -621,8 +621,8 @@ export function ChatThread({
     >
       {/* Header */}
       <header
-        // glow-top continues the status strip down into the header (CMP-1).
-        className="shrink-0 border-b border-line bg-glow-top/95 backdrop-blur"
+        // app-bg continues the status strip down into the header (CMP-1).
+        className="shrink-0 border-b border-line bg-app/95 backdrop-blur"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}
       >
         <div className="flex items-center gap-2 px-3 pb-2">

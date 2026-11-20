@@ -154,7 +154,7 @@ export function ChatThreadSkeleton() {
   return (
     <div className="fixed inset-0 z-[45] flex flex-col bg-chat-canvas" role="status" aria-busy="true" aria-label="Loading">
       <div
-        className="flex shrink-0 items-center gap-3 border-b border-line bg-glow-top px-4 pb-3"
+        className="flex shrink-0 items-center gap-3 border-b border-line bg-app px-4 pb-3"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
       >
         <Skeleton className="h-11 w-11 rounded-full" />

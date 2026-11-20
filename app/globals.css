@@ -95,6 +95,22 @@
   -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
 }
 .glass-drop { background: var(--drop-fill); border: 1px solid var(--drop-border); box-shadow: var(--drop-shadow); }
+/* The droplet in sage: a solid green fill with the droplet's top sheen and
+   inner shading (the Up next card's primary action). Light mode uses the
+   glow blob's sage (paler than the accent, so ink text); dark mode
+   keeps the accent, since the dark blob sage would be darker, not lighter. */
+.glass-drop-accent {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0) 58%), rgb(var(--glow-sage));
+  border: 1px solid rgb(255 255 255 / 0.55);
+  box-shadow: inset 0 -6px 12px -4px rgb(74 89 56 / 0.22), inset 0 2px 3px rgb(255 255 255 / 0.6), var(--shadow-pop);
+  color: rgb(var(--ink));
+}
+.dark .glass-drop-accent {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 58%), rgb(var(--accent));
+  border-color: rgb(255 255 255 / 0.28);
+  box-shadow: inset 0 -6px 12px -4px rgb(28 36 16 / 0.28), inset 0 2px 3px rgb(255 255 255 / 0.45), var(--shadow-pop);
+  color: rgb(var(--accent-fg));
+}
 .glass-thumb { background: var(--thumb-fill); box-shadow: var(--thumb-shadow); }
 .glass-inset { background: var(--inset-fill); border: 1px solid var(--inset-border); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .glass { background: var(--glass-fallback); } }
@@ -102,18 +118,14 @@
   .glass { background: var(--glass-fallback); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
-/* Ambient glow + top wash (CMP-1): glow on tab roots and auth pages, wash
-   everywhere, so the glass has something to refract. */
+/* Ambient glow (CMP-1) on tab roots and auth pages, so the glass has something
+   to refract. (The top-edge sage wash was removed 2026-11-20: it read as a fade.) */
 .app-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .app-glow::before, .app-glow::after {
   content: ''; position: absolute; border-radius: 50%; filter: blur(50px); opacity: var(--glow-opacity);
 }
 .app-glow::before { width: 300px; height: 300px; left: 170px; top: -70px; background: rgb(var(--glow-sage)); }
 .app-glow::after { width: 260px; height: 260px; left: -100px; top: 30px; background: rgb(var(--glow-apricot)); }
-.app-wash {
-  position: absolute; left: 0; right: 0; top: 0; height: 96px; pointer-events: none; z-index: 0;
-  background: linear-gradient(180deg, rgb(var(--glow-top)), rgb(var(--glow-top) / 0));
-}
 
 /* Theme-correct backdrop for sheets, modals and pickers (was bg-ink/40). */
 .bg-scrim { background-color: rgb(var(--scrim) / var(--scrim-alpha)); }
@@ -183,15 +195,15 @@ body {
 
 /* iOS fills the status strip with one flat colour, taken from the body
    background or from a full-width fixed element at the top edge. This strip
-   hands it the colour the wash + grain actually render as under the strip
-   (sampled off-device: #E8EADE light), so there's no seam. Clipping the
+   hands it the colour the page background + grain render as under the strip
+   (app-bg darkened by the grain, as sampled before), so there's no seam. Clipping the
    background to (empty) text keeps it invisible and untappable. Unofficial
    WebKit behaviour: if iOS stops sampling it, the strip just goes back to cream. */
 .status-tint {
   position: fixed; top: 0; left: 0; right: 0; height: 12px; z-index: 9998; pointer-events: none;
-  background-color: #E8EADE; -webkit-background-clip: text; background-clip: text;
+  background-color: #F4F1ED; -webkit-background-clip: text; background-clip: text;
 }
-.dark .status-tint { background-color: #181A14; }
+.dark .status-tint { background-color: #13110E; }
 
 /* === Grain (§4) === */
 /* A) Global page grain — fixed overlay across the whole app. */

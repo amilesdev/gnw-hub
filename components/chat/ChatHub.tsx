@@ -70,7 +70,6 @@ export function ChatHub({
   return (
     <div className="fixed inset-0 z-[45] flex flex-col bg-app">
       {/* The same fading top wash as every other screen, not a solid band. */}
-      <div className="app-wash" aria-hidden />
       <header
         className="relative flex shrink-0 items-center justify-between px-3 pb-1"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)' }}

@@ -254,7 +254,6 @@ export function Overlay({
         ref={panelRef}
         className="overlay-slide-in relative flex h-full w-full max-w-[430px] flex-col bg-app shadow-card-lg"
       >
-        <div className="app-wash" aria-hidden />
         <header
           className="relative shrink-0 px-5 pb-3"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}

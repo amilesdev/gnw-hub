@@ -52,8 +52,8 @@ export const viewport: Viewport = {
   // overlay content, so focused inputs and submit buttons stay on-screen.
   interactiveWidget: 'resizes-content',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#EEF0E3' },
-    { media: '(prefers-color-scheme: dark)', color: '#1B1D16' },
+    { media: '(prefers-color-scheme: light)', color: '#FAF7F2' },
+    { media: '(prefers-color-scheme: dark)', color: '#161410' },
   ],
 };
 
@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${albertSans.variable} ${literata.variable}`} suppressHydrationWarning>
       <body>
         <ThemeScript />
-        {/* Tints the iOS status strip to match the top of the wash (globals.css). */}
+        {/* Tints the iOS status strip to match the page background (globals.css). */}
         <div className="status-tint" aria-hidden />
         <Providers>{children}</Providers>
         <ServiceWorkerRegistrar />

@@ -20,7 +20,6 @@ export function AuthCard({
   return (
     <div className="app-shell">
       <div className="app-glow" aria-hidden />
-      <div className="app-wash" aria-hidden />
       <div
         className="no-scrollbar relative flex-1 overflow-y-auto px-5 pb-10"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }}

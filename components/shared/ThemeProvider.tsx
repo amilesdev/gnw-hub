@@ -5,10 +5,10 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 export type ThemePreference = 'light' | 'system' | 'dark';
 
 const STORAGE_KEY = 'gnw-theme';
-// Status strip = the glow-top token, so the strip and the page's top wash
-// (.app-wash) read as one continuous colour (CMP-1). Still no edge-to-edge.
-const LIGHT_BAR = '#EEF0E3';
-const DARK_BAR = '#1B1D16';
+// Status strip = the app-bg token, so the strip and the page top read as one
+// continuous colour. Still no edge-to-edge.
+const LIGHT_BAR = '#FAF7F2';
+const DARK_BAR = '#161410';
 
 /** Resolve a preference to whether dark should be active right now. */
 function resolveDark(pref: ThemePreference): boolean {

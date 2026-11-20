@@ -352,7 +352,6 @@ function useVideoFirstOrder(
 function CallShell({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-center bg-app">
-      <div className="app-wash" aria-hidden />
       <div
         className="relative flex w-full max-w-[430px] flex-col px-5"
         style={{

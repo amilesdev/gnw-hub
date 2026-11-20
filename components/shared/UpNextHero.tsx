@@ -64,14 +64,26 @@ export function UpNextHero({ event, onOpen }: { event: EventDTO; onOpen: () => v
         </div>
       </div>
 
-      <div className="relative flex gap-2.5">
+      {/* The row spans the card's content box, so the full-width calendar
+          bubble runs from the date tile's left edge to the text's right edge. */}
+      <div className="relative flex flex-col gap-2.5">
         {action && (
-          <button type="button" onClick={onOpen} className="btn-primary min-w-0 flex-auto gap-1.5 px-3.5">
+          // Green droplet pill: same bubble as below, kept in the accent so the two differ.
+          <button
+            type="button"
+            onClick={onOpen}
+            className="btn glass-drop-accent min-w-0 w-full gap-1.5 rounded-full px-3.5"
+          >
             <action.icon width={18} height={18} className="shrink-0" />
             <span className="truncate">{action.label}</span>
           </button>
         )}
-        <button type="button" onClick={() => downloadEventICS(event)} className="btn-inset min-w-0 flex-auto gap-1.5 px-3.5">
+        {/* Same liquid-glass droplet as the date tile, as a pill. */}
+        <button
+          type="button"
+          onClick={() => downloadEventICS(event)}
+          className="btn glass-drop min-w-0 w-full gap-1.5 rounded-full px-3.5 text-ink"
+        >
           <Calendar width={18} height={18} className="shrink-0" />
           <span className="truncate">Add to calendar</span>
         </button>

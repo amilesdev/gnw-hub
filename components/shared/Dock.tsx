@@ -62,16 +62,11 @@ export function DockToasts() {
 }
 
 // Tab roots + auth get the ambient glow behind the header; sub-pages reached
-// from a tab (Suggestions, availability) get only the wash, like overlays.
+// from a tab (Suggestions, availability) get no glow, like overlays.
 const NO_GLOW = /\/(suggestions|availability)(\/|$)/;
 
-/** The ambient glow + top wash behind `<main>` (CMP-1). Never scrolls. */
+/** The ambient glow behind `<main>` (CMP-1). Never scrolls. */
 export function ShellBackdrop() {
   const pathname = usePathname();
-  return (
-    <>
-      {!NO_GLOW.test(pathname) && <div className="app-glow" aria-hidden />}
-      <div className="app-wash" aria-hidden />
-    </>
-  );
+  return NO_GLOW.test(pathname) ? null : <div className="app-glow" aria-hidden />;
 }
