@@ -85,7 +85,7 @@ export function AnnouncementForm({
         )}
         {error && <p className="text-sm font-semibold text-bad-ink">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={busy}>
-          {busy ? 'Saving…' : initial ? 'Save changes' : 'Post update'}
+          {busy ? 'Saving…' : initial ? 'Save changes' : 'Post Update'}
         </button>
       </form>
     </Modal>

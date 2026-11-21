@@ -72,7 +72,7 @@ export function LeaderHome({
         <button type="button" onClick={() => setAddEvent(true)} className="btn-primary h-14">
           <Calendar width={18} height={18} /> Add Event
         </button>
-        <QuickAction icon={Bell} label="Post update" onClick={() => setAddAnnouncement(true)} />
+        <QuickAction icon={Bell} label="Post Update" onClick={() => setAddAnnouncement(true)} />
         <QuickAction icon={Poll} label="Add Poll" onClick={() => setAddPoll(true)} />
         <QuickAction icon={Phone} label="Start Call" onClick={() => setStartCall(true)} />
       </div>
