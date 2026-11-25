@@ -24,7 +24,7 @@ export function AuthCard({
         className="no-scrollbar relative flex-1 overflow-y-auto px-5 pb-10"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }}
       >
-        <div className="card grain-block animate-enter-home space-y-6 p-7">
+        <div className="card relative animate-enter-home space-y-6 p-7">
           {/* Sage wordmark for light, cream for dark — swapped purely in CSS so it
               tracks the theme with no client JS. */}
           <div className="relative">

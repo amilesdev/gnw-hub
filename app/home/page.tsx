@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { getUpcomingEvents, getActiveAnnouncements, getThisWeekSetlist } from '@/lib/home-data';
 import { getVerseOfDay } from '@/lib/bible';
 import { MemberHome } from '@/components/member/MemberHome';
+import { LaunchRefresh } from '@/components/shared/LaunchRefresh';
 import { getMyProductionTasks } from '@/lib/production/server';
 import { visibleEvents } from '@/lib/crossover-season';
 
@@ -23,13 +24,16 @@ export default async function MemberHomePage() {
   const visible = visibleEvents(events, user.role);
 
   return (
-    <MemberHome
-      name={user.name ?? ''}
-      events={visible}
-      announcements={announcements}
-      thisWeek={thisWeek}
-      verse={verse}
-      production={production}
-    />
+    <>
+      <LaunchRefresh />
+      <MemberHome
+        name={user.name ?? ''}
+        events={visible}
+        announcements={announcements}
+        thisWeek={thisWeek}
+        verse={verse}
+        production={production}
+      />
+    </>
   );
 }

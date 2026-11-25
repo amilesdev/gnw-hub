@@ -9,15 +9,132 @@
  *    only their member view is stored — see SW_SCOPE_HEADER below
  *  • page navigations (per-user HTML) and every other API → network-first / never
  *    cached, which keeps private and role-specific data off disk
+ *  • the two Home pages (/home, /dashboard) → this device's last copy paints at
+ *    once, then the page refreshes its data in place (components/shared/
+ *    LaunchRefresh). See "Fast launch" below; every other page stays network-only
  * Safety: only 200 same-origin responses are stored; a 401/403/redirect evicts any
  * stale copy; and ANY write or auth call (login/logout, POST/PATCH/DELETE to /api)
  * wipes the read cache, so nothing survives a sign-out/sign-in on a shared device.
  */
-// v6: role-filtered reads are only cached in their member view (drops any
-// leader-only copy a v5 cache may still hold). v5: the 3a redesign.
-const VERSION = 'gnw-v6';
+// v7: cached Home pages for a fast launch. v6: role-filtered reads are only
+// cached in their member view. v5: the 3a redesign.
+const VERSION = 'gnw-v7';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
+
+/* ── Fast launch ────────────────────────────────────────────────────────────
+ * A cold open used to sit on an empty screen until the server answered. Now
+ * the Home page this device last loaded is kept (one copy per URL, per device)
+ * and served straight from cache; LaunchRefresh then pulls fresh data in place.
+ * This HTML is the signed-in person's own Home, so the pages cache is wiped on
+ * every sign-in/sign-out/password call and whenever /login is reached, and a
+ * redirect or 401/403 for a Home page evicts it. Leaders' /dashboard is only
+ * ever stored on that leader's own device.
+ * The stored copy is re-fetched at most once an hour (a background fetch costs
+ * a server render, and Vercel Hobby CPU is capped); the in-place refresh is
+ * what keeps the screen current.
+ */
+const PAGE_CACHE = `${VERSION}-pages`; // the "-pages" suffix is read by LaunchRefresh
+const HOME_PAGES = new Set(['/home', '/dashboard']);
+const LAST_HOME_KEY = '/__gnw/last-home';
+const LAUNCH_KEY = '/__gnw/launch'; // keep in sync with LaunchRefresh
+const PAGE_RESTORE_MS = 60 * 60 * 1000;
+// Bumped on every wipe, so a fetch that started before a sign-out can't store
+// the old person's page after it.
+let pageEpoch = 0;
+
+function clearPages() {
+  pageEpoch++;
+  return caches.delete(PAGE_CACHE);
+}
+
+function isAuthWrite(pathname) {
+  return (
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/password/') ||
+    pathname === '/api/profile/password'
+  );
+}
+
+async function storePage(key, path, res, epoch) {
+  if (epoch !== pageEpoch) return;
+  const body = await res.blob();
+  const headers = new Headers(res.headers);
+  // The body is already decoded, and Vary (RSC headers) would stop a plain
+  // match from ever hitting.
+  ['content-encoding', 'content-length', 'vary', 'set-cookie'].forEach((h) => headers.delete(h));
+  headers.set('X-GNW-Cached-At', String(Date.now()));
+  if (epoch !== pageEpoch) return;
+  const cache = await caches.open(PAGE_CACHE);
+  await cache.put(key, new Response(body, { status: 200, statusText: 'OK', headers }));
+  await cache.put(LAST_HOME_KEY, new Response(path));
+}
+
+// Network fetch of a Home page that keeps the stored copy in step with it.
+function fetchHome(request, key, path) {
+  const epoch = pageEpoch;
+  return fetch(request).then(async (res) => {
+    const html = (res.headers.get('content-type') || '').includes('text/html');
+    if (res.status === 200 && res.type === 'basic' && !res.redirected && html) {
+      await storePage(key, path, res.clone(), epoch).catch(() => {});
+    } else if (res.type === 'opaqueredirect' || res.redirected || res.status === 401 || res.status === 403) {
+      // Signed out, revoked or the wrong role: never paint this copy again.
+      const cache = await caches.open(PAGE_CACHE);
+      await cache.delete(key);
+    }
+    return res;
+  });
+}
+
+// When Home was just painted from cache and loads again within this window,
+// it's Next's full-reload fallback (a failed refresh, or a new deploy whose
+// build no longer matches the cached page) — so go to the network first, or the
+// same old copy would answer forever.
+const RETRY_NETWORK_MS = 20000;
+const staleServedAt = new Map();
+
+async function serveHome(event, url) {
+  const key = url.origin + url.pathname;
+  const cache = await caches.open(PAGE_CACHE);
+  const cached = await cache.match(key);
+  const now = Date.now();
+  const retry = now - (staleServedAt.get(key) || 0) < RETRY_NETWORK_MS;
+  if (!cached || retry) {
+    try {
+      return await fetchHome(event.request, key, url.pathname);
+    } catch (_) {
+      if (!cached) return caches.match('/offline.html');
+      // Offline: fall through and paint the copy (LaunchRefresh says "Offline").
+    }
+  }
+  staleServedAt.set(key, now);
+  const cachedAt = Number(cached.headers.get('X-GNW-Cached-At')) || 0;
+  // Tell the page it came from cache (read once by LaunchRefresh). Awaited, so
+  // the marker is there before the page can look for it.
+  await cache.put(
+    LAUNCH_KEY,
+    new Response(JSON.stringify({ path: url.pathname, cachedAt, servedAt: now }), {
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  );
+  if (!retry && now - cachedAt > PAGE_RESTORE_MS) {
+    // A plain URL fetch (not the navigation request, which is already answered).
+    event.waitUntil(fetchHome(url.href, key, url.pathname).catch(() => {}));
+  }
+  return cached;
+}
+
+// The app launches at "/": go straight to the cached Home when there is one
+// (works offline too); otherwise the edge redirect in middleware.ts handles it.
+async function serveRoot(request, url) {
+  const cache = await caches.open(PAGE_CACHE);
+  const last = await cache.match(LAST_HOME_KEY);
+  const path = last ? await last.text() : '';
+  if (HOME_PAGES.has(path) && (await cache.match(url.origin + path))) {
+    return Response.redirect(url.origin + path, 302);
+  }
+  return fetch(request).catch(() => caches.match('/offline.html'));
+}
 const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/manifest.webmanifest'];
 
 // Only these exact GET paths are cache-served. Each returns team-wide data with no
@@ -87,6 +204,8 @@ self.addEventListener('fetch', (event) => {
   // sign-in. Clearing the whole (tiny) API cache is the safe, simple choice — it
   // also covers NextAuth's login/logout, which POST to /api/auth/*.
   if (request.method !== 'GET') {
+    // Sign-in, sign-out and password changes also drop the cached Home pages.
+    if (sameOrigin && isAuthWrite(url.pathname)) event.waitUntil(clearPages());
     if (
       sameOrigin &&
       url.pathname.startsWith('/api/') &&
@@ -100,6 +219,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!sameOrigin) return; // let cross-origin pass through
+
+  // Reaching /login (a full load, or the client-side redirect a revoked session
+  // gets) means whoever's Home is cached is no longer signed in here.
+  if (url.pathname === '/login') event.waitUntil(clearPages());
 
   // Immutable build assets + icons → cache-first.
   if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
@@ -161,7 +284,16 @@ self.addEventListener('fetch', (event) => {
   // Page navigations (per-user, role-specific HTML) → network-first with an offline
   // fallback. Deliberately never cache-served, so a session change can't surface a
   // stale or another user's page.
+  // The two Home pages and the "/" launch are the exception: see "Fast launch".
   if (request.mode === 'navigate') {
+    if (!url.search && HOME_PAGES.has(url.pathname)) {
+      event.respondWith(serveHome(event, url));
+      return;
+    }
+    if (!url.search && url.pathname === '/') {
+      event.respondWith(serveRoot(request, url));
+      return;
+    }
     event.respondWith(fetch(request).catch(() => caches.match('/offline.html')));
   }
 });

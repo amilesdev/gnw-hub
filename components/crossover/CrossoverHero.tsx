@@ -69,7 +69,7 @@ export function CrossoverHero({ year, serverNow }: { year: number; serverNow: nu
   return (
     <section
       aria-label={`Crossover ${year} countdown`}
-      className="grain-block relative animate-rise overflow-hidden rounded-3xl p-4 text-crossover-champagne shadow-card-lg"
+      className="relative isolate animate-rise overflow-hidden rounded-3xl p-4 text-crossover-champagne shadow-card-lg"
       style={{
         background:
           'radial-gradient(90% 70% at 100% 0%, rgb(226 190 110 / .30), transparent 60%),' +

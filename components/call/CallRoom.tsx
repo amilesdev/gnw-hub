@@ -202,7 +202,7 @@ export function CallRoom({ callId }: { callId: string }) {
           </div>
         ) : (
           <div
-            className="m-auto h-24 w-24 rounded-full bg-accent-soft animate-breathe grain-block"
+            className="m-auto h-24 w-24 rounded-full bg-accent-soft animate-breathe relative"
             aria-hidden
           />
         )}
@@ -393,7 +393,7 @@ function ParticipantTile({
       className={cn(
         // transform-gpu forces the rounded corners to clip the <video> on iOS
         // Safari, where overflow-hidden alone leaves square corners.
-        'grain-block relative transform-gpu overflow-hidden rounded-3xl bg-accent-soft transition-shadow',
+        'relative transform-gpu overflow-hidden rounded-3xl bg-accent-soft transition-shadow',
         solo ? 'aspect-[4/5]' : 'aspect-square',
         speaking ? 'ring-4 ring-inset ring-accent' : 'ring-1 ring-line',
       )}
@@ -485,7 +485,7 @@ function SpotlightOverlay({
       onClick={onClose}
     >
       <div
-        className="grain-block relative h-[78vh] w-[86%] max-w-[560px] transform-gpu overflow-hidden rounded-3xl bg-accent-soft shadow-pop"
+        className="relative h-[78vh] w-[86%] max-w-[560px] transform-gpu overflow-hidden rounded-3xl bg-accent-soft shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <VideoTrack
@@ -558,7 +558,7 @@ function ChatPanel({
       <div className="absolute inset-0 animate-fade-in bg-ink/50" onClick={onClose} aria-hidden />
 
       <div className="relative z-10 mt-auto flex w-full max-w-[430px] animate-sheet-up flex-col">
-        <div className="grain-block flex max-h-[72vh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-sheet ring-1 ring-line">
+        <div className="relative flex max-h-[72vh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-sheet ring-1 ring-line">
           <header className="flex items-center gap-3 border-b border-line px-5 pb-3 pt-4">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold text-ink">Chat</h2>

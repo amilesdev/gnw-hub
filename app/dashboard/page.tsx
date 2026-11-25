@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { getUpcomingEvents, getActiveAnnouncements, getThisWeekSetlist, getLeaderAlerts } from '@/lib/home-data';
 import { getVerseOfDay } from '@/lib/bible';
 import { LeaderHome } from '@/components/leader/LeaderHome';
+import { LaunchRefresh } from '@/components/shared/LaunchRefresh';
 import { getMyProductionTasks } from '@/lib/production/server';
 
 export const dynamic = 'force-dynamic';
@@ -21,14 +22,17 @@ export default async function LeaderHomePage() {
   ]);
 
   return (
-    <LeaderHome
-      name={user.name ?? ''}
-      events={events}
-      announcements={announcements}
-      thisWeek={thisWeek}
-      alerts={alerts}
-      verse={getVerseOfDay()}
-      production={production}
-    />
+    <>
+      <LaunchRefresh />
+      <LeaderHome
+        name={user.name ?? ''}
+        events={events}
+        announcements={announcements}
+        thisWeek={thisWeek}
+        alerts={alerts}
+        verse={getVerseOfDay()}
+        production={production}
+      />
+    </>
   );
 }

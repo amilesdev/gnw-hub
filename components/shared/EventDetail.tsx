@@ -175,10 +175,10 @@ function PrayerRequests({ eventId }: { eventId: string }) {
   }
 
   return (
-    <section className="card grain-block space-y-4 p-4">
+    <section className="card relative space-y-4 p-4">
       <SectionTitle icon={Pray}>Prayer requests</SectionTitle>
 
-      <figure className="grain-block overflow-hidden rounded-2xl bg-accent px-4 py-4 text-center text-accent-fg shadow-pop">
+      <figure className="relative overflow-hidden rounded-2xl bg-accent px-4 py-4 text-center text-accent-fg shadow-pop">
         <blockquote className="font-display text-[15px] italic leading-snug text-accent-fg">
           “Therefore, I tell you, whatever you ask in prayer, believe that you have received it, and it
           will be yours.”
@@ -469,7 +469,7 @@ export function EventDetail({
         )}
 
         {hasAttire(event) && (
-          <section className="card grain-block space-y-4 p-4">
+          <section className="card relative space-y-4 p-4">
             <SectionTitle icon={Shirt}>What to wear</SectionTitle>
 
             {(event.attirePrimary || event.attireSecondary || event.attireComplement ||

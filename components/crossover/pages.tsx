@@ -173,7 +173,7 @@ export async function CrossoverSectionPage({ base, section }: { base: Base; sect
         title={info.title}
         className="mb-0"
       />
-      <div className="card grain-block flex flex-col items-center px-6 py-10 text-center">
+      <div className="card relative flex flex-col items-center px-6 py-10 text-center">
         <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 text-accent-ink">
           <Icon width={28} height={28} />
         </div>

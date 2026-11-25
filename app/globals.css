@@ -119,13 +119,16 @@
 }
 
 /* Ambient glow (CMP-1) on tab roots and auth pages, so the glass has something
-   to refract. (The top-edge sage wash was removed 2026-11-20: it read as a fade.) */
+   to refract. (The top-edge sage wash was removed 2026-11-20: it read as a fade.)
+   The blobs start low enough that their blur has faded out by the top edge:
+   iOS paints the status strip one flat colour, so a blob that reached the edge
+   was cut off in a hard line under the clock (2026-11-25, option D). */
 .app-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .app-glow::before, .app-glow::after {
   content: ''; position: absolute; border-radius: 50%; filter: blur(50px); opacity: var(--glow-opacity);
 }
-.app-glow::before { width: 300px; height: 300px; left: 170px; top: -70px; background: rgb(var(--glow-sage)); }
-.app-glow::after { width: 260px; height: 260px; left: -100px; top: 30px; background: rgb(var(--glow-apricot)); }
+.app-glow::before { width: 300px; height: 300px; left: 170px; top: 110px; background: rgb(var(--glow-sage)); }
+.app-glow::after { width: 260px; height: 260px; left: -100px; top: 190px; background: rgb(var(--glow-apricot)); }
 
 /* Theme-correct backdrop for sheets, modals and pickers (was bg-ink/40). */
 .bg-scrim { background-color: rgb(var(--scrim) / var(--scrim-alpha)); }
@@ -195,35 +198,18 @@ body {
 
 /* iOS fills the status strip with one flat colour, taken from the body
    background or from a full-width fixed element at the top edge. This strip
-   hands it the colour the page background + grain render as under the strip
-   (app-bg darkened by the grain, as sampled before), so there's no seam. Clipping the
-   background to (empty) text keeps it invisible and untappable. Unofficial
-   WebKit behaviour: if iOS stops sampling it, the strip just goes back to cream. */
+   hands it the plain app-bg (the grain it used to be matched to was removed
+   2026-11-25), so there's no seam. Clipping the background to (empty) text
+   keeps it invisible and untappable. Unofficial WebKit behaviour: if iOS stops
+   sampling it, the strip still takes the body's identical cream. */
 .status-tint {
   position: fixed; top: 0; left: 0; right: 0; height: 12px; z-index: 9998; pointer-events: none;
-  background-color: #F4F1ED; -webkit-background-clip: text; background-clip: text;
+  background-color: rgb(var(--app-bg)); -webkit-background-clip: text; background-clip: text;
 }
-.dark .status-tint { background-color: #13110E; }
 
-/* === Grain (§4) === */
-/* A) Global page grain — fixed overlay across the whole app. */
-body::after {
-  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-  opacity: 0.11;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 -0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
-}
-.dark body::after { opacity: 0.14; }
-@media print { body::after { display: none; } }
-
-/* B) Local grain on solid color blocks. */
-.grain-block { position: relative; isolation: isolate; }
-.grain-block::before {
-  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  opacity: 0.5; mix-blend-mode: soft-light; border-radius: inherit;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.2 -0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 190px 190px;
-}
+/* No grain (2026-11-25): the full-screen SVG-noise overlay and the per-card
+   `grain-block` texture were removed. Both re-rasterised a feTurbulence filter
+   on every scroll frame, which made older iPhones stutter. Don't bring them back. */
 
 @layer base {
   h1, h2, h3 { font-family: theme('fontFamily.display'); letter-spacing: -0.005em; }

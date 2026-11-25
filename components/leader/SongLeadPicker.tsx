@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { LeadDTO } from '@/lib/setlist-serialize';
 import type { MemberRow } from './MembersManager';
-import { Overlay } from '@/components/shared/Overlay';
+import { Modal } from '@/components/shared/Modal';
 import { MemberAvatar } from '@/components/shared/Avatar';
 import { listCard } from '@/lib/ui-classes';
 import { Mic, Check, X } from '@/components/shared/Icons';
@@ -81,21 +81,19 @@ export function SongLeadPicker({
         </button>
       </div>
 
-      {open && (
-        <Overlay
-          title="Song lead"
-          onClose={() => setOpen(false)}
-          action={
-            <button type="button" className="btn-primary btn-sm h-11" onClick={() => setOpen(false)}>
-              Done
-            </button>
-          }
-        >
+      {/* A quick pick, so a swipe-down sheet over the setlist (not a full page). */}
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Song lead"
+        subtitle="Tap to set who leads this song. Pick more than one if they share it."
+        footer={
+          <button type="button" className="btn-primary w-full" onClick={() => setOpen(false)}>
+            Done
+          </button>
+        }
+      >
           <div className="space-y-4">
-            <p className="text-[13px] leading-[18px] text-ink-faint">
-              Tap to set who leads this song. Pick more than one if they share it.
-            </p>
-
             {options.length === 0 ? (
               <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-faint">
                 No active vocalists yet. Invite some members first.
@@ -136,8 +134,7 @@ export function SongLeadPicker({
               </button>
             )}
           </div>
-        </Overlay>
-      )}
+      </Modal>
     </>
   );
 }

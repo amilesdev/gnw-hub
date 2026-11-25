@@ -23,8 +23,8 @@ type State =
 
 /**
  * A small "page of paper" sheet that slides up when a scripture chip is tapped.
- * Fetches the passage (NLT) from our server proxy and renders it on warm,
- * grain-textured paper in the app's serif display face. Stays light/paper in
+ * Fetches the passage (NLT) from our server proxy and renders it on warm
+ * paper in the app's serif display face. Stays light/paper in
  * both themes on purpose — that's the whole effect.
  */
 export function ScriptureSheet({ reference, onClose }: { reference: string; onClose: () => void }) {
@@ -122,7 +122,7 @@ export function ScriptureSheet({ reference, onClose }: { reference: string; onCl
         onTouchCancel={onTouchEnd}
       >
         {/* Follows the theme (EV-C4): surface + Literata, the Holy Talks hue as accent. */}
-        <div className="grain-block relative flex max-h-[72vh] flex-col overflow-hidden rounded-sheet bg-surface text-ink shadow-sheet">
+        <div className="relative flex max-h-[72vh] flex-col overflow-hidden rounded-sheet bg-surface text-ink shadow-sheet">
           {/* drag handle */}
           <div className="relative z-10 flex justify-center pt-2">
             <span className="h-[5px] w-10 rounded-[3px] bg-line" />

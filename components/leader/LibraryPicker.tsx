@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LibrarySongDTO } from '@/lib/setlist-serialize';
 import { AUDIO_PARTS } from '@/lib/setlist-serialize';
-import { Overlay } from '@/components/shared/Overlay';
+import { Modal } from '@/components/shared/Modal';
 import { SearchField } from '@/components/shared/SearchField';
 import { SetlistSkeleton } from '@/components/shared/Skeleton';
 import { listCard } from '@/lib/ui-classes';
@@ -58,17 +58,26 @@ export function LibraryPicker({
     });
   }
 
+  // The parent mounts this only while it's open, so the sheet keeps its own
+  // `open` and tells the parent once the slide-down has played (Modal's 220ms).
+  const [open, setOpen] = useState(true);
+  const leave = (then: () => void) => {
+    setOpen(false);
+    window.setTimeout(then, 220);
+  };
+
   function confirm() {
     const chosen = (songs ?? []).filter((s) => selected.has(s.id));
-    if (chosen.length) onAdd(chosen);
+    if (chosen.length) leave(() => onAdd(chosen));
   }
 
   return (
-    <Overlay
+    <Modal
+      open={open}
       title={title}
-      onClose={onClose}
-      action={
-        <button type="button" className="btn-primary btn-sm h-11" disabled={selected.size === 0} onClick={confirm}>
+      onClose={() => leave(onClose)}
+      footer={
+        <button type="button" className="btn-primary w-full" disabled={selected.size === 0} onClick={confirm}>
           {actionLabel}{selected.size ? ` ${selected.size}` : ''}
         </button>
       }
@@ -132,6 +141,6 @@ export function LibraryPicker({
           </div>
         )}
       </div>
-    </Overlay>
+    </Modal>
   );
 }

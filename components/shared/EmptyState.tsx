@@ -27,7 +27,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn('card grain-block flex flex-col items-center gap-3 px-6 py-8 text-center', className)}>
+    <div className={cn('card relative flex flex-col items-center gap-3 px-6 py-8 text-center', className)}>
       <div className="grid h-14 w-14 place-items-center rounded-[20px] bg-accent-soft text-accent-ink">
         <Icon width={28} height={28} className="animate-breathe" />
       </div>
